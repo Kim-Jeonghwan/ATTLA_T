@@ -40,6 +40,7 @@
 #include "hal_EpwmTimer.h"    /* EPWM1 기반 2ms 타이머 */
 #include "hal_Ramfuncs.h"
 #include "hal_W6100.h"
+#include "hal_Encoder.h"
 
 #include "csu_SciPc.h"
 #include "csu_Led.h"
@@ -48,6 +49,7 @@
 #include "csu_IPC.h"
 #include "csu_Ethernet.h"
 #include "csu_Fram.h"
+#include "csu_Encoder.h"
 
 
 /* ************************** [[   define   ]]  *********************************************************** */
