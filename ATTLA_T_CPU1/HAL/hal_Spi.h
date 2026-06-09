@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Spi.h
-    Version          : 00.00
+    Version          : 00.01
     Description      : SPI 하드웨어 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 09. (함수명에서 hal_ 접두어 제거)
 **********************************************************************/
 
 /*
@@ -37,9 +37,9 @@
 void Initial_SPI(void);
 
 // FRAM (SPI-D) 용 함수 선언
-void hal_Spid_CsLow(void);
-void hal_Spid_CsHigh(void);
-uint16_t hal_Spid_Transmit(uint16_t data);
+void Spid_CsLow(void);
+void Spid_CsHigh(void);
+uint16_t Spid_Transmit(uint16_t data);
 
 // WIZnet W6100용 SPI 콜백 래퍼 함수
 uint8_t spi_read_byte(void);

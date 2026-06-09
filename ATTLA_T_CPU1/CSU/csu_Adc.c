@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Adc.c
-    Version          : 00.00
+    Version          : 00.01
     Description      : ADC 데이터 필터링 및 10ms 주기 데이터 처리 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 09. (하드웨어 종속성 분리)
 **********************************************************************/
 
 /* ************************** [[   include  ]]  *********************************************************** */
@@ -116,7 +116,7 @@ static void updateDspTempSensor(void)
 }
 
 /*
-@funtion    void csu_CalcAdcData(void)
+@funtion    void CalcAdcData(void)
 @brief      10kHz ADC 인터럽트 루틴 내 데이터 갱신 및 필터링
 @param      void
 @return     void
@@ -124,38 +124,38 @@ static void updateDspTempSensor(void)
     - 하드웨어에서 취득한 원시 결과(12비트)를 물리량으로 선형 스케일링
     - EMA(Exponential Moving Average) LPF 필터 적용
 */
-void csu_CalcAdcData(void)
+void CalcAdcData(void)
 {
     float32_t V_in;
     float32_t curr_val;
 
     // 1. ISEN_MOT (ADCA SOC2)
-    V_in = (float32_t)ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER2) * SCALE_ADC_3V;
+    V_in = (float32_t)adcRawData.isenMot * SCALE_ADC_3V;
     curr_val = (V_in - 1.49702f) * 16.155f;
     Isen_Mot_lpf = (LPF_OLD_CV * Isen_Mot_lpf) + (LPF_REAL_CV * curr_val);
 
     // 2. ISEN_BRK (ADCA SOC3)
-    V_in = (float32_t)ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER3) * SCALE_ADC_3V;
-    curr_val = (V_in - 1.49702f) * 16.155f;
+    V_in = (float32_t)adcRawData.isenBrk * SCALE_ADC_3V;
+    curr_val = (V_in - 1.49702f) * 1.6155f;
     Isen_Brk_lpf = (LPF_OLD_CV * Isen_Brk_lpf) + (LPF_REAL_CV * curr_val);
 
     // 3. VSEN_28V (ADCA SOC4)
-    V_in = (float32_t)ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER4) * SCALE_ADC_3V;
+    V_in = (float32_t)adcRawData.vsen28v * SCALE_ADC_3V;
     curr_val = V_in * 16.866f;
     Vsen_28V_lpf = (LPF_OLD_CV * Vsen_28V_lpf) + (LPF_REAL_CV * curr_val);
 
     // 4. 5VD (ADCA SOC5)
-    V_in = (float32_t)ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER5) * SCALE_ADC_3V;
+    V_in = (float32_t)adcRawData.vsen5vd * SCALE_ADC_3V;
     curr_val = V_in * 2.0f;
     Vsen_5VD_lpf = (LPF_OLD_CV * Vsen_5VD_lpf) + (LPF_REAL_CV * curr_val);
 
     // 5. VSEN_REF (ADCB SOC1)
-    V_in = (float32_t)ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER1) * SCALE_ADC_3V;
+    V_in = (float32_t)adcRawData.vsenRef * SCALE_ADC_3V;
     curr_val = V_in * 2.0f;
     Vsen_Ref_lpf = (LPF_OLD_CV * Vsen_Ref_lpf) + (LPF_REAL_CV * curr_val);
 
     // 6. TSEN_BD (ADCB SOC3)
-    V_in = (float32_t)ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER3) * SCALE_ADC_3V;
+    V_in = (float32_t)adcRawData.tsenBd * SCALE_ADC_3V;
     curr_val = (V_in * 84.0336f) - 55.0f;
     Tsen_Bd_lpf = (LPF_OLD_TEMP * Tsen_Bd_lpf) + (LPF_REAL_TEMP * curr_val);
 }

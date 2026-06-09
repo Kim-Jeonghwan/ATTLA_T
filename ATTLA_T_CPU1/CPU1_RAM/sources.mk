@@ -5,6 +5,7 @@
 C55_SRCS := 
 A_SRCS := 
 ASM_UPPER_SRCS := 
+PINMUX_SRCS := 
 EXE_SRCS := 
 LDS_UPPER_SRCS := 
 CPP_SRCS := 
@@ -21,6 +22,7 @@ CXX_SRCS :=
 S67_SRCS := 
 S??_SRCS := 
 SV7A_SRCS := 
+SYSCFG_SRCS := 
 K_SRCS := 
 CLA_SRCS := 
 S55_SRCS := 
@@ -29,6 +31,7 @@ OUT_SRCS :=
 LIB_SRCS := 
 ASM_SRCS := 
 S_UPPER_SRCS := 
+SYSCONFIG_SRCS := 
 S43_SRCS := 
 LD_SRCS := 
 CMD_UPPER_SRCS := 
@@ -54,21 +57,26 @@ S??_DEPS :=
 C64_DEPS := 
 CXX_DEPS := 
 S64_DEPS := 
+GEN_CMDS := 
+GEN_FILES := 
 CLA_DEPS := 
 S55_DEPS := 
 SV7A_DEPS := 
 EXE_OUTPUTS := 
 C62_DEPS := 
 C67_DEPS := 
+GEN_MISC_DIRS := 
 K_DEPS := 
 C_DEPS := 
 CC_DEPS := 
 BIN_OUTPUTS := 
+GEN_OPTS := 
 C++_DEPS := 
 C43_DEPS := 
 S43_DEPS := 
 OBJS := 
 ASM_DEPS := 
+GEN_MISC_FILES := 
 S_UPPER_DEPS := 
 CPP_DEPS := 
 SA_DEPS := 
@@ -78,6 +86,7 @@ SA_DEPS__QUOTED :=
 S_UPPER_DEPS__QUOTED := 
 C??_DEPS__QUOTED := 
 S67_DEPS__QUOTED := 
+GEN_MISC_DIRS__QUOTED := 
 C55_DEPS__QUOTED := 
 CC_DEPS__QUOTED := 
 ASM_UPPER_DEPS__QUOTED := 
@@ -87,12 +96,15 @@ OBJS__QUOTED :=
 C67_DEPS__QUOTED := 
 K_DEPS__QUOTED := 
 S55_DEPS__QUOTED := 
+GEN_CMDS__QUOTED := 
+GEN_MISC_FILES__QUOTED := 
 C62_DEPS__QUOTED := 
 C_DEPS__QUOTED := 
 C_UPPER_DEPS__QUOTED := 
 C43_DEPS__QUOTED := 
 CPP_DEPS__QUOTED := 
 BIN_OUTPUTS__QUOTED := 
+GEN_FILES__QUOTED := 
 C64_DEPS__QUOTED := 
 CXX_DEPS__QUOTED := 
 CLA_DEPS__QUOTED := 
@@ -102,13 +114,13 @@ S43_DEPS__QUOTED :=
 EXE_OUTPUTS__QUOTED := 
 S64_DEPS__QUOTED := 
 S62_DEPS__QUOTED := 
+GEN_OPTS__QUOTED := 
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
 . \
 CSU \
 HAL \
-SDK/common/cmd \
 SDK/common/source \
 SDK/driverlib \
 SDK/driverlib/ccs/Debug \

@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_DspInit.c
-    Version          : 00.00
-    Description      : CPU1 마스터 초기화 및 CM 코어 권한 양도 시퀀스
+    Version          : 00.02
+    Description      : DSP 초기화 (CM 코어 통신 버퍼 포함)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 09. (F2838x SPI 핀 매크로 이름 수정)
 **********************************************************************/
 
 /*
@@ -38,7 +38,6 @@ static void Init_GpioDin(void);
 static void Init_GpioDout(void);
 
 static void InitialPeripherals(void);
-static void Initial_CmCore(void);
 
 // Helper functions for peripheral initialization (Complexity reduction)
 static void initSystemAnalogAdc(void);
@@ -136,13 +135,25 @@ static void Init_GpioDin(void)
     GPIO_setQualificationMode(13U, GPIO_QUAL_ASYNC);
 
     // --- 시스템 모니터링 및 스위치 입력 ---
-    // nLIMIT1 (GPIO 38)
+    // nLIMIT1_NO (GPIO 36)
+    GPIO_setPinConfig(GPIO_36_GPIO36);
+    GPIO_setPadConfig(36U, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(36U, GPIO_DIR_MODE_IN);
+    GPIO_setQualificationMode(36U, GPIO_QUAL_ASYNC);
+
+    // nLIMIT1_NC (GPIO 37)
+    GPIO_setPinConfig(GPIO_37_GPIO37);
+    GPIO_setPadConfig(37U, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(37U, GPIO_DIR_MODE_IN);
+    GPIO_setQualificationMode(37U, GPIO_QUAL_ASYNC);
+
+    // nLIMIT2_NO (GPIO 38)
     GPIO_setPinConfig(GPIO_38_GPIO38);
     GPIO_setPadConfig(38U, GPIO_PIN_TYPE_PULLUP);
     GPIO_setDirectionMode(38U, GPIO_DIR_MODE_IN);
     GPIO_setQualificationMode(38U, GPIO_QUAL_ASYNC);
 
-    // nLIMIT2 (GPIO 39)
+    // nLIMIT2_NC (GPIO 39)
     GPIO_setPinConfig(GPIO_39_GPIO39);
     GPIO_setPadConfig(39U, GPIO_PIN_TYPE_PULLUP);
     GPIO_setDirectionMode(39U, GPIO_DIR_MODE_IN);
@@ -176,7 +187,7 @@ static void Init_GpioDin(void)
 */
 static void Init_GpioDout(void)
 {
-    initGpioDoutLed();
+    hal_Led_InitGpio();
 
     // --- 모터 드라이버 제어 출력 (DRV8343) ---
     // DRV_ENABLE (GPIO 2 / EPWM1A)
@@ -211,11 +222,11 @@ static void Init_GpioDout(void)
     GPIO_setDirectionMode(32U, GPIO_DIR_MODE_OUT);
     GPIO_writePin(32U, 1U); // Active Low 이므로 기본 High (OFF)
 
-    // DSP_BRAKE (GPIO 37 할당)
-    GPIO_setPinConfig(GPIO_37_GPIO37);
-    GPIO_setPadConfig(37U, GPIO_PIN_TYPE_STD);
-    GPIO_setDirectionMode(37U, GPIO_DIR_MODE_OUT);
-    GPIO_writePin(37U, 0U); // Active High 이므로 기본 Low (OFF)
+    // DSP_BRAKE (GPIO 35 할당)
+    GPIO_setPinConfig(GPIO_35_GPIO35);
+    GPIO_setPadConfig(35U, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(35U, GPIO_DIR_MODE_OUT);
+    GPIO_writePin(35U, 0U); // Active High 이므로 기본 Low (OFF)
 }
 
 /*
@@ -254,8 +265,8 @@ static void initSystemAnalogAdc(void)
 */
 static void initSystemPwm(void)
 {
-    initEPWM8();
-    initEPWM9(); // 온도 센서 전용 1kHz 느린 주기 ADC 트리거용 ePWM9 추가 기동
+    // initEPWM8(); // EPWM1 트리거 사용으로 불필요 (삭제 또는 미정의)
+    // initEPWM9(); // 온도 센서 전용 1kHz 느린 주기 ADC 트리거용 ePWM9 추가 기동 (EPWM1으로 통합)
     Initial_Epwm7a();
 }
 
@@ -299,15 +310,15 @@ static void initSystemCommunications(void)
 static void initW6100GpioPins(void)
 {
     /* --- SPI A 핀 (16, 17, 18) --- */
-    GPIO_setPinConfig(GPIO_16_SPISIMOA);
+    GPIO_setPinConfig(GPIO_16_SPIA_SIMO);
     GPIO_setPadConfig(16U, GPIO_PIN_TYPE_PULLUP);
     GPIO_setQualificationMode(16U, GPIO_QUAL_ASYNC);
 
-    GPIO_setPinConfig(GPIO_17_SPISOMIA);
+    GPIO_setPinConfig(GPIO_17_SPIA_SOMI);
     GPIO_setPadConfig(17U, GPIO_PIN_TYPE_PULLUP);
     GPIO_setQualificationMode(17U, GPIO_QUAL_ASYNC);
 
-    GPIO_setPinConfig(GPIO_18_SPICLKA);
+    GPIO_setPinConfig(GPIO_18_SPIA_CLK);
     GPIO_setPadConfig(18U, GPIO_PIN_TYPE_PULLUP);
     GPIO_setQualificationMode(18U, GPIO_QUAL_ASYNC);
 

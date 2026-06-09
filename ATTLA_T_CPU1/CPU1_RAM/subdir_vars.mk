@@ -5,6 +5,9 @@
 SHELL = cmd.exe
 
 # Add inputs and outputs from these tool invocations to the build variables 
+CMD_SRCS += \
+../ATTLA_T_CPU1_RAM.cmd 
+
 LIB_SRCS += \
 C:/ti/c2000/C2000Ware_26_01_00_00/driverlib/f2838x/driverlib/ccs/Debug/driverlib.lib 
 

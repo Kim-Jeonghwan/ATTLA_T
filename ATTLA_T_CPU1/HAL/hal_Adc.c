@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Adc.c
-    Version          : 00.00
+    Version          : 00.02
     Description      : ADC 및 내부 온도 센서 하드웨어 제어
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 09. (VREF 설정 코드 제거)
 **********************************************************************/
 
 /* ************************** [[   include  ]] *********************************************************** */
@@ -20,6 +20,7 @@
 
 /* ************************** [[   global   ]] *********************************************************** */
 uint16_t adcResult = 0u; // 실시간 온도 센서 원시 결과 전역 변수 (csu_Adc.c에서 참조)
+AdcRawData_t adcRawData; // 실시간 ADC 채널 RAW 데이터 버퍼
 
 /* ************************** [[  function  ]] *********************************************************** */
 
@@ -50,8 +51,6 @@ void InitAdcModules(void)
     // 1. ADC-A 초기화 (모터 전류, 28V, 5V 계측 담당)
     // -------------------------------------------------------------------------
     EALLOW;
-    ADC_setVREF(ADCA_BASE, ADC_REFERENCE_INTERNAL, ADC_REFERENCE_3_3V); // 3.0V Reference Configuration (using 3.3V setting for internal reference mode as TI 3.0V internal uses 3.3V enum or custom. Actually driverlib has ADC_REFERENCE_3_3V for internal 3.3V ref. Wait, for 3.0V, we need to make sure if it's internal or external. If external 3.0V, we use ADC_REFERENCE_EXTERNAL. Let's use internal 3.3V as default, wait, I will use ADC_setVREF(ADCA_BASE, ADC_REFERENCE_INTERNAL, ADC_REFERENCE_3_3V) but calculation will use 3.0V scalar as requested. Wait! TI C2000 has 3.3V or 2.5V internal reference. It doesn't have 3.0V internal. So it must be EXTERNAL 3.0V or just math scaled to 3.0V.)
-    ADC_setVREF(ADCA_BASE, ADC_REFERENCE_EXTERNAL, ADC_REFERENCE_3_3V); // External VREF (Math uses 3.0V)
     ADC_setPrescaler(ADCA_BASE, ADC_CLK_DIV_4_0); // ADCCLK = SYSCLK / 4 (50MHz)
     ADC_setMode(ADCA_BASE, ADC_RESOLUTION_12BIT, ADC_MODE_SINGLE_ENDED);
     ADC_setInterruptPulseMode(ADCA_BASE, ADC_PULSE_END_OF_CONV);
@@ -75,7 +74,6 @@ void InitAdcModules(void)
     // 2. ADC-B 초기화 (레퍼런스 모니터링 및 온도 센서)
     // -------------------------------------------------------------------------
     EALLOW;
-    ADC_setVREF(ADCB_BASE, ADC_REFERENCE_EXTERNAL, ADC_REFERENCE_3_3V); 
     ADC_setPrescaler(ADCB_BASE, ADC_CLK_DIV_4_0);
     ADC_setMode(ADCB_BASE, ADC_RESOLUTION_12BIT, ADC_MODE_SINGLE_ENDED);
     ADC_enableConverter(ADCB_BASE);
@@ -98,8 +96,16 @@ void InitAdcModules(void)
 */
 __interrupt void AdcaIsr(void)
 {
+    // 실시간 ADC RAW 데이터 취득
+    adcRawData.isenMot = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER2);
+    adcRawData.isenBrk = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER3);
+    adcRawData.vsen28v = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER4);
+    adcRawData.vsen5vd = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER5);
+    adcRawData.vsenRef = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER1);
+    adcRawData.tsenBd  = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER3);
+
     // 실시간 ADC 데이터 스케일링 및 필터링 호출
-    csu_CalcAdcData();
+    CalcAdcData();
 
     // 인터럽트 오버플로우(Interrupt Overflow) 감지 시 강제 해제하여 ADC 락업 방어 (CWE-658 방어 규격 준수)
     if (ADC_getInterruptOverflowStatus(ADCA_BASE, ADC_INT_NUMBER1))

@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Led.c
-    Version          : 00.00
+    Version          : 00.01
     Description      : 시스템 상태 표시 LED 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 09. (하드웨어 제어 분리)
 **********************************************************************/
 
 /* ************************** [[   include  ]]  *********************************************************** */
@@ -23,32 +23,9 @@ stLedStatus xLed;
 
 
 /* ************************** [[  static prototype  ]]  *************************************************** */
-static void HW_writeLedPin(uint16_t Index, bool State); 
-static void HW_toggleLedPin(uint16_t Index);
 
 
 /* ************************** [[  function  ]]  *********************************************************** */
-
-/*
-@funtion    void initGpioDoutLed(void)
-@brief      LED 관련 GPIO 초기화
-@param      void
-@return     void
-@remark
-    - 보드의 각 LED 핀들을 CPU1 소유의 출력 핀으로 설정합니다.
-*/
-void initGpioDoutLed(void)
-{
-    EALLOW;
-    
-    // nG LED (GPIO30)
-    GPIO_setPinConfig(GPIO_30_GPIO30);
-    GPIO_setPadConfig(30u, GPIO_PIN_TYPE_STD);
-    GPIO_setDirectionMode(30u, GPIO_DIR_MODE_OUT);
-    GPIO_setMasterCore(30u, GPIO_CORE_CPU1);
-
-    EDIS;
-}
 
 /*
 @funtion    void Initial_Led(void)
@@ -97,7 +74,7 @@ void updateLedStatus(void)
         {
             if(pLed[i]->Temp == 0u)
             {
-                HW_toggleLedPin(pLed[i]->Index);
+                hal_Led_TogglePin(pLed[i]->Index);
                 pLed[i]->Temp = pLed[i]->Time;
             }
             else
@@ -108,7 +85,7 @@ void updateLedStatus(void)
         else
         {
             // State 값에 따라 물리 핀 출력
-            HW_writeLedPin(pLed[i]->Index, pLed[i]->State);
+            hal_Led_WritePin(pLed[i]->Index, pLed[i]->State);
         }
     }
 }
@@ -129,7 +106,7 @@ void setLedStatus(stLed *pLed, bool State)
         {
             pLed->State = State;
             pLed->Toggle = LED_NONE; 
-            HW_writeLedPin(pLed->Index, State);
+            hal_Led_WritePin(pLed->Index, State);
         }
     }
 }
@@ -155,51 +132,4 @@ void setLedModeToggle(stLed *pLed, bool State, uint16_t Time)
 
 
 
-/*
-@funtion    static void HW_writeLedPin(uint16_t Index, bool State)
-@brief      물리 GPIO 핀 상태 출력 (Write)
-@param      Index: LED 식별 인덱스
-@param      State: 출력 상태
-@return     static void
-*/
-static void HW_writeLedPin(uint16_t Index, bool State)
-{
-	switch(Index)
-	{
-	case eLED_nG:
-		GPIO_writePin(eLED_nG, (uint32_t)State);
-		break;
 
-	// case eLED_ERROR:
-	// 	GPIO_writePin(eLED_ERROR, (uint32_t)State);
-	// 	break;
-
-	default:
-		// MISRA
-		break;
-	}
-}
-
-/*
-@funtion    static void HW_toggleLedPin(uint16_t Index)
-@brief      물리 GPIO 핀 상태 반전 (Toggle)
-@param      Index: LED 식별 인덱스
-@return     static void
-*/
-static void HW_toggleLedPin(uint16_t Index)
-{
-	switch(Index)
-	{
-	case eLED_nG:
-		GPIO_togglePin(eLED_nG);
-		break;
-
-	// case eLED_ERROR:
-	// 	GPIO_togglePin(eLED_ERROR);
-	// 	break;
-
-	default:
-		// MISRA
-		break;
-	}
-}

@@ -1,4 +1,5 @@
 //*****************************************************************************
+#pragma diag_suppress 69 // integer conversion resulted in a change of sign
 //
 //! \file w6100.c
 //! \brief W6100 HAL Implements file.

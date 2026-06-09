@@ -1,4 +1,14 @@
+/**********************************************************************
+    Nexcom Co., Ltd.
+    Filename         : wizchip_conf.c
+    Version          : 00.01
+    Description      : WIZnet 이더넷 컨트롤러용 환경설정 및 버스 제어
+    Programmer       : Kim Jeonghwan
+    Last Updated     : 2026. 06. 09. (TI C2000 C89 컴파일러 호환성 수정)
+**********************************************************************/
 //****************************************************************************/
+#pragma diag_suppress 69  // integer conversion resulted in a change of sign
+#pragma diag_suppress 112 // statement is unreachable
 //!
 //! \file wizchip_conf.c
 //! \brief WIZCHIP Config Header File.
@@ -190,7 +200,8 @@ void 	wizchip_spi_writebyte(uint8_t wb) {}
 #if 1
 // 20231018 taylor
 void 	wizchip_spi_readburst(uint8_t* pBuf, uint16_t len) {
-    for (uint16_t i = 0; i < len; i++) {
+    uint16_t i;
+    for (i = 0; i < len; i++) {
         *pBuf++ = WIZCHIP.IF.SPI._read_byte();
     }
 }
@@ -207,7 +218,8 @@ void 	wizchip_spi_readburst(uint8_t* pBuf, uint16_t len) 	{}
 #if 1
 // 20231018 taylor
 void 	wizchip_spi_writeburst(uint8_t* pBuf, uint16_t len) {
-    for (uint16_t i = 0; i < len; i++) {
+    uint16_t i;
+    for (i = 0; i < len; i++) {
         WIZCHIP.IF.SPI._write_byte(*pBuf++);
     }
 }
@@ -255,7 +267,7 @@ void wizchip_qspi_write(uint8_t opcode, uint16_t addr, uint8_t* pBuf, uint16_t l
 */
 _WIZCHIP  WIZCHIP = {
     _WIZCHIP_IO_MODE_,
-    _WIZCHIP_ID_,
+    {'W','6','1','0','0','\0','\0','\0'}, // _WIZCHIP_ID_ (Fixed for TI C2000 Assembler bug)
     {
         wizchip_cris_enter,
         wizchip_cris_exit

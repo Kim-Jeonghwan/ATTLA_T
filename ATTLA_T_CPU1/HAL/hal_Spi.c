@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Spi.c
-    Version          : 00.00
+    Version          : 00.01
     Description      : SSI 엔코더 및 W6100 통신용 SPI 하드웨어 제어
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 09. (함수명에서 hal_ 접두어 제거)
 **********************************************************************/
 
 /*
@@ -206,40 +206,40 @@ static void InitSpid(void)
     EDIS;
 
     // 기본 CS High 상태 유지
-    hal_Spid_CsHigh();
+    Spid_CsHigh();
 }
 
 /*
-@funtion    void hal_Spid_CsLow(void)
+@funtion    void Spid_CsLow(void)
 @brief      FRAM CS 핀을 Low 상태로 만듭니다.
 @param      void
 @return     void
 */
-void hal_Spid_CsLow(void)
+void Spid_CsLow(void)
 {
     GPIO_writePin(FRAM_CS_GPIO, 0u);
 }
 
 /*
-@funtion    void hal_Spid_CsHigh(void)
+@funtion    void Spid_CsHigh(void)
 @brief      FRAM CS 핀을 High 상태로 만듭니다.
 @param      void
 @return     void
 */
-void hal_Spid_CsHigh(void)
+void Spid_CsHigh(void)
 {
     GPIO_writePin(FRAM_CS_GPIO, 1u);
 }
 
 /*
-@funtion    uint16_t hal_Spid_Transmit(uint16_t data)
+@funtion    uint16_t Spid_Transmit(uint16_t data)
 @brief      SPI-D 모듈을 사용하여 1바이트 데이터를 송수신합니다.
 @param      data : 전송할 8비트 데이터
 @return     수신된 8비트 데이터
 @remark
     - 8비트 Non-FIFO 모드에서는 전송 데이터를 상위 바이트(<< 8)에 배치해야 합니다.
 */
-uint16_t hal_Spid_Transmit(uint16_t data)
+uint16_t Spid_Transmit(uint16_t data)
 {
     // 데이터를 송신 (상위 8비트로 정렬)
     SPI_writeDataBlockingNonFIFO(SPID_BASE, data << 8u);

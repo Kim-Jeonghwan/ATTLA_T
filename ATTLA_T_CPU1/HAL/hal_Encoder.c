@@ -8,22 +8,12 @@
 **********************************************************************/
 
 #include "hal_Encoder.h"
-#include "pm_bissc_include.h"
+#include "hal_Adc.h"
 
 //---------------------------------------------------------------------------
 // 전역 변수
 //---------------------------------------------------------------------------
-PM_bissc_scdStruct encoderScdParams;
-PM_bissc_cdStruct encoderCdParams;
-PM_bissc_encoderStruct encoderData;
-
-// 외부 모듈(pm_bissc_source.c)에서 정의된 수신 버퍼
-extern volatile uint32_t scdRxData[PM_BISSC_SPI_FIFO_MAX_LEVEL];
-
-//---------------------------------------------------------------------------
-// 내부 함수 프로토타입
-//---------------------------------------------------------------------------
-__interrupt void Encoder_SpiRxISR(void);
+uint32_t encRawData = 0;
 
 //---------------------------------------------------------------------------
 // Encoder_Init_Hardware
@@ -31,79 +21,57 @@ __interrupt void Encoder_SpiRxISR(void);
 void Encoder_Init_Hardware(void)
 {
     //-----------------------------------------------------------------------
-    // 1. GPIO 핀 설정
+    // 1. GPIO 핀 설정 (SPI-C)
     //-----------------------------------------------------------------------
-    // GPIO 25: SPI-B SOMI (엔코더 데이터 수신)
-    GPIO_setPinConfig(GPIO_25_SPIB_SOMI);
-    GPIO_setDirectionMode(HAL_ENC_DATA_PIN, GPIO_DIR_MODE_IN);
-    GPIO_setPadConfig(HAL_ENC_DATA_PIN, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setQualificationMode(HAL_ENC_DATA_PIN, GPIO_QUAL_ASYNC);
+    // GPIO 51: SPIC_SOMI (엔코더 데이터 수신)
+    GPIO_setPinConfig(GPIO_51_SPIC_SOMI);
+    GPIO_setDirectionMode(ENC_DATA_PIN, GPIO_DIR_MODE_IN);
+    GPIO_setPadConfig(ENC_DATA_PIN, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setQualificationMode(ENC_DATA_PIN, GPIO_QUAL_ASYNC);
     
-    // GPIO 26: OUTPUT X-BAR 3 (CLB에서 생성한 MA 클럭 송신)
-    GPIO_setPinConfig(GPIO_26_OUTPUTXBAR3);
-    GPIO_setDirectionMode(HAL_ENC_CLK_PIN, GPIO_DIR_MODE_OUT);
-    GPIO_setPadConfig(HAL_ENC_CLK_PIN, GPIO_PIN_TYPE_STD);
-    
-    //-----------------------------------------------------------------------
-    // 2. 내부 라우팅 설정 (X-BAR)
-    //-----------------------------------------------------------------------
-    // CLB2_OUT4를 OUTPUT X-BAR 3로 연결하여 GPIO 26 핀으로 출력되도록 구성
-    XBAR_setOutputMuxConfig(OUTPUTXBAR_BASE, XBAR_OUTPUT3, XBAR_OUT_MUX05_CLB2_OUT4);
-    XBAR_enableOutputMux(OUTPUTXBAR_BASE, XBAR_OUTPUT3, XBAR_MUX05);
+    // GPIO 52: SPIC_CLK (엔코더 클럭 송신)
+    GPIO_setPinConfig(GPIO_52_SPIC_CLK);
+    GPIO_setDirectionMode(ENC_CLK_PIN, GPIO_DIR_MODE_OUT);
+    GPIO_setPadConfig(ENC_CLK_PIN, GPIO_PIN_TYPE_STD);
     
     //-----------------------------------------------------------------------
-    // 3. pm_bissc 라이브러리 파라미터 초기화
+    // 2. SPI-C 모듈 초기화 (SSI 통신 규격)
     //-----------------------------------------------------------------------
-    // BiSS-C 프로토콜 기본 설정 (AksIM-2 사양)
-    encoderScdParams.crcBits = 6;              // CRC 폴리노미얼 크기
-    encoderScdParams.crcPoly = 0x43;           // 0x43 (X^6 + X + 1)
-    encoderScdParams.crcStart = 0;             // 초기값 0
-    encoderScdParams.positionMTBits = 16;      // 멀티턴 카운터 16-bit
-    encoderScdParams.positionSTBits = 18;      // 싱글턴 분해능 18-bit
+    // SPI 리셋
+    SPI_disableModule(SPIC_BASE);
     
-    encoderCdParams.crcBits = 4;
-    encoderCdParams.crcPoly = 0x03;            // 0x03 (X^4 + X + 1)
-    encoderCdParams.crcStart = 0;
+    // SPI 마스터 모드 설정, 5MHz 통신 예시 (LSPCLK가 50MHz일 경우)
+    // AksIM-2 등 SSI 엔코더는 보통 CPOL=0, CPHA=1 또는 CPOL=1, CPHA=0 등을 사용합니다. (확인 필요)
+    // 여기서는 기본적으로 Data on Falling Edge (CPOL=0, CPHA=1) 로 설정합니다.
+    SPI_setConfig(SPIC_BASE, DEVICE_LSPCLK_FREQ, SPI_PROT_POL0PHA1,
+                  SPI_MODE_MASTER, 1000000, 16); // 1MHz, 16-bit word
     
-    // 라이브러리의 파라미터 셋업 함수 호출
-    PM_bissc_initParams(&encoderScdParams, &encoderCdParams);
+    // FIFO 활성화
+    SPI_enableFIFO(SPIC_BASE);
+    SPI_clearInterruptStatus(SPIC_BASE, SPI_INT_RXFF | SPI_INT_TXFF);
+    SPI_setFIFOInterruptLevel(SPIC_BASE, SPI_FIFO_TXEMPTY, SPI_FIFO_RX1);
     
-    //-----------------------------------------------------------------------
-    // 4. CLB 타일 초기화 및 주파수 설정
-    //-----------------------------------------------------------------------
-    // CLB 타일 초기화
-    PM_bissc_setupPeriph();
-    
-    // 통신 주파수 설정 (예: 5MHz)
-    // 시스템 200MHz / (5MHz * 2) = freqDiv 값 설정 (20)
-    // 자세한 공식은 SYSCLK에 따라 다를 수 있으나 통상적으로 적용
-    PM_bissc_setFreq(20);
-
-    //-----------------------------------------------------------------------
-    // 5. 인터럽트 설정 (SPI RX)
-    //-----------------------------------------------------------------------
-    Interrupt_register(PM_BISSC_INT_SPI_RX, &Encoder_SpiRxISR);
-    Interrupt_enable(PM_BISSC_INT_SPI_RX);
+    // SPI 모듈 활성화
+    SPI_enableModule(SPIC_BASE);
 }
 
 //---------------------------------------------------------------------------
-// Encoder_SpiRxISR (SPI 수신 인터럽트)
+// Encoder_ReadSpiData
 //---------------------------------------------------------------------------
-// BiSS-C 통신 완료 시 (FIFO 수신 완료) 발생하여 수신된 데이터를 버퍼에 저장
-__interrupt void Encoder_SpiRxISR(void)
+// SSI 통신은 더미 데이터를 전송하며 클럭을 발생시켜 수신합니다.
+uint32_t Encoder_ReadSpiData(void)
 {
-    uint16_t i;
+    uint16_t highWord, lowWord;
     
-    // SPI FIFO에 들어온 데이터를 읽어서 scdRxData 버퍼에 저장
-    for(i = 0; i < encoderScdParams.spiFIFOLevel; i++)
-    {
-        scdRxData[i] = SPI_readDataNonBlocking(PM_BISSC_SPI);
-    }
+    // 32비트 프레임을 읽기 위해 16비트씩 두 번 전송 및 수신
+    SPI_writeDataBlockingNonFIFO(SPIC_BASE, 0xFFFF);
+    highWord = SPI_readDataBlockingNonFIFO(SPIC_BASE);
     
-    // 데이터 수신 완료 플래그 세트
-    encoderScdParams.dataReady = true;
-
-    // SPI RX 인터럽트 클리어 및 그룹 ACK
-    SPI_clearInterruptStatus(PM_BISSC_SPI, SPI_INT_RXFF);
-    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP6); // SPI_B RX는 PIE Group 6
+    SPI_writeDataBlockingNonFIFO(SPIC_BASE, 0xFFFF);
+    lowWord = SPI_readDataBlockingNonFIFO(SPIC_BASE);
+    
+    encRawData = ((uint32_t)highWord << 16) | lowWord;
+    
+    return encRawData;
 }
+

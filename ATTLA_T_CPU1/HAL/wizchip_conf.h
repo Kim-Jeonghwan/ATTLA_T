@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : wizchip_conf.h
-    Version          : 00.00
+    Version          : 00.01
     Description      : WIZnet W6100 칩 설정 및 공통 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 09. (기본 칩 W6100 변경 및 디바이스 헤더 추가)
+    Last Updated     : 2026. 06. 09. (Application.h 인클루드 주석 처리)
 **********************************************************************/
 
 //*****************************************************************************
@@ -278,7 +278,7 @@ typedef uint16_t iodata_t;
 
 typedef uint8_t iodata_t;   ///< IO access unit. bus width
 typedef int16_t datasize_t; ///< sent or received data size
-#include "../Application/Application.h"
+// #include "../Application/Application.h"
 #include "w6100.h"
 
 // teddy 240122
@@ -308,7 +308,7 @@ typedef int16_t datasize_t; ///< sent or received data size
 
 typedef uint8_t iodata_t;   ///< IO access unit. bus width
 typedef int16_t datasize_t; ///< sent or received data size
-#include "../Application/Application.h"
+// #include "../Application/Application.h"
 #include "./W6300/w6300.h"
 
 #else
@@ -650,23 +650,23 @@ typedef enum {
   IK_SOCK_7 = (1 << 15),     ///< Socket 7 Interrupt
   IK_SOCK_ALL = (0xFF << 8), ///< All Socket Interrupt
 
-  IK_SOCKL_TOUT = (1 << 16), ///< @ref _SLCR_ Timeout Interrupt.\n Refer to @ref
+  IK_SOCKL_TOUT = (1UL << 16), ///< @ref _SLCR_ Timeout Interrupt.\n Refer to @ref
                              ///< ctlnetservice_type.
   IK_SOCKL_ARP4 =
-      (1 << 17), ///< @ref _SLCR_ APR4 Interrupt.\n Refer to @ref CNS_ARP.
+      (1UL << 17), ///< @ref _SLCR_ APR4 Interrupt.\n Refer to @ref CNS_ARP.
   IK_SOCKL_PING4 =
-      (1 << 18), ///< @ref _SLCR_ PING4 Interrupt.\n Refer to @ref CNS_PING.
+      (1UL << 18), ///< @ref _SLCR_ PING4 Interrupt.\n Refer to @ref CNS_PING.
   IK_SOCKL_ARP6 =
-      (1 << 19), ///< @ref _SLCR_ ARP6 Interrupt.\n Refer to @ref CNS_ARP.
+      (1UL << 19), ///< @ref _SLCR_ ARP6 Interrupt.\n Refer to @ref CNS_ARP.
   IK_SOCKL_PING6 =
-      (1 << 20), ///< @ref _SLCR_ PING6 Interrupt.\n Refer to @ref CNS_PING.
+      (1UL << 20), ///< @ref _SLCR_ PING6 Interrupt.\n Refer to @ref CNS_PING.
   IK_SOCKL_NS =
-      (1 << 21), ///< @ref _SLCR_ NS Interrupt.\n Refer to @ref CNS_DAD.
+      (1UL << 21), ///< @ref _SLCR_ NS Interrupt.\n Refer to @ref CNS_DAD.
   IK_SOCKL_RS =
-      (1 << 22), ///< @ref _SLCR_ RS Interrupt.\n Refer to @ref CNS_SLAAC.
+      (1UL << 22), ///< @ref _SLCR_ RS Interrupt.\n Refer to @ref CNS_SLAAC.
   IK_SOCKL_RA =
-      (1 << 23), ///< @ref _SLCR_ RA Interrupt.\n Refer to @ref CNS_GET_PREFIX.
-  IK_SOCKL_ALL = (0xFF << 16), ///< @ref _SLCR_ All Interrupt
+      (1UL << 23), ///< @ref _SLCR_ RA Interrupt.\n Refer to @ref CNS_GET_PREFIX.
+  IK_SOCKL_ALL = (0xFFUL << 16), ///< @ref _SLCR_ All Interrupt
 
   IK_INT_ALL = (0x00FFFF97) ///< All Interrupt
 } intr_kind;
@@ -867,18 +867,18 @@ typedef enum {
   NM_MR2_MASK = (0x09 << 8), ///< @ref _NETMR2_ Mask value
 
   // NET4MR Bit Values
-  NM_PB4_ALL = (1 << 16),      ///< All PING4 request Block
-  NM_TRSTB_V4 = (1 << 17),     ///< TCP RST packet for IPv4 Send Block
-  NM_PARP_V4 = (1 << 18),      ///< ARP request for IPv4 before PINGv4 Replay
-  NM_UNRB_V4 = (1 << 19),      ///< Unreachable Destination for IPv4 Block
-  NM_NET4_MASK = (0x0F << 16), ///< @ref _NET4MR_ Mask value
+  NM_PB4_ALL = (1UL << 16),      ///< All PING4 request Block
+  NM_TRSTB_V4 = (1UL << 17),     ///< TCP RST packet for IPv4 Send Block
+  NM_PARP_V4 = (1UL << 18),      ///< ARP request for IPv4 before PINGv4 Replay
+  NM_UNRB_V4 = (1UL << 19),      ///< Unreachable Destination for IPv4 Block
+  NM_NET4_MASK = (0x0FUL << 16), ///< @ref _NET4MR_ Mask value
 
   // NET4MR Bit Values
-  NM_PB6_ALL = (1 << 24),      ///< All PING6 request Block
-  NM_TRSTB_V6 = (1 << 25),     ///< TCP RST packet for IPv6 Send Block
-  NM_PARP_V6 = (1 << 26),      ///< ARP request for IPv6 before PINGv4 Replay
-  NM_UNRB_V6 = (1 << 27),      ///< Unreachable Destination for IPv6 Block
-  NM_NET6_MASK = (0x0F << 24), ///< @ref _NET6MR_ Mask value
+  NM_PB6_ALL = (1UL << 24),      ///< All PING6 request Block
+  NM_TRSTB_V6 = (1UL << 25),     ///< TCP RST packet for IPv6 Send Block
+  NM_PARP_V6 = (1UL << 26),      ///< ARP request for IPv6 before PINGv4 Replay
+  NM_UNRB_V6 = (1UL << 27),      ///< Unreachable Destination for IPv6 Block
+  NM_NET6_MASK = (0x0FUL << 24), ///< @ref _NET6MR_ Mask value
 
   NM_MASK_ALL = (0x0F0F0937) ///< @ref netmode_type all mask value
 } netmode_type;

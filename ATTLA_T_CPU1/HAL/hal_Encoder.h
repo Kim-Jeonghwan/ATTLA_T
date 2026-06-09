@@ -19,20 +19,20 @@ extern "C" {
 //---------------------------------------------------------------------------
 // 매크로 정의
 //---------------------------------------------------------------------------
-#define HAL_ENC_DATA_PIN        25      // SPI-B SOMI
-#define HAL_ENC_CLK_PIN         26      // OUTPUT X-BAR 3 (CLB MA Clock)
+#define ENC_DATA_PIN        51      // SPIC_SOMI
+#define ENC_CLK_PIN         52      // SPIC_CLK
 
 //---------------------------------------------------------------------------
-// 전역 변수 선언 (pm_bissc 파라미터 구조체)
+// 전역 변수 선언
 //---------------------------------------------------------------------------
-extern PM_bissc_scdStruct encoderScdParams;
-extern PM_bissc_cdStruct encoderCdParams;
-extern PM_bissc_encoderStruct encoderData;
+// BiSS-C 대신 위치값을 수신할 변수 (임시, 필요시 CSU에서 관리)
+extern uint32_t encRawData;
 
 //---------------------------------------------------------------------------
 // 함수 프로토타입
 //---------------------------------------------------------------------------
 extern void Encoder_Init_Hardware(void);
+extern uint32_t Encoder_ReadSpiData(void);
 
 #ifdef __cplusplus
 }

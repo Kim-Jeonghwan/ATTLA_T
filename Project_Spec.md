@@ -37,17 +37,19 @@
 - **제어 목표 및 성능** : 위치 오차 ±1° 이내, 동작 제한 속도 1.5초 이내 (반응시간 포함, 24V 인가 기준). 
   - *참고: 18V 인가 시에는 동작 시간 미달(1.5초 초과) 허용.*
 
-## 3. 액추에이터 제어 (모터 및 브레이크)
-- **모터 드라이버 (게이트 드라이버)** : DRV8343H-Q1 탑재
+- **모터 드라이버 (스마트 게이트 드라이버)** : DRV8343SPHPRQ1 탑재
   - 제어 핀:
     - `DRV_ENABLE` (GPIO 2, Active High)
     - `DRV_DIR` (GPIO 3, Active High)
-    - `DRV_nBRAKE` (사용하지 않음)
     - `DRV_nFAULT` (GPIO 10, 입력, Active Low)
-  - 제어 인터페이스: SPI (직렬 통신)를 통한 드라이버 레지스터 설정 및 진단
-  - 하드웨어 제어: PWM 입력을 통한 3상 인버터 구동
+  - 제어 인터페이스 (SPI-B 통신):
+    - **CLK**: GPIO 58
+    - **nCS (STE)**: GPIO 59
+    - **SIMO**: GPIO 60
+    - **SOMI**: GPIO 61
+  - 기능: SPI를 통한 세부 레지스터 진단 및 보호 기능 설정, PWM 입력을 통한 3상 인버터 구동
 - **브레이크(Brake) 제어 회로** :
-  - DSP 제어 핀: `DSP_BRAKE` (GPIO 37, Active High)
+  - DSP 제어 핀: `DSP_BRAKE` (GPIO 35, Active High)
   - 제어 로직: DSP의 3.3V GPIO 제어 신호를 TLP293 광절연기(Optocoupler)를 통해 절연.
   - P-Channel MOSFET (SQJ431EP-T1_GE3) 구동 회로를 거쳐 24V 브레이크 동작.
 - **모터 위치 검출** :
@@ -56,27 +58,15 @@
     - `HALL_B_IN` (GPIO 12)
     - `HALL_C_IN` (GPIO 13)
   - **디지털 엔코더** : RLS 사 AksIM-2 (MB039DCC18MENT00)
-    - **통신 방식**: BiSS-C (RS-422 기반 양방향 통신, 레지스터 R/W 지원)
+    - **통신 방식**: 순수 SPI 기반 SSI (Synchronous Serial Interface) 단방향 고속 통신
     - **분해능**: 18-bit (1회전 싱글턴) + 16-bit (멀티턴 카운터)
     - **정확도**: ±0.004° ~ ±0.020°
-    - **최대 동작 속도**: 10,000 RPM
-    - **전원 사양**: 4.5V ~ 5.5V (통상 130mA 소모)
-    - **온도 범위**: -40°C ~ +105°C (보관 및 작동)
-    - **사용 핀 (SPI-B / CLB)**: 데이터 수신 SOMI (GPIO 25), 마스터 클럭 송신 MA (GPIO 26)
-    - **통신 구현 및 특이사항 (pm_bissc 연동)**:
-      - **적용 모듈**: TI `pm_bissc` 라이브러리를 포팅하여 `CLB2` 및 `SPIB` 모듈을 활용.
-      - **제어 구조**: `main.c`의 1ms 고속 타이머 주기에서 `Encoder_UpdatePosition()`으로 위치를 획득하고, `Encoder_ProcessCDTasks()`로 레지스터 커맨드를 비동기(32주기/프레임) 처리.
-      - ⚠️ **주의사항 (OUTPUT X-BAR 래치 충돌)**: 원본 `pm_bissc_source.c`의 초기화 로직은 CLB 리셋 시 클럭(MA)이 요동치는 것을 방지하기 위해 `XBAR_OUTPUT1`의 래치(Latch) 기능을 하드코딩하여 사용합니다. 현재 프로젝트의 클럭 핀(GPIO 26)은 `OUTPUTXBAR3`에 연결되어 있으므로 해당 래치 보호가 적용되지 않습니다. 초기 구동 또는 시스템 리셋의 찰나에 클럭 핀에 짧은 글리치(Glitch)가 발생할 수 있으며, 만약 이로 인해 엔코더 에러가 유발될 경우 향후 원본 `pm_bissc_source.c` 파일을 직접 수정하여 `XBAR_OUTPUT1`을 `XBAR_OUTPUT3`로 일괄 치환해야 합니다.
-    - **엔코더 통신 프로토콜 핵심 스펙 (Register Map)**:
-      - **데이터 포맷**: 16/32비트 다중 바이트 접근 시 **Big Endian** 적용 (가장 낮은 주소가 최상위 바이트 MSB)
-      - **주소 체계**: 직접 접근(Direct access) `0x40~0x7F`, 뱅크 접근(Bank 0~87) `0x00~0x3F` (주소 `0x40`에 Bank 번호 기록 후 사용)
-      - **주요 모니터링 레지스터 (Direct)**: 상태 및 에러(`0x4A-0x4B`), 온도(`0x4C-0x4D`), 신호 레벨(`0x4E-0x4F`), RPM(`0x50-0x51`)
-      - **주요 설정 레지스터 (Bank 0)**: Position Offset(`0x00-0x03`), Filter Value(`0x04-0x07`), Multiturn Preset(`0x14-0x17`), Persistent Error(`0x2C-0x2D`)
-      - **커맨드 시퀀스 (보안 해제 절차)**: 모든 제어/저장 명령은 Key 레지스터(`0x48`)에 `0xCD`를 기록한 후, Command 레지스터(`0x49`)에 특정 ASCII 코드를 전송하여 실행됨.
-        - 파라미터 비휘발성 저장: `'c' (0x63)` (80ms 소요)
-        - 멀티턴 프리셋 적용: `'m' (0x6D)`
-        - 셀프 캘리브레이션 시작: `'A' (0x41)` (이후 0x52 상태 모니터링)
-        - 공장 초기화(Factory Reset): `'r' (0x72)` (80ms 소요)
+    - **사용 핀 (SPI-C)**: 
+      - **데이터 수신 (SOMI)**: GPIO 51
+      - **클럭 송신 (CLK)**: GPIO 52
+    - **통신 구현 및 특이사항**:
+      - 기존에 적용되었던 복잡한 BiSS-C 프로토콜(`pm_bissc` 라이브러리 및 CLB 타일 연동)은 완벽히 제거되었습니다.
+      - F2838x의 표준 `SPI-C` 하드웨어 모듈을 Master로 설정하여 단순 클럭 발생 및 데이터 스트림(프레임)을 수신하는 구조로 경량화 및 안정성을 확보했습니다.
 - **전류 센싱** : TMCS1108A4BQDBVRQ1 (모터 부하 전류 측정)
 
 ---
@@ -90,8 +80,10 @@
   - 역할: 장치의 잠금(Lock) 및 풀림(Unlock) 상태를 하드웨어적으로 최종 인식
   - 상태 감지: DSP 입력 기준 NO(Normally Open, 확인 필요) 상태일 때 Low, 그 외의 경우 High로 인식
   - **입력 감시 (디지털 입력)** :
-    - `nLIMIT1` : 리미트 스위치 1번 (GPIO 38, Active Low)
-    - `nLIMIT2` : 리미트 스위치 2번 (GPIO 39, Active Low)
+    - `nLIMIT1_NO` : 리미트 스위치 1번 NO (GPIO 36, Active Low)
+    - `nLIMIT1_NC` : 리미트 스위치 1번 NC (GPIO 37, Active Low)
+    - `nLIMIT2_NO` : 리미트 스위치 2번 NO (GPIO 38, Active Low)
+    - `nLIMIT2_NC` : 리미트 스위치 2번 NC (GPIO 39, Active Low)
     - `PM_n24V` : 24V 브레이크/스위치 전원 감시 (GPIO 40, Active Low)
     - `CABLE_LOOP` : 체계 케이블 연결 체결 감시 (GPIO 46, Active Low)
 - **상태 표시 및 외부 출력 제어 (LED/IO)** : 
@@ -99,8 +91,8 @@
   - **외부 출력용 (NORMAL / FAULT)**: 외부 장비 연결/표시용. DSP 기준으로는 단순 제어용 IO 출력 핀으로 동작.
     - 구동 회로: MCP1415T 하이사이드 드라이버 2채널 적용
     - 제어 로직: DSP 핀 출력 기준 Low ➡️ 외부 ON(구동), High ➡️ 외부 OFF(차단)
-    - `NORMAL` 출력 (`DSP_LED_nNORMAL` 핀, GPIO 31)
-    - `FAULT` 출력 (`DSP_LED_nFAULT` 핀, GPIO 32)
+    - `nNORMAL` 출력 (`DSP_LED_nNORMAL` 핀, GPIO 31)
+    - `nFAULT` 출력 (`DSP_LED_nFAULT` 핀, GPIO 32)
 
 ---
 
@@ -118,7 +110,8 @@
   - 센서: TMCS1108 (-24A ~ +24A 범위, 100mV/A, 기준 전압 2.5V)
   - OP-AMP (TLV9002) 증폭비: **0.619** (6.19k / 10k)
   - 10kHz Cut-off 로우패스 필터 적용 (스위칭 노이즈 차단)
-  - 변환 스펙: -24A에서 +24A 사이 구간을 약 **0.01142V ~ 2.98262V** 로 변환하여 DSP ADC로 입력
+  - 변환 스펙 (모터, `ADC_ISEN_MOT`): -24A에서 +24A 사이 구간을 약 **0.01142V ~ 2.98262V** 로 변환
+  - 변환 스펙 (브레이크, `ADC_ISEN_BRK`): -2.4A에서 +2.4A 사이 구간을 변환 (+2.4A: **2.98262V**, 0A: **1.49702V**, -2.4A: **0.01142V**)
 - **입력 전압 모니터링 (`ADC_VSEN_28V`, `ADC_5VD`)** : 
   - 채널: 28V **ADCA SOC4 (ADCINA4)** / 5V **ADCA SOC5 (ADCINA5)**
   - 28V 변환 스펙: 50V 입력 시 약 **2.96451V** 로 측정
@@ -153,14 +146,15 @@
 - **내부 상태 표시 (G LED)**: 보드 내부 구동 상태 모니터링용 G LED(GPIO 30) 토글 및 상태 제어 로직 구현 완료
 - **ADC (10kHz 주기 획득)**: EPWM1 10kHz 트리거, 외부/내부 센서(전류, 전압, 온도) 선형 스케일링, EMA 필터 연동 완료
 - **FRAM 연동**: SPI-D(1MHz) 기반 FRAM 제어 기능 연동 완료 (Driverlib 구조체 및 10ms 블로킹 지연시간 적용)
-- **엔코더 (BiSS-C)**: CLB 및 SPI-B 연동 기반 BiSS-C 통신 구조체(pm_bissc) 포팅 및 1ms 주기의 백그라운드 태스크 연동 완료 (AksIM-2)
-- **디지털 입력 (GPIO IN) 연동**: 홀 센서(A, B, C), 모터드라이버 nFAULT, 리미트 센서(nLIMIT1, nLIMIT2), 24V 전원 감시(PM_n24V), 케이블 체결 감시(CABLE_LOOP) 신호 핀 할당 및 설정 완료
-- **디지털 출력 (GPIO OUT) 연동**: 브레이크 제어(DSP_BRAKE), 장비 표시용 상태 출력(LED_nNORMAL, LED_nFAULT) 핀 할당 및 기본 제어 상태 설정 완료
+- **엔코더 (SSI / SPI-C)**: 기존 BiSS-C 의존성 완전 제거 및 하드웨어 SPI-C(GPIO 51/52) 모듈 기반 SSI 통신 수신 구조 구현 완료
+- **모터 드라이버 제어 (DRV8343)**: DRV8343SPHPRQ1 칩셋에 대한 SPI-B (GPIO 58~61) 통신 기반 초기화 및 진단, 레지스터 R/W 인터페이스 연동 완료
+- **디지털 입력 (GPIO IN) 연동**: 홀 센서(A, B, C), 모터드라이버 nFAULT, 리미트 센서(nLIMIT1_NO/NC, nLIMIT2_NO/NC), 24V 전원 감시(PM_n24V), 케이블 체결 감시(CABLE_LOOP) 신호 핀 할당 및 설정 완료
+- **디지털 출력 (GPIO OUT) 연동**: 브레이크 제어(DSP_BRAKE 35번 핀), 장비 표시용 상태 출력(LED_nNORMAL, LED_nFAULT) 핀 할당 및 기본 제어 상태 설정 완료
 
 ### ⏳ 미구현 / 보류 (Pending / On-Hold)
 - **ENET (보류)**: 내부 EMAC 이더넷은 보류하고 외부 W6100을 우선적으로 사용
 
 ### 🚀 향후 구현 예정 (To Be Implemented)
-- **모터 드라이버 제어**: DRV8343H SPI 통신 기반 초기화/진단, 3상 인버터 FOC 제어 알고리즘 및 PWM 생성
+- **모터 구동 FOC**: 3상 인버터 FOC 제어 알고리즘 및 PWM 생성 로직 연동
 - **W6100 (상세 페이로드 연동)**: 18바이트 통신 데이터 구조체 맵핑 및 수신 패킷(제어 명령) 파싱 로직 구현
 - **상태 머신 (State Machine)**: 시스템 전체 상태 제어 및 브레이크-모터 연동 시퀀스

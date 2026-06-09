@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : main.h
-    Version          : 00.00
+    Version          : 00.01
     Description      : 코어 시스템 통합 헤더 파일
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 09. (CSU 및 HAL 구조 리팩토링 반영)
 **********************************************************************/
 
 #ifndef MAIN_H
@@ -33,10 +33,6 @@
 /* easyDSP Library */
 #include "easy28x_driverlib_v12.2.h"
 
-/* Biss-C Library */
-#include "pm_bissc_include.h"
-#include "pm_bissc_internal_include.h"
-
 /* W6100 Library */
 #include "socket.h"
 #include "w6100.h"
@@ -47,7 +43,11 @@
 #include "hal_Common.h"
 #include "hal_DspInit.h"
 #include "hal_Encoder.h"
+#include "hal_Epwm.h"
 #include "hal_EpwmTimer.h"    /* EPWM1 기반 2ms 타이머 */
+#include "hal_Fram.h"
+#include "hal_Led.h"
+#include "hal_MotorDriver.h"
 #include "hal_Ramfuncs.h"
 #include "hal_Sci.h"
 #include "hal_Spi.h"
@@ -57,10 +57,9 @@
 /* CSU Library */
 #include "csu_Adc.h"
 #include "csu_Encoder.h"
-#include "csu_Epwm.h"
 #include "csu_Ethernet.h"
-#include "csu_Fram.h"
 #include "csu_Led.h"
+#include "csu_MotorDriver.h"
 #include "csu_SciPc.h"
 
 

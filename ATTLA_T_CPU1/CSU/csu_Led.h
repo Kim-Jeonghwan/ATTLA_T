@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Led.h
-    Version          : 00.00
+    Version          : 00.01
     Description      : 시스템 상태 표시 LED 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 09. (하드웨어 제어 분리)
 **********************************************************************/
 
 #ifndef CSU_LED_H
@@ -72,10 +72,7 @@ extern stLedStatus xLed;
 
 /* ************************** [[  function  ]]  *********************************************************** */
 
-/**
- * @brief LED 제어를 위한 GPIO 방향 및 Mux 설정
- */
-void initGpioDoutLed(void);
+
 
 /**
  * @brief LED 변수 초기화 및 기본 동작 설정

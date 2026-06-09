@@ -51,9 +51,9 @@ void main(void)
 	Ethernet_Init();
 
 	// FRAM 초기화
-	csu_Fram_Init();
+	Fram_Init();
 
-	// 엔코더 (BiSS-C) 초기화
+	// 엔코더 (SSI / SPI-C) 초기화
 	Encoder_Init();
 
 	// CM 코어와 IPC를 완전 제거하고 CPU1 단독 동작 수행
@@ -104,9 +104,8 @@ static void cycle_1ms(void)
 	// W6100 이더넷 송수신 폴링 (1ms 주기)
 	Ethernet_Process();
 
-	// 엔코더 위치 업데이트 및 백그라운드 레지스터 제어 (1ms 주기)
+	// 엔코더 위치 업데이트 (1ms 주기)
 	Encoder_UpdatePosition();
-	Encoder_ProcessCDTasks();
 
 	// 사용자 코드 작성
 	xTimer.Hzcnt++;
@@ -158,8 +157,8 @@ static void cycle_100ms(void)
 static void cycle_1000ms(void)
 {
 #if 0 // 2026-06-08 FRAM SPI-D Test Code
-    csu_Fram_WriteByte(0x0010u, 0xAAu);
-    FramTest = csu_Fram_ReadByte(0x0010u);
-    //csu_Fram_WriteByte(0x0000u, 0x00u);
+    Fram_WriteByte(0x0010u, 0xAAu);
+    FramTest = Fram_ReadByte(0x0010u);
+    //Fram_WriteByte(0x0000u, 0x00u);
 #endif
 }

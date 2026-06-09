@@ -1,4 +1,13 @@
+/**********************************************************************
+    Nexcom Co., Ltd.
+    Filename         : socket.c
+    Version          : 00.01
+    Description      : WIZnet 이더넷 컨트롤러용 Socket API 구현
+    Programmer       : Kim Jeonghwan
+    Last Updated     : 2026. 06. 09. (TI C2000 C89 컴파일러 호환성 수정)
+**********************************************************************/
 //*****************************************************************************
+#pragma diag_suppress 69 // integer conversion resulted in a change of sign
 //
 //! \file socket.c
 //! \brief SOCKET APIs Implements file.
@@ -130,7 +139,8 @@ uint8_t sock_remained_byte[_WIZCHIP_SOCK_NUM_] = {0,}; // set by wiz_recv_data()
 #define CHECK_IPZERO(addr, addrlen)                                  \
    do{                                                               \
       uint16_t ipzero= 0;                                            \
-      for(uint8_t i=0; i<addrlen; i++)  ipzero += (uint16_t)addr[i]; \
+      uint8_t i;                                                     \
+      for(i=0; i<addrlen; i++)  ipzero += (uint16_t)addr[i];         \
       if (ipzero == 0) return SOCKERR_IPINVALID;                     \
    }while(0);
 

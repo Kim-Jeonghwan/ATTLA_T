@@ -4,7 +4,7 @@
     Version          : 00.00
     Description      : ADC 데이터 처리 로직 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 09. (함수명에서 csu_ 접두어 제거)
 **********************************************************************/
 
 #ifndef CSU_ADC_H
@@ -41,6 +41,6 @@ void updateAdcData(void);
 /**
  * @brief 10kHz ADC 인터럽트에서 호출되는 실시간 데이터 스케일링 및 필터링
  */
-void csu_CalcAdcData(void);
+void CalcAdcData(void);
 
 #endif /* CSU_ADC_H */
