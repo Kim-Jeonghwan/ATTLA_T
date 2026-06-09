@@ -72,5 +72,23 @@ AksIM-2 엔코더와 F28388D MCU 간의 BiSS-C 통신을 구현합니다.
 ## 4. 구현 단계 및 내일의 작업 가이드 (Next Steps)
 1. 사용자가 위 "Open Questions"의 **헤더 수정 및 GPIO 25/26 충돌 여부**를 확인하고 승인합니다.
 2. 에이전트(AI)가 `hal_Encoder` 모듈부터 생성하여 CLB와 SPI 핀 라우팅 코드를 작성합니다.
-3. 에이전트(AI)가 데이터시트의 메모리 맵과 엔디안 규칙을 엄격하게 적용하여 `csu_Encoder` 모듈을 작성합니다.
-4. 빌드 오류를 해결하고 메인 타이머 루프에 통신 태스크를 스케줄링하여 작업을 완료합니다.
+7. 에이전트(AI)가 데이터시트의 메모리 맵과 엔디안 규칙을 엄격하게 적용하여 `csu_Encoder` 모듈을 작성합니다.
+8. 빌드 오류를 해결하고 메인 타이머 루프에 통신 태스크를 스케줄링하여 작업을 완료합니다.
+
+---
+
+## 5. 컴파일 에러 해결 계획 (Compilation Error Resolution)
+
+빌드 과정에서 발생한 두 가지 주요 에러(Catastrophic Error)의 원인과 해결 계획입니다.
+
+### 5.1 WIZnet W6100 헤더 경로 오류 (수정 완료)
+- **증상**: `socket.c`, `w6100.c` 등에서 `"./W6100/w6100.h"` 파일을 열 수 없다는 에러 발생.
+- **원인**: 라이브러리 원본은 `W6100` 폴더 안에 헤더가 있다고 가정했으나, 현재 프로젝트에서는 `HAL` 폴더에 모든 파일이 평탄화(Flatten)되어 배치되어 있습니다.
+- **해결 방안**: 에이전트가 방금 `wizchip_conf.h`의 해당 경로를 `#include "w6100.h"`로 **수정 완료**했습니다.
+
+### 5.2 BiSS-C `clb_config.h` 누락 오류 (User Action Required)
+> [!IMPORTANT]
+> **증상**: `pm_bissc_internal_include.h`에서 `clb_config.h`를 찾지 못함.
+> **원인**: TI의 BiSS-C 라이브러리는 CLB(Configurable Logic Block) 하드웨어를 사용하여 통신 프로토콜을 구현합니다. 이 때 필요한 CLB 로직(Bitstream) 배열들이 `clb_config.c`와 `clb_config.h`에 담겨 있습니다. 이 파일들은 보통 TI C2000Ware 예제에서 **SysConfig 툴이 자동 생성**해 줍니다. 현재 프로젝트는 수동 환경이므로 이 파일들이 누락되었습니다.
+> **해결 방안**: 
+> 사용자님께서 로컬에 설치된 TI C2000Ware 경로(예: `C:\ti\c2000\C2000Ware_X_XX_XX_XX\libraries\position_sensing\bissc\examples\...` 또는 관련 빌드 폴더)에서 **`clb_config.h`와 `clb_config.c` 두 파일을 찾아 현재 프로젝트의 `HAL` 폴더로 직접 복사(가져오기) 해주셔야 합니다.** 파일 복사 후 빌드하시면 에러가 해결됩니다.

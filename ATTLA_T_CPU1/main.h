@@ -26,30 +26,42 @@
 #define MEMCFG_GSRAMMASTER_CM    2
 #endif
 
-/* Bit-field 헤더 포함 (구형 easyDSP 등 외부 코드와의 호환성 유지용)
-// Uint16, Uint32 타입 및 비트필드 레지스터 구조체(AdcaRegs, GpioDataRegs 등) 제공 */
+/* Bit-field 헤더 포함 */
+// Uint16, Uint32 타입 및 비트필드 레지스터 구조체(AdcaRegs, GpioDataRegs 등) 제공
 #include "f28x_project.h"
 
+/* easyDSP Library */
+#include "easy28x_driverlib_v12.2.h"
+
+/* Biss-C Library */
+#include "pm_bissc_include.h"
+#include "pm_bissc_internal_include.h"
+
+/* W6100 Library */
+#include "socket.h"
+#include "w6100.h"
+#include "wizchip_conf.h"
+
+/* HAL Library */
+#include "hal_Adc.h"
 #include "hal_Common.h"
 #include "hal_DspInit.h"
+#include "hal_Encoder.h"
+#include "hal_EpwmTimer.h"    /* EPWM1 기반 2ms 타이머 */
+#include "hal_Ramfuncs.h"
 #include "hal_Sci.h"
 #include "hal_Spi.h"
 #include "hal_Timer.h"
-#include "hal_Adc.h"
-#include "hal_IPC.h"
-#include "hal_EpwmTimer.h"    /* EPWM1 기반 2ms 타이머 */
-#include "hal_Ramfuncs.h"
 #include "hal_W6100.h"
-#include "hal_Encoder.h"
 
-#include "csu_SciPc.h"
-#include "csu_Led.h"
+/* CSU Library */
 #include "csu_Adc.h"
+#include "csu_Encoder.h"
 #include "csu_Epwm.h"
-#include "csu_IPC.h"
 #include "csu_Ethernet.h"
 #include "csu_Fram.h"
-#include "csu_Encoder.h"
+#include "csu_Led.h"
+#include "csu_SciPc.h"
 
 
 /* ************************** [[   define   ]]  *********************************************************** */
