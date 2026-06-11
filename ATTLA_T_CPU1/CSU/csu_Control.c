@@ -1,30 +1,36 @@
-﻿/**********************************************************************
+/**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.01
+    Version          : 00.02
     Description      : 시스템 제어 모듈 (PBIT, CBIT, 시스템 운용 파이프라인) 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (함수명 명명 규칙 위반 접두어 제거)
+    Last Updated     : 2026. 06. 11. (전역 변수 구조체화 마이그레이션)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 상태 변수들을 stControlState 구조체(xSysCtrl)로 통합
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
  */
 
 
 #include "csu_Control.h"
-
-volatile uint16_t isOffsetCalibrated = 0U;
-volatile uint16_t isPbitComplete = 0U;
+volatile stControlState xSysCtrl;
 
 // 100us 주기 기준, 10000회 누적 시 1초 대기
 static uint16_t offsetCount = 0U;
 static float32_t sumMot = 0.0f;
 static float32_t sumBrk = 0.0f;
 #define SCALE_ADC_3V (3.0f / 4096.0f)
+
+void Control_Init(void)
+{
+    // 구조체 명시적 초기화
+    xSysCtrl.isOffsetCalibrated = 0U;
+    xSysCtrl.isPbitComplete = 0U;
+}
 
 /*
 @funtion    void Control_CalibrateCurrentOffset(void)
@@ -41,13 +47,12 @@ void Control_CalibrateCurrentOffset(void)
         offsetCount++;
     }
     else
-    {
-        Isen_Mot_Offset = sumMot / 10000.0f;
-        Isen_Brk_Offset = sumBrk / 10000.0f;
+        xAdc.isenMotOffset = sumMot / 10000.0f;
+        xAdc.isenBrkOffset = sumBrk / 10000.0f;
         
         // TODO: FRAM에 오프셋 값 저장
         
-        isOffsetCalibrated = 1U;
+        xSysCtrl.isOffsetCalibrated = 1U;
     }
 }
 
@@ -65,9 +70,9 @@ void Bit_RunPBIT(void)
     Bit_GateFault_Check();
 
     // 치명적 결함이 없으면 초기화 완료
-    if (BitFaultFlag_Set == 0U)
+    if (xBit.faultFlagSet == 0U)
     {
-        isPbitComplete = 1U;
+        xSysCtrl.isPbitComplete = 1U;
     }
 }
 
@@ -83,6 +88,10 @@ void Bit_RunCBIT(void)
     Bit_OvCurrent_Check();
     Bit_OvTemperature_Check();
     Bit_GateFault_Check();
+    // 엔코더 체크? - 에러, 워닝?
+    // 내부 전원 점검?
+    // 모터 stall 보호? - 기준 위치 필요, 비정상일때 무엇?
+    // 모터 과속 보호? - 기준 속도 필요, 비정상일때 무엇?
 }
 
 /*
@@ -93,13 +102,13 @@ void Bit_RunCBIT(void)
 */
 void Control_SystemOperation(void)
 {
-    if (isOffsetCalibrated == 0U)
+    if (xSysCtrl.isOffsetCalibrated == 0U)
     {
         Control_CalibrateCurrentOffset();
         return; // 오프셋 완료 전까지 운용 로직 대기
     }
     
-    if (isPbitComplete == 0U)
+    if (xSysCtrl.isPbitComplete == 0U)
     {
         Bit_RunPBIT();
         return; // PBIT 완료 전까지 운용 로직 대기

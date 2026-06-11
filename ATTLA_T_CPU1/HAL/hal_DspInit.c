@@ -1,4 +1,4 @@
-﻿/**********************************************************************
+/**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_DspInit.c
     Version          : 00.03
@@ -246,6 +246,10 @@ static void InitialPeripherals(void)
     initSystemPwm();
     initSystemUserInterface();
     initSystemCommunications();
+
+    // 전역 상태 제어 구조체 초기화
+    Control_Init();
+    Bit_Init();
 
     // 주변장치 드라이버 초기화 (PBIT 진행을 위해 선행)
     Fram_Init();

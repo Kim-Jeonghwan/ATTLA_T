@@ -1,15 +1,16 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : csu_Encoder.c
- Version          : 00.04
+ Version          : 00.05
  Description      : AksIM-2 엔코더 어플리케이션 기능 처리 모듈
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 11. (컴파일러 표준에 맞게 변수 선언 위치 수정 및 경고 해결)
+ Last Updated     : 2026. 06. 11. (전역 변수 구조체화 마이그레이션)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 전역 변수를 stEncoderState 구조체(xEncoder)로 통합하여 네임스페이스 및 상태 관리 개선
  * 2026. 06. 11. - 컴파일러 표준(C89/C90)에 맞게 for 문 변수 선언 위치 변경 및 미사용 변수 경고 해결
  * 2026. 06. 11. - Encoder_LoadOffset 신규 작성 및 Encoder_Init 연동
  * 2026. 06. 11. - Encoder_SetZero 호출 시 FRAM 8바이트 기록(Store) 연동
@@ -24,11 +25,7 @@
 //---------------------------------------------------------------------------
 // 전역 변수
 //---------------------------------------------------------------------------
-uint64_t encRawData = 0;
-uint64_t encOffset = 0;
-uint64_t encPosition = 0;
-float32_t encAngleDeg = 0.0f;
-bool isEncError = false;
+stEncoderState xEncoder;
 
 //---------------------------------------------------------------------------
 // 내부 함수 프로토타입
@@ -40,6 +37,18 @@ static uint8_t Encoder_CalcCrc6(uint64_t data36);
 //---------------------------------------------------------------------------
 void Encoder_Init(void)
 {
+    // 구조체 명시적 초기화
+    xEncoder.fullFrame = 0;
+    xEncoder.rawPos = 0;
+    xEncoder.errBit = 0;
+    xEncoder.warnBit = 0;
+    xEncoder.crcRecv = 0;
+    xEncoder.crcCalc = 0;
+    xEncoder.offset = 0;
+    xEncoder.position = 0;
+    xEncoder.angleDeg = 0.0f;
+    xEncoder.isValid = false;
+
     // HAL 초기화 호출 (SPI-C 설정 및 100ms 지연)
     Encoder_Init_Hardware();
     
@@ -62,7 +71,7 @@ void Encoder_LoadOffset(void)
         loadedOffset |= ((uint64_t)(b & 0xFF) << (i * 8));
     }
     
-    encOffset = loadedOffset;
+    xEncoder.offset = loadedOffset;
 }
 
 //---------------------------------------------------------------------------
@@ -72,6 +81,7 @@ void Encoder_UpdatePosition(void)
 {
     // SPI-C 통신을 통해 64비트 원시(Raw) 데이터 수신
     uint64_t rawData64 = Encoder_ReadSpiData();
+    xEncoder.fullFrame = rawData64;
     int16_t startBitPos = -1;
     
     int16_t i;
@@ -94,52 +104,56 @@ void Encoder_UpdatePosition(void)
         // startBitPos - 1: CDS (1, 무시)
         // startBitPos - 2 ~ startBitPos - 35: Position (34 bits)
         uint64_t extPos = (rawData64 >> (startBitPos - 35)) & 0x3FFFFFFFFULL;
+        xEncoder.rawPos = extPos;
         
         // startBitPos - 36: Error (1 bit)
         uint8_t errBit = (rawData64 >> (startBitPos - 36)) & 0x01;
+        xEncoder.errBit = errBit;
         
         // startBitPos - 37: Warning (1 bit)
         uint8_t warnBit = (rawData64 >> (startBitPos - 37)) & 0x01;
+        xEncoder.warnBit = warnBit;
         (void)warnBit;
         
         // startBitPos - 38 ~ startBitPos - 43: CRC (6 bits)
         uint8_t rcvCrc = (rawData64 >> (startBitPos - 43)) & 0x3F;
+        xEncoder.crcRecv = rcvCrc;
         
         // 3. CRC-6 계산 및 검증
         // 검증 대상 데이터: Position(34) + Error(1) + Warning(1) = 36-bit
         uint64_t dataForCrc = (rawData64 >> (startBitPos - 37)) & 0xFFFFFFFFFULL;
         uint8_t calcCrc = Encoder_CalcCrc6(dataForCrc);
+        xEncoder.crcCalc = calcCrc;
         uint8_t invertedCrc = (~calcCrc) & 0x3F;
         
         // Error 비트는 Active Low (0: 에러 발생, 1: 정상)
         if ((invertedCrc == rcvCrc) && (errBit == 1))
         {
-            isEncError = false;
-            encRawData = extPos;
+            xEncoder.isValid = true;
             
             // 4. 소프트웨어 제로셋(오프셋) 적용
-            if (encRawData >= encOffset)
+            if (xEncoder.rawPos >= xEncoder.offset)
             {
-                encPosition = encRawData - encOffset;
+                xEncoder.position = xEncoder.rawPos - xEncoder.offset;
             }
             else
             {
                 // 34-bit 롤오버 처리 (0x3FFFFFFFF + 1 = 0x400000000ULL)
-                encPosition = (0x400000000ULL + encRawData) - encOffset;
+                xEncoder.position = (0x400000000ULL + xEncoder.rawPos) - xEncoder.offset;
             }
             
             // 5. 기계각 스케일링 변환
             // 18-bit 싱글턴 해상도 기준 상수 (360 / 262144 = 0.001373291015625)
-            encAngleDeg = (float32_t)encPosition * 0.001373291015625f;
+            xEncoder.angleDeg = (float32_t)xEncoder.position * 0.001373291015625f;
         }
         else
         {
-            isEncError = true; // CRC 오류 또는 Error 발생 시 데이터 갱신 보류 (이전 값 유지)
+            xEncoder.isValid = false; // CRC 오류 또는 Error 발생 시 데이터 갱신 보류 (이전 값 유지)
         }
     }
     else
     {
-        isEncError = true; // 유효한 Start 비트 및 길이 확보 실패
+        xEncoder.isValid = false; // 유효한 Start 비트 및 길이 확보 실패
     }
 }
 
@@ -174,12 +188,12 @@ static uint8_t Encoder_CalcCrc6(uint64_t data36)
 void Encoder_SetZero(void)
 {
     uint16_t i;
-    encOffset = encRawData;
+    xEncoder.offset = xEncoder.rawPos;
     
     // FRAM에 8바이트로 쪼개어 저장
     for (i = 0; i < 8; i++)
     {
-        uint16_t b = (encOffset >> (i * 8)) & 0xFF;
+        uint16_t b = (xEncoder.offset >> (i * 8)) & 0xFF;
         Fram_WriteByte(ENC_OFFSET_FRAM_ADDR + i, b);
     }
 }

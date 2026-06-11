@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Adc.h
-    Version          : 00.00
+    Version          : 00.01
     Description      : ADC 데이터 처리 로직 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 09. (함수명에서 csu_ 접두어 제거)
+    Last Updated     : 2026. 06. 11. (전역 변수 구조체화 마이그레이션)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 상태 변수들을 stAdcState 구조체(xAdc)로 통합
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 
@@ -27,15 +28,18 @@
 
 
 /* ************************** [[   global   ]]  *********************************************************** */
-extern float32_t Isen_Mot_lpf;
-extern float32_t Isen_Brk_lpf;
-extern float32_t Vsen_28V_lpf;
-extern float32_t Vsen_5VD_lpf;
-extern float32_t Vsen_Ref_lpf;
-extern float32_t Tsen_Bd_lpf;
+typedef struct {
+    float32_t isenMotLpf;
+    float32_t isenBrkLpf;
+    float32_t vsen28VLpf;
+    float32_t vsen5VDLpf;
+    float32_t vsenRefLpf;
+    float32_t tsenBdLpf;
+    float32_t isenMotOffset;
+    float32_t isenBrkOffset;
+} stAdcState;
 
-extern float32_t Isen_Mot_Offset;
-extern float32_t Isen_Brk_Offset;
+extern stAdcState xAdc;
 
 /* ************************** [[  function  ]]  *********************************************************** */
 /**

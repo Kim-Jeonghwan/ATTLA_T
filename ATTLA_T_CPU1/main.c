@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : main.c
-    Version          : 00.01
+    Version          : 00.02
     Description      : 메인 백그라운드 루프 및 주기적 태스크 실행
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (초기화 시퀀스 재배치 및 루프 구조 개편)
+    Last Updated     : 2026. 06. 11. (전역 변수 구조체화 마이그레이션)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 전역 변수를 상태 구조체(xSysCtrl 등)로 통합 적용
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 
@@ -57,13 +58,13 @@ void main(void)
 	// 100us 시스템 운용 파이프라인 인터럽트는 InitialAdc() 내부에서 INT_ADCA1 활성화를 통해 이미 시작됨.
 
 	// 전류센서 Offset 조정 대기
-	while(isOffsetCalibrated == 0U)
+	while(xSysCtrl.isOffsetCalibrated == 0U)
 	{
 		// 100us 타이머 내부에서 오프셋 조정이 완료될 때까지 대기
 	}
 
 	// 초기점검(PBIT) 대기
-	while(isPbitComplete == 0U)
+	while(xSysCtrl.isPbitComplete == 0U)
 	{
 		// 100us 타이머 내부에서 PBIT가 완료될 때까지 대기
 	}

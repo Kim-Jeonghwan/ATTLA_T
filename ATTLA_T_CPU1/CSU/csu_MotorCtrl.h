@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.h
-    Version          : 00.00
+    Version          : 00.01
     Description      : 1x PWM 모드 기반 모터 제어 모듈 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (신규 생성)
+    Last Updated     : 2026. 06. 11. (전역 변수 구조체화 마이그레이션)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 상태 변수들을 stMotorCtrlState 구조체(xMotorCtrl)로 통합
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 
@@ -26,11 +27,16 @@ typedef enum {
     MOTOR_MODE_POS_CTRL
 } MotorControlMode_t;
 
-extern MotorControlMode_t currentMotorMode;
-extern float32_t targetSpeedRpm;
-extern float32_t targetPosition;
-extern float32_t currentSpeedRpm;
-extern float32_t currentPosition;
+// 상태 변수 구조체
+typedef struct {
+    MotorControlMode_t mode;
+    float32_t targetSpeedRpm;
+    float32_t targetPosition;
+    float32_t currentSpeedRpm;
+    float32_t currentPosition;
+} stMotorCtrlState;
+
+extern stMotorCtrlState xMotorCtrl;
 
 void MotorCtrl_Init(void);
 void MotorCtrl_UpdateFeedback(void);

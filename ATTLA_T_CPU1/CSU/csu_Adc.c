@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Adc.c
-    Version          : 00.02
+    Version          : 00.03
     Description      : ADC 데이터 필터링 및 10ms 주기 데이터 처리 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (ADC 스케일 팩터 및 오프셋 정밀 교정)
+    Last Updated     : 2026. 06. 11. (전역 변수 구조체화 마이그레이션)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 상태 변수들을 stAdcState 구조체(xAdc)로 통합
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  * 2026. 06. 11. - ADC 스케일 팩터 및 오프셋 정밀 교정 (모터/브레이크 전류, 28V 전압)
  */
@@ -25,17 +26,9 @@ extern uint16_t adcResult;
 // 디버깅 및 실시간 표출용 온도 센서 결과 전역 변수 (타입 미스매치 방지를 위해 float32_t로 선언)
 float32_t currentTemperatureC = 0.0f;
 
-// --- 신규 ADC 데이터 로우패스 필터 변수 ---
-float32_t Isen_Mot_lpf = 0.0f;
-float32_t Isen_Brk_lpf = 0.0f;
-float32_t Vsen_28V_lpf = 0.0f;
-float32_t Vsen_5VD_lpf = 0.0f;
-float32_t Vsen_Ref_lpf = 0.0f;
-float32_t Tsen_Bd_lpf = 0.0f;
+// --- 신규 ADC 상태 구조체 변수 ---
+stAdcState xAdc;
 
-// --- 오프셋 변수 ---
-float32_t Isen_Mot_Offset = 1.49702f; // 회로도 기준 0A = 1.49702V
-float32_t Isen_Brk_Offset = 1.49702f; // 회로도 기준 0A = 1.49702V
 
 // ADC 기준 변환 상수 (3.0V Reference)
 #define SCALE_ADC_3V (3.0f / 4096.0f)
@@ -72,6 +65,16 @@ static void updateDspTempSensor(void);
 */
 void Initial_Adc(void)
 {
+    // 구조체 명시적 초기화 (CWE-457 방지 및 시스템 리셋 시 클리어 목적)
+    xAdc.isenMotLpf = 0.0f;
+    xAdc.isenBrkLpf = 0.0f;
+    xAdc.vsen28VLpf = 0.0f;
+    xAdc.vsen5VDLpf = 0.0f;
+    xAdc.vsenRefLpf = 0.0f;
+    xAdc.tsenBdLpf = 0.0f;
+    xAdc.isenMotOffset = 1.49702f;
+    xAdc.isenBrkOffset = 1.49702f;
+
     // DSP 내부 온도 센서 활성화(캘리브레이션 초기화, 외부 레퍼런스 3.0V 적용 - 스펙 문서 일치)
     InitTempSensor(3.0f);
 }
@@ -143,33 +146,33 @@ void CalcAdcData(void)
 
 // 1. ISEN_MOT (ADCA SOC2): TMCS1126 (100mV/A). 영점 1.49702V 기준 -24A~+24A 맵핑. 역산 상수 16.1550888f 적용.
     V_in = (float32_t)adcRawData.isenMot * SCALE_ADC_3V;
-    curr_val = (V_in - Isen_Mot_Offset) * 16.1550888f;
-    Isen_Mot_lpf = (LPF_OLD_CV * Isen_Mot_lpf) + (LPF_REAL_CV * curr_val);
+    curr_val = (V_in - xAdc.isenMotOffset) * 16.1550888f;
+    xAdc.isenMotLpf = (LPF_OLD_CV * xAdc.isenMotLpf) + (LPF_REAL_CV * curr_val);
 
     // 2. ISEN_BRK (ADCA SOC3): TMCS1126. 영점 1.49702V 기준 -2.4A~+2.4A 맵핑. 역산 상수 1.6155088f 적용.
     V_in = (float32_t)adcRawData.isenBrk * SCALE_ADC_3V;
-    curr_val = (V_in - Isen_Brk_Offset) * 1.6155088f;
-    Isen_Brk_lpf = (LPF_OLD_CV * Isen_Brk_lpf) + (LPF_REAL_CV * curr_val);
+    curr_val = (V_in - xAdc.isenBrkOffset) * 1.6155088f;
+    xAdc.isenBrkLpf = (LPF_OLD_CV * xAdc.isenBrkLpf) + (LPF_REAL_CV * curr_val);
 
     // 3. VSEN_28V (ADCA SOC4): 50V 입력 시 약 2.96451V -> 50 / 2.96451 = 16.86619f
     V_in = (float32_t)adcRawData.vsen28v * SCALE_ADC_3V;
     curr_val = V_in * 16.86619f;
-    Vsen_28V_lpf = (LPF_OLD_CV * Vsen_28V_lpf) + (LPF_REAL_CV * curr_val);
+    xAdc.vsen28VLpf = (LPF_OLD_CV * xAdc.vsen28VLpf) + (LPF_REAL_CV * curr_val);
 
     // 4. 5VD (ADCA SOC5): 5V 입력 시 약 2.500V -> 5 / 2.5 = 2.0
     V_in = (float32_t)adcRawData.vsen5vd * SCALE_ADC_3V;
     curr_val = V_in * 2.0f;
-    Vsen_5VD_lpf = (LPF_OLD_CV * Vsen_5VD_lpf) + (LPF_REAL_CV * curr_val);
+    xAdc.vsen5VDLpf = (LPF_OLD_CV * xAdc.vsen5VDLpf) + (LPF_REAL_CV * curr_val);
 
     // 5. VSEN_REF (ADCB SOC1): 2.048V 측정
     V_in = (float32_t)adcRawData.vsenRef * SCALE_ADC_3V;
     curr_val = V_in;
-    Vsen_Ref_lpf = (LPF_OLD_CV * Vsen_Ref_lpf) + (LPF_REAL_CV * curr_val);
+    xAdc.vsenRefLpf = (LPF_OLD_CV * xAdc.vsenRefLpf) + (LPF_REAL_CV * curr_val);
 
     // 6. TSEN_BD (ADCB SOC3): MAX6605. -55도 ~ +125도 (Delta 180도) -> 0V ~ 2.142V (Delta 2.142V)
     // T = (V_in / 2.142) * 180 - 55 = V_in * 84.033613f - 55
     V_in = (float32_t)adcRawData.tsenBd * SCALE_ADC_3V;
     curr_val = (V_in * 84.033613f) - 55.0f;
-    Tsen_Bd_lpf = (LPF_OLD_TEMP * Tsen_Bd_lpf) + (LPF_REAL_TEMP * curr_val);
+    xAdc.tsenBdLpf = (LPF_OLD_TEMP * xAdc.tsenBdLpf) + (LPF_REAL_TEMP * curr_val);
 }
 
