@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : main.c
-    Version          : 00.00
+    Version          : 00.01
     Description      : 메인 백그라운드 루프 및 주기적 태스크 실행
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 11. (초기화 시퀀스 재배치 및 루프 구조 개편)
 **********************************************************************/
 
 #include "main.h"
@@ -45,23 +45,31 @@ static void cycle_1000ms(void);
 */
 void main(void)
 {
-	DSP_Initialization();
+	System_Initialization();
 
-	// 이더넷 (W6100) 초기화
+	// 100us 시스템 운용 파이프라인 인터럽트 시작
+	Interrupt_enable(INT_EPWM1);
+
+	// 전류센서 Offset 조정 대기
+	while(isOffsetCalibrated == 0U)
+	{
+		// 100us 타이머 내부에서 오프셋 조정이 완료될 때까지 대기
+	}
+
+	// 초기점검(PBIT) 대기
+	while(isPbitComplete == 0U)
+	{
+		// 100us 타이머 내부에서 PBIT가 완료될 때까지 대기
+	}
+
+	// 이더넷 (W6100) 초기화 및 통신 인터럽트 활성화
 	Ethernet_Init();
-
-	// FRAM 초기화
-	Fram_Init();
-
-	// 엔코더 (SSI / SPI-C) 초기화
-	Encoder_Init();
-
-	// CM 코어와 IPC를 완전 제거하고 CPU1 단독 동작 수행
+	Interrupt_enable(INT_XINT1);
 
 	// 백그라운드 유휴 루프 (Background Loop)
 	while(1u)
 	{
-		sendScia_SCI_PC();
+		sendScia_SCI_PC(); // 디버깅용?
 
 		while(xTimer.Cycle_1ms >= 1u)
 		{
@@ -101,13 +109,7 @@ void main(void)
 */
 static void cycle_1ms(void)
 {
-	// W6100 이더넷 송수신 폴링 (1ms 주기)
-	Ethernet_Process();
-
-	// 엔코더 위치 업데이트 (1ms 주기)
-	Encoder_UpdatePosition();
-
-	// 사용자 코드 작성
+	// 사용자 코드 작성 (실시간 처리는 100us 인터럽트로 이동됨)
 	xTimer.Hzcnt++;
 }
 
@@ -123,9 +125,7 @@ static void cycle_1ms(void)
 */
 static void cycle_10ms(void)
 {
-    updateAdcData();
-    
-    // 3. 통신 메시지 송신
+    // 통신 메시지 송신 등 덜 중요한 백그라운드 태스크
     sendSciPcMessage1();
 }
 

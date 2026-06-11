@@ -43,8 +43,7 @@
 #include "hal_Common.h"
 #include "hal_DspInit.h"
 #include "hal_Encoder.h"
-#include "hal_Epwm.h"
-#include "hal_EpwmTimer.h"    /* EPWM1 기반 2ms 타이머 */
+#include "hal_Epwm.h"    /* EPWM1 기반 2ms 타이머 */
 #include "hal_Fram.h"
 #include "hal_Led.h"
 #include "hal_MotorDriver.h"
@@ -52,13 +51,13 @@
 #include "hal_Sci.h"
 #include "hal_Spi.h"
 #include "hal_Timer.h"
-#include "hal_W6100.h"
+#include "hal_Ethernet.h"
 
 /* CSU Library */
 #include "csu_Adc.h"
 #include "csu_Encoder.h"
-#include "csu_Ethernet.h"
 #include "csu_Led.h"
+#include "csu_Control.h"
 #include "csu_MotorDriver.h"
 #include "csu_SciPc.h"
 

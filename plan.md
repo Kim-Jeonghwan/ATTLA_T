@@ -1,94 +1,69 @@
-# 📋 AksIM-2 엔코더 (BiSS-C) 연동 구현 상세 계획서
+# 📋 ATTLA_T 메인 초기화 시퀀스 및 제어 루프 아키텍처 개편 계획서
 
-**작성 일자**: 2026. 06. 08.  
-**대상 코어**: CPU1 Core (`ATTLA_T_CPU1`)
-**적용 기술**: TI Position Manager (pm_bissc) + CLB (Configurable Logic Block)
-
----
-
-## 1. 개요 및 구현 전략 (Strategy)
-AksIM-2 엔코더와 F28388D MCU 간의 BiSS-C 통신을 구현합니다.
-기존 하드웨어에는 `ENC_DATA` (GPIO 25)와 `ENC_CLK` (GPIO 26) 2가닥만 연결되어 있으나, BiSS-C 프로토콜은 마스터 클럭(MA)의 **펄스 폭(Duty Cycle) 변조**를 통해 양방향 제어 통신(Register R/W)을 수행하므로 물리적인 핀 2개만으로 완벽한 통신이 가능합니다. 
-
-이러한 하드웨어적인 클럭 변조 및 수신 동기화는 TI의 `pm_bissc` 라이브러리와 내부 **CLB(Configurable Logic Block)**가 자동으로 처리합니다.
+**작성 일자**: 2026. 06. 11.  
+**대상 코어**: CPU1 Core (`ATTLA_T_CPU1`)  
+**관련 문서**: `Project_Spec.md`, `소프트웨어 CSCI`, `소프트웨어 CSCI - 실행개념도`
 
 ---
 
-## 2. 사용자 확인 요망 (User Review Required) & Open Questions
-
-> [!IMPORTANT]
-> 1. **헤더 파일 수정 승인 (`pm_bissc_include.h`)**
->    - 이미 시도하신 대로, 해당 라이브러리는 최신 칩(`F28P65x`)용으로 작성되어 있어 타겟 칩 식별 구문이 필요합니다. 
->    - 추가해주신 코드를 `#elif defined(_F2838X)` 형태로 다듬어 문법 오류를 해결하고 진행하겠습니다. (승인 요망)
-> 2. **GPIO 25, 26 기능 할당 (Pinmuxing)**
->    - GPIO 25: `SPIB_SOMI` (수신용)
->    - GPIO 26: `CLB_OUTPUT` (클럭 송신용)
->    - 이 핀들이 내부 X-BAR 라우팅을 거치게 되므로, 회로상 다른 용도와 충돌하지 않는지 교차 검증해 주셔야 합니다.
+## 1. 개요 (Overview)
+제공해주신 실행개념도(Flowchart)와 CSCI 구조도를 기반으로 전체 시스템의 구동 시퀀스를 재설계합니다. 
+가장 핵심적인 변경 사항은 제어 루틴의 실시간성을 보장하기 위해 **PWM Interrupt(100us 주기)** 를 시스템 제어의 심장(Heartbeat)으로 삼고, 모든 핵심 제어 파이프라인(시스템 운용 CSU)을 이 인터럽트 내에서 실행하는 것입니다. 
+또한 이더넷 통신은 폴링(Polling) 방식에서 **외부 인터럽트(Ext. Interrupt)** 방식으로 전환합니다. 기존 `main()` 함수의 10ms, 100ms 루프는 삭제하지 않고 유지하며, 비실시간성(Low Priority) 태스크 처리에 활용합니다.
 
 ---
 
-## 3. 리팩토링 및 파일 생성 상세 계획 (Proposed Changes)
+## 2. 기존 이더넷 동작 구조 및 개편 방향 (Ethernet Status & Plan)
+- **현재 동작 방식 (Polling & Flag)**: 
+  - 현재 이더넷(W6100) 수신/송신 로직은 `main()`의 `cycle_1ms()` 타이머 폴링 루프에서 `Ethernet_Process()` 함수를 호출하여 동작하고 있습니다.
+  - 이와 별개로 송신의 경우, 기존 EPWM1 2ms 타이머 인터럽트(`isr_Epwm1Timer2ms`)에서 매 2ms마다 `flag_2ms_tx = 1`로 플래그를 세워주면, `Ethernet_Process()`에서 이 플래그를 감지하여 2ms 주기로 UDP 패킷을 송신하는 구조로 되어 있습니다.
+  - 즉, 현재 **이더넷 인터럽트(Ext. Interrupt)는 구현되어 있지 않으며 메인 루프에 전적으로 의존**하고 있습니다.
+- **개편 방향 (Ext. Interrupt 기반)**: 
+  - 실행개념도에 맞추어 W6100 칩의 `INTn` 핀(GPIO 20)을 C28x의 외부 인터럽트(XINT)로 라우팅합니다.
+  - 상위 체계(화포통제컴퓨터)로부터 데이터가 수신되거나 통신 이벤트가 발생하면 즉시 하드웨어 인터럽트가 발생하여 `화포통제컴퓨터 통신 CSU` 로직이 실행되도록 전면 수정합니다.
 
-### 3.1 SDK 라이브러리 수정 (HAL 종속 헤더)
-#### [MODIFY] `pm_bissc_include.h`
-- 칩 선택 매크로 문법 오류 수정.
-- F28388D에 맞게 `SPIB_BASE`, `CLB1_BASE`, `CLB2_BASE` 할당 적용.
+---
 
-### 3.2 HAL (Hardware Abstraction Layer)
-#### [NEW] `hal_Encoder.h` & `hal_Encoder.c`
-- **역할**: 하드웨어 핀맵 설정 및 `pm_bissc` 라이브러리 초기화.
-- **구현 내용**:
-  - `hal_Encoder_Init()` 함수 구현:
-    - `GPIO_setPinConfig()`를 사용하여 GPIO 25를 SPI 수신 핀으로 설정.
-    - `GPIO_setPinConfig()` 및 Output X-BAR를 사용하여 GPIO 26을 CLB 출력 핀으로 설정.
-    - `PM_bissc_setupPeriph()`, `PM_bissc_setFreq()` (통신 속도 설정), `PM_bissc_initParams()` 호출.
+## 3. 상세 리팩토링 및 구현 계획 (Proposed Changes)
 
-### 3.3 CSU (Control & Service Unit)
-#### [NEW] `csu_Encoder.h` & `csu_Encoder.c`
-- **역할**: AksIM-2 어플리케이션 기능 구현 (데이터시트의 주소 및 커맨드 시퀀스 래핑).
-- **상수 정의 (매크로)**:
-  - `ENC_REG_BANK_SEL (0x40)`
-  - `ENC_REG_KEY (0x48)` / `ENC_KEY_UNLOCK (0xCD)`
-  - `ENC_REG_CMD (0x49)` / CMD 종류 (`'c'`, `'m'`, `'A'`, `'r'`)
-- **구현 내용**:
-  - **위치 획득 루틴**: `csu_Encoder_UpdatePosition()`
-    - EPWM 주기 또는 1ms 주기마다 호출.
-    - `PM_bissc_setupSCDTransaction()`, `PM_bissc_startOperation()`으로 통신 개시.
-    - 통신 완료 후 `PM_bissc_receivePosition()`을 호출하여 위치 파싱.
-  - **백그라운드 통신 처리기**: `csu_Encoder_ProcessCDTasks()`
-    - 매 주기 호출되어 `PM_bissc_doCDTasks()`를 실행. (32주기에 걸쳐 비동기적으로 1비트씩 파라미터 Read/Write 수행).
-  - **제어 API (래퍼 함수)**:
-    - `csu_Encoder_SaveParameters()`: 언락 ➡️ 저장 시퀀스 실행.
-    - `csu_Encoder_StartCalibration()`: 언락 ➡️ 캘리브레이션 시퀀스 실행.
-    - `csu_Encoder_ReadTemperature()`: 0x4C~0x4D Read 예약 및 합성(Big Endian 규칙 적용).
+### 3.1 HAL: FRAM 딜레이시간 제거
+#### [MODIFY] `hal_Fram.c`
+- **변경 사항**: `Fram_PageWrite` 함수 등에 남아있는 10ms 블로킹 딜레이(`DELAY_US(10000u)`) 삭제. (FRAM Instant Write 특성 반영)
 
-### 3.4 Main Application
+### 3.2 Main Application: 실행개념도 기반 초기화 시퀀스 재배치
 #### [MODIFY] `main.c` / `main.h`
-- `DSP_Initialization()` 호출 후 `hal_Encoder_Init()` 및 `csu_Encoder_Init()` 호출 추가.
-- 고속 주기 루프(EPWM 인터럽트 또는 1ms 타이머) 내에 `csu_Encoder_UpdatePosition()` 및 `csu_Encoder_ProcessCDTasks()` 삽입.
+- 실행개념도에 맞추어 `main()`의 초기화 시퀀스를 다음과 같이 엄격한 블로킹 구조로 변경합니다:
+  1. `DSP_Initialization()` (CPU 부팅 및 초기화 CSU)
+  2. 인터럽트 기동 (`Interrupt_enable` 등을 호출하여 PWM Interrupt 100us 동작 시작)
+  3. **전류센서 Offset 조정 대기**: `While Loop`를 돌며 PWM Interrupt 내에서 동작하는 Offset 조정이 완료될 때까지 대기(End?)
+  4. **초기점검(PBIT) 대기**: `While Loop`를 돌며 PWM Interrupt 내에서 동작하는 PBIT가 완료될 때까지 대기(End?)
+  5. `Ethernet Interrupt Enable`: W6100 외부 인터럽트 활성화
+- **메인 유휴 루프 (`while(1)`)**:
+  - 기존 10ms, 100ms 루프(cycle_10ms, cycle_100ms)는 구조를 그대로 유지하되, 내부 로직은 LED 점멸 등 덜 중요한 동작만 수행하도록 정리.
+
+### 3.3 CSU & HAL: PWM 및 ADC 인터럽트 역할 분리 
+#### [MODIFY] `hal_EpwmTimer.c` 및 `hal_Adc.c` 
+- **ADC 인터럽트 (`AdcaIsr`)**:
+  - 별도로 독립되어 동작합니다. EPWM1 SOC 트리거에 의해 변환이 완료되면 단순히 ADC RAW 데이터를 읽고 필터링하여 글로벌 변수 구조체에 갱신하는 역할만 담당합니다.
+- **PWM 인터럽트 (`isr_Epwm1Timer100us`)**:
+  - 주기를 100us(10kHz)로 정확히 설정합니다.
+  - 실행개념도의 **시스템 운용 CSU** 역할을 수행합니다. 매 100us 마다 아래 모듈들을 순차적으로 호출(Call)합니다.
+    1. `아날로그신호 입력 및 연산 CSU` (ADC 완료된 데이터를 가져와 물리량으로 변환)
+    2. `이산신호 입력 CSU` (Limit Switch, Hall 등 갱신)
+    3. `위치(각도) 정보 획득 및 처리 CSU` (BiSS-C / SSI 엔코더 값 갱신)
+    4. `모터 드라이버 상태 정보 획득 및 처리 CSU`
+    5. `주기점검(CBIT) CSU` (초기화 완료 이후 시스템 운용 중일 때만 동작)
+    6. `모터 구동제어 CSU` (PID 위치/속도 제어 등)
+    7. `데이터 저장 CSU` (필요시 FRAM 저장)
+
+### 3.4 CSU: 외부 연동 통신 (이더넷 인터럽트)
+#### [NEW / MODIFY] `csu_Ethernet.c` 등
+- **변경 사항**:
+  - `Ext. Interrupt` (XINT) 서비스 루틴을 신규 등록.
+  - 인터럽트 발생 시 W6100 레지스터를 읽어 수신된 데이터를 파싱하고 응답하는 **화포통제컴퓨터 통신 CSU** 로직 구현.
 
 ---
 
-## 4. 구현 단계 및 내일의 작업 가이드 (Next Steps)
-1. 사용자가 위 "Open Questions"의 **헤더 수정 및 GPIO 25/26 충돌 여부**를 확인하고 승인합니다.
-2. 에이전트(AI)가 `hal_Encoder` 모듈부터 생성하여 CLB와 SPI 핀 라우팅 코드를 작성합니다.
-7. 에이전트(AI)가 데이터시트의 메모리 맵과 엔디안 규칙을 엄격하게 적용하여 `csu_Encoder` 모듈을 작성합니다.
-8. 빌드 오류를 해결하고 메인 타이머 루프에 통신 태스크를 스케줄링하여 작업을 완료합니다.
-
----
-
-## 5. 컴파일 에러 해결 계획 (Compilation Error Resolution)
-
-빌드 과정에서 발생한 두 가지 주요 에러(Catastrophic Error)의 원인과 해결 계획입니다.
-
-### 5.1 WIZnet W6100 헤더 경로 오류 (수정 완료)
-- **증상**: `socket.c`, `w6100.c` 등에서 `"./W6100/w6100.h"` 파일을 열 수 없다는 에러 발생.
-- **원인**: 라이브러리 원본은 `W6100` 폴더 안에 헤더가 있다고 가정했으나, 현재 프로젝트에서는 `HAL` 폴더에 모든 파일이 평탄화(Flatten)되어 배치되어 있습니다.
-- **해결 방안**: 에이전트가 방금 `wizchip_conf.h`의 해당 경로를 `#include "w6100.h"`로 **수정 완료**했습니다.
-
-### 5.2 BiSS-C `clb_config.h` 누락 오류 (User Action Required)
-> [!IMPORTANT]
-> **증상**: `pm_bissc_internal_include.h`에서 `clb_config.h`를 찾지 못함.
-> **원인**: TI의 BiSS-C 라이브러리는 CLB(Configurable Logic Block) 하드웨어를 사용하여 통신 프로토콜을 구현합니다. 이 때 필요한 CLB 로직(Bitstream) 배열들이 `clb_config.c`와 `clb_config.h`에 담겨 있습니다. 이 파일들은 보통 TI C2000Ware 예제에서 **SysConfig 툴이 자동 생성**해 줍니다. 현재 프로젝트는 수동 환경이므로 이 파일들이 누락되었습니다.
-> **해결 방안**: 
-> 사용자님께서 로컬에 설치된 TI C2000Ware 경로(예: `C:\ti\c2000\C2000Ware_X_XX_XX_XX\libraries\position_sensing\bissc\examples\...` 또는 관련 빌드 폴더)에서 **`clb_config.h`와 `clb_config.c` 두 파일을 찾아 현재 프로젝트의 `HAL` 폴더로 직접 복사(가져오기) 해주셔야 합니다.** 파일 복사 후 빌드하시면 에러가 해결됩니다.
+## 4. 진행 가이드 (Next Steps)
+실행개념도 구조에 맞게 ADC 인터럽트와 PWM 인터럽트(시스템 운용 CSU 담당)를 완벽히 분리하고, 이더넷 또한 타이머 폴링에서 외부 인터럽트(Ext. Interrupt) 방식으로 완전히 전환하는 계획을 세웠습니다.
+본 계획(전류센서/PBIT 대기 루프 및 인터럽트 분배 구조)에 동의해주시면 바로 리팩토링 및 코드 구현을 시작하도록 하겠습니다.

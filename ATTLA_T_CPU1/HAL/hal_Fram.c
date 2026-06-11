@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Fram.c
-    Version          : 00.00
+    Version          : 00.01
     Description      : FRAM (CY15B256Q) 제어 모듈 로직 구현부
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 09. (함수명에서 hal_ 접두어 제거 규칙 반영)
+    Last Updated     : 2026. 06. 11. (FRAM 10ms 블로킹 지연시간 제거)
 **********************************************************************/
 
 /* ************************** [[   include  ]]  *********************************************************** */
@@ -113,9 +113,6 @@ void Fram_PageWrite(uint16_t address, const uint16_t* data)
         Spid_Transmit(data[i]);
     }
     Spid_CsHigh();
-    
-    // 블로킹 딜레이 (사용자 승인 내용 반영, 기존 10ms 지연시간 유지)
-    DELAY_US(10000u);
 }
 
 /*

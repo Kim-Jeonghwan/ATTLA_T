@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_DspInit.h
-    Version          : 00.00
+    Version          : 00.01
     Description      : CPU1 마스터 초기화 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 11. (DSP_Initialization 함수명을 System_Initialization으로 변경)
 **********************************************************************/
 
 /*
@@ -35,8 +35,8 @@
 
 
 /* ************************** [[  function  ]]  *********************************************************** */
-/*   DSP 초기화   */
-void DSP_Initialization(void);
+/*   시스템 전반 초기화   */
+void System_Initialization(void);
 
 
 #endif	// #ifndef HAL_DSPINIT_H

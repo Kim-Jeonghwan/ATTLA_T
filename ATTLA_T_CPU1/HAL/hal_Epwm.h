@@ -15,21 +15,17 @@
 
 /* ************************** [[   define   ]]  *********************************************************** */
 
-
+/* 100us (10kHz) 주기 설정 */
+#define EPWM_TIMER1_BASE       EPWM1_BASE
+#define EPWM_TIMER1_CLK_DIV    EPWM_CLOCK_DIVIDER_1
+#define EPWM_TIMER1_HCLK_DIV   EPWM_HSCLOCK_DIVIDER_1
+#define EPWM_TIMER1_PERIOD     (10000U)       /* 200MHz, UP-DOWN, 100us (10kHz) */
 /* ************************** [[   enum or struct   ]]  *************************************************** */
 
 
 /* ************************** [[   global   ]]  *********************************************************** */
 
-
 /* ************************** [[  function  ]]  *********************************************************** */
-
-/**
- * @brief EPWM7A 초기화 및 설정 (GPIO12)
- */
 void Initial_Epwm7a(void);
-
-
-
-
+void Initial_EpwmTimer(void);
 #endif // HAL_EPWM_H
