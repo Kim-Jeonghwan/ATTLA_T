@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.02
+    Version          : 00.03
     Description      : 시스템 제어 모듈 (PBIT, CBIT, 시스템 운용 파이프라인) 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 11. (CBIT에 신규 결함 점검 로직 편입)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - CBIT(Bit_RunCBIT)에 스톨, 과속, 엔코더 신규 점검 함수 추가
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stControlState 구조체(xSysCtrl)로 통합
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -96,10 +97,9 @@ void Bit_RunCBIT(void)
     Bit_OvCurrent_Check();
     Bit_OvTemperature_Check();
     Bit_GateFault_Check();
-    // 엔코더 체크? - 에러, 워닝?
-    // 내부 전원 점검?
-    // 모터 stall 보호? - 기준 위치 필요, 비정상일때 무엇?
-    // 모터 과속 보호? - 기준 속도 필요, 비정상일때 무엇?
+    Bit_Encoder_Check();
+    Bit_MotorStall_Check();
+    Bit_MotorOverSpeed_Check();
 }
 
 /*

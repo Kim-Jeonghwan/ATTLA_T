@@ -1,15 +1,19 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.c
-    Version          : 00.01
+    Version          : 00.05
     Description      : 1x PWM 모드 기반 모터 제어 모듈
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 11. (위치 제어기 4ms 주기 분리 - 대역폭 최적화)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 위치 제어기를 4ms 루프로 추가 분리하여 기구적 대역폭 안정성 확보
+ * 2026. 06. 11. - 속도 및 위치 제어기 1ms 루프 분리 (Multi-Rate 캐스케이드 구조 개선)
+ * 2026. 06. 11. - 전류 크기(Magnitude) 제어기(currPid) 추가 및 Cascade 제어루프 편입
+ * 2026. 06. 11. - 1ms Decimation 속도 연산 적용 (계측 노이즈 저감)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stMotorCtrlState 구조체(xMotorCtrl)로 통합
  * 2026. 06. 11. - Driverlib 직접 호출 제거 및 HAL 추상화, Include 정리
@@ -23,6 +27,7 @@
 stMotorCtrlState xMotorCtrl;
 
 // PID 제어기 인스턴스
+PID_Controller_t currPid;
 PID_Controller_t speedPid;
 PID_Controller_t posPid;
 
@@ -46,9 +51,14 @@ void MotorCtrl_Init(void)
     MotorDriver_Init();
     
     // PID 초기화 (Kp, Ki, Kd, dt, max_out, min_out)
-    // 100us = 0.0001s
-    PID_Init(&speedPid, 0.5f, 0.01f, 0.0f, 0.0001f, 100.0f, -100.0f);
-    PID_Init(&posPid, 1.0f, 0.0f, 0.0f, 0.0001f, 3000.0f, -3000.0f); // Position 출력은 Speed 명령
+    // 전류 제어기는 100us (0.0001s) 루프에서 동작
+    PID_Init(&currPid, 2.0f, 0.05f, 0.0f, 0.0001f, 100.0f, 0.0f);     // Current 출력은 절대 Duty 크기 (0~100)
+    
+    // 속도 제어기는 1ms (0.001s) 루프에서 동작
+    PID_Init(&speedPid, 0.5f, 0.01f, 0.0f, 0.001f, 10.0f, -10.0f);    // Speed 출력은 타겟 전류량 (최대 ±10.0A)
+    
+    // 위치 제어기는 기계적 관성을 고려하여 4ms (0.004s) 루프에서 동작
+    PID_Init(&posPid, 1.0f, 0.0f, 0.0f, 0.004f, 3000.0f, -3000.0f);   // Position 출력은 Speed 명령
     
     // 방향 핀(INHC)은 hal_DspInit.c 의 Init_GpioDout() 에서 이미 초기화 완료됨
 }
@@ -66,14 +76,22 @@ void MotorCtrl_UpdateFeedback(void)
     // 이를 곱하여 모터 축 기준 기계각(기구 단 아님) Degree 계산
     xMotorCtrl.currentPosition = (float32_t)xEncoder.position * 0.001373291f; 
     
-    // 속도 계산 (이전 위치와의 차이를 이용한 차분 연산 또는 엔코더의 속도 레지스터 읽기)
+    // 속도 계산 (1ms 분주(Decimation) 방식 적용, 이산 오차 최소화)
+    static Uint16 speedCalcCnt = 0U;
     static float32_t prevPos = 0.0f;
-    float32_t posDiff = xMotorCtrl.currentPosition - prevPos;
     
-    // 단순 미분을 통한 RPM 계산 (100us 주기 기준)
-    // RPM = (Delta Deg / 360) * (1 / 0.0001) * 60 = Delta Deg * 1666.6667
-    xMotorCtrl.currentSpeedRpm = posDiff * 1666.6667f;
-    prevPos = xMotorCtrl.currentPosition;
+    speedCalcCnt++;
+    if (speedCalcCnt >= 10U)
+    {
+        float32_t posDiff = xMotorCtrl.currentPosition - prevPos;
+        
+        // 단순 미분을 통한 RPM 계산 (1ms 주기 기준)
+        // RPM = (Delta Deg / 360) * (1 / 0.001) * 60 = Delta Deg * 166.6667
+        xMotorCtrl.currentSpeedRpm = posDiff * 166.6667f;
+        prevPos = xMotorCtrl.currentPosition;
+        
+        speedCalcCnt = 0U;
+    }
 }
 
 /*
@@ -115,19 +133,50 @@ void MotorCtrl_Run(void)
     if (xMotorCtrl.mode == MOTOR_MODE_STOP)
     {
         MotorCtrl_SetOutput(0.0f);
+        currPid.integral = 0.0f;
         speedPid.integral = 0.0f;
         posPid.integral = 0.0f;
     }
-    else if (xMotorCtrl.mode == MOTOR_MODE_SPEED_CTRL)
+    else
     {
-        float32_t duty = PID_Calculate(&speedPid, xMotorCtrl.targetSpeedRpm, xMotorCtrl.currentSpeedRpm);
-        MotorCtrl_SetOutput(duty);
-    }
-    else if (xMotorCtrl.mode == MOTOR_MODE_POS_CTRL)
-    {
-        // 위치 제어기 출력이 목표 속도가 됨
-        float32_t speedCmd = PID_Calculate(&posPid, xMotorCtrl.targetPosition, xMotorCtrl.currentPosition);
-        float32_t duty = PID_Calculate(&speedPid, speedCmd, xMotorCtrl.currentSpeedRpm);
+        static float32_t currentCmd = 0.0f;
+        static float32_t speedCmd = 0.0f;
+        static Uint16 loop1msCnt = 0U;
+        static Uint16 loop4msDivider = 0U;
+        
+        loop1msCnt++;
+        if (loop1msCnt >= 10U)
+        {
+            // [4ms 제어 루프] 최외곽 루프: 위치 제어 연산
+            loop4msDivider++;
+            if (loop4msDivider >= 4U)
+            {
+                if (xMotorCtrl.mode == MOTOR_MODE_POS_CTRL)
+                {
+                    speedCmd = PID_Calculate(&posPid, xMotorCtrl.targetPosition, xMotorCtrl.currentPosition);
+                }
+                loop4msDivider = 0U;
+            }
+
+            // [1ms 제어 루프] 중간 루프: 속도 제어 연산
+            if (xMotorCtrl.mode == MOTOR_MODE_SPEED_CTRL)
+            {
+                currentCmd = PID_Calculate(&speedPid, xMotorCtrl.targetSpeedRpm, xMotorCtrl.currentSpeedRpm);
+            }
+            else if (xMotorCtrl.mode == MOTOR_MODE_POS_CTRL)
+            {
+                currentCmd = PID_Calculate(&speedPid, speedCmd, xMotorCtrl.currentSpeedRpm);
+            }
+            loop1msCnt = 0U;
+        }
+
+        // [100us 제어 루프] 내부 루프: 실시간 하드웨어 전류 제어 연산
+        float32_t currentCmdAbs = (currentCmd >= 0.0f) ? currentCmd : -currentCmd;
+        float32_t currentFdbkAbs = (xAdc.isenMotLpf >= 0.0f) ? xAdc.isenMotLpf : -xAdc.isenMotLpf;
+        
+        float32_t dutyAbs = PID_Calculate(&currPid, currentCmdAbs, currentFdbkAbs);
+        float32_t duty = (currentCmd >= 0.0f) ? dutyAbs : -dutyAbs;
+        
         MotorCtrl_SetOutput(duty);
     }
 }

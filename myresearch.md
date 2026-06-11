@@ -13,3 +13,6 @@ BIT 항목 - 없는 것 구현
 #define BIT_LIMIT_OVC_BRK_MAX 1.5f  // 브레이크 최대 동작 전류 1.0A 초과 시 Fault
 #define BIT_LIMIT_OVT_BD_MAX  80.0f // 보드 내부 온도
 #define BIT_LIMIT_OVV_28V_MAX 32.0f // 28V 과전압
+
+
+속도 측정 방법 ? 그냥 10번 받아서 1ms 만드는지 가중치가 있는지

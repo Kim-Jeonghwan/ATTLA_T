@@ -1,15 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Bit.c
-    Version          : 00.03
+    Version          : 00.04
     Description      : 1x PWM 구조용 간소화된 BIT 로직 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 11. (신규 결함 진단 로직 추가 및 Driverlib 적용)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 신규 결함 진단(Stall, OverSpeed, Encoder) 함수 구현
+ * 2026. 06. 11. - PM_n24V 및 GateFault 점검에 Driverlib(GPIO_readPin) 적용
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stBitState 구조체(xBit)로 통합
  * 2026. 06. 11. - 불필요한 헤더 Include 제거
@@ -125,7 +127,9 @@ void Bit_OvTemperature_Check(void)
 void Bit_OvVoltage_Check(void)
 {
     static Uint16 BitCnt_28V = 0U;
+    static Uint16 BitCnt_Brk24V = 0U;
 
+    // 28V 과전압 감시
     if (xAdc.vsen28VLpf > BIT_LIMIT_OVV_28V_MAX)
     {
         if (BitCnt_28V > BIT_CNT_REF_100MS)
@@ -141,6 +145,23 @@ void Bit_OvVoltage_Check(void)
     {
         if (BitCnt_28V > 0U) BitCnt_28V--;
     }
+
+    // 신규 PM_n24V 브레이크 전압 감시 (Active Low, GPIO 40)
+    if (GPIO_readPin(40U) == 0U)
+    {
+        if (BitCnt_Brk24V > BIT_LIMIT_OVV_BRK_TIME_CNT)
+        {
+            xBit.faultOvVoltBrk = 1U;
+            xBit.faultFlagSet = 1U;
+            xBit.informAll |= 0x00002000U;
+            BitCnt_Brk24V = 0U;
+        }
+        else BitCnt_Brk24V++;
+    }
+    else
+    {
+        if (BitCnt_Brk24V > 0U) BitCnt_Brk24V--;
+    }
 }
 
 /**
@@ -153,11 +174,89 @@ void Bit_GateFault_Check(void)
 {
     // DRV8343 nFAULT 확인 로직
     // nFAULT 핀은 Active Low 이므로 '0'일 때 에러 상태입니다. (GPIO 10번 가정)
-    if (GpioDataRegs.GPADAT.bit.GPIO10 == 0U)
+    // Driverlib 규칙 준수를 위해 GpioDataRegs 대신 GPIO_readPin() API 사용
+    if (GPIO_readPin(10U) == 0U)
     {
         xBit.faultDrv8343nFault = 1U;
         xBit.faultFlagSet = 1U;
         xBit.informAll |= 0x00010000U;
+    }
+}
+
+/**
+ * @function Bit_MotorStall_Check
+ * @brief    모터의 스톨 상태 감지 (전류 5A 초과 및 속도 10 RPM 미만이 1.0초 지속)
+ * @param    void
+ * @return   void
+ */
+void Bit_MotorStall_Check(void)
+{
+    float32_t currentAbs = (xAdc.isenMotLpf < 0.0f) ? -xAdc.isenMotLpf : xAdc.isenMotLpf;
+    float32_t speedAbs = (xMotorCtrl.currentSpeedRpm < 0.0f) ? -xMotorCtrl.currentSpeedRpm : xMotorCtrl.currentSpeedRpm;
+
+    if (currentAbs > BIT_LIMIT_STALL_CURR_MIN && speedAbs < BIT_LIMIT_STALL_RPM_LIMIT)
+    {
+        if (xBit.stallCheckCnt > BIT_LIMIT_STALL_TIME_CNT)
+        {
+            xBit.faultStall = 1U;
+            xBit.faultFlagSet = 1U;
+            xBit.informAll |= 0x00020000U;
+            xBit.stallCheckCnt = 0U;
+        }
+        else xBit.stallCheckCnt++;
+    }
+    else
+    {
+        if (xBit.stallCheckCnt > 0U) xBit.stallCheckCnt--;
+    }
+}
+
+/**
+ * @function Bit_MotorOverSpeed_Check
+ * @brief    모터의 과속 상태 감지 (절대 속도 3500 RPM 초과가 100ms 지속)
+ * @param    void
+ * @return   void
+ */
+void Bit_MotorOverSpeed_Check(void)
+{
+    static Uint16 BitCnt_OvSpeed = 0U;
+    
+    if (xMotorCtrl.currentSpeedRpm > BIT_LIMIT_SPEED_MOT_MAX || xMotorCtrl.currentSpeedRpm < BIT_LIMIT_SPEED_MOT_MIN)
+    {
+        if (BitCnt_OvSpeed > BIT_LIMIT_OVS_TIME_CNT)
+        {
+            xBit.faultOverSpeed = 1U;
+            xBit.faultFlagSet = 1U;
+            xBit.informAll |= 0x00040000U;
+            BitCnt_OvSpeed = 0U;
+        }
+        else BitCnt_OvSpeed++;
+    }
+    else
+    {
+        if (BitCnt_OvSpeed > 0U) BitCnt_OvSpeed--;
+    }
+}
+
+/**
+ * @function Bit_Encoder_Check
+ * @brief    엔코더 상태 이상 감지 (에러 및 워닝 비트 검출)
+ * @param    void
+ * @return   void
+ */
+void Bit_Encoder_Check(void)
+{
+    if (xEncoder.errBit == 0U)
+    {
+        xBit.faultEncError = 1U;
+        xBit.faultFlagSet = 1U;
+        xBit.informAll |= 0x00080000U;
+    }
+    
+    if (xEncoder.warnBit == 0U)
+    {
+        xBit.warnEncWarning = 1U;
+        xBit.informAll |= 0x00100000U;
     }
 }
 
@@ -179,6 +278,12 @@ void Bit_FaultReset(Uint16 Data)
         xBit.faultOvCurrBrk = 0U;
         xBit.faultOvTempBd = 0U;
         xBit.faultOvVolt28V = 0U;
+        xBit.faultOvVoltBrk = 0U;
         xBit.faultDrv8343nFault = 0U;
+        xBit.faultStall = 0U;
+        xBit.faultOverSpeed = 0U;
+        xBit.faultEncError = 0U;
+        xBit.warnEncWarning = 0U;
+        xBit.stallCheckCnt = 0U;
     }
 }
