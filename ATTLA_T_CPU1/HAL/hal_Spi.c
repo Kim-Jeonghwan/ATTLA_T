@@ -1,17 +1,17 @@
 /**********************************************************************
-    Nexcom Co., Ltd.
-    Filename         : hal_Spi.c
-    Version          : 00.02
-    Description      : SSI 엔코더 및 W6100 통신용 SPI 하드웨어 제어
-    Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (SPIC_BASE 엔코더 통신 클럭 주파수 2.5MHz로 변경)
+ Nexcom Co., Ltd.
+ Filename         : hal_Spi.c
+ Version          : 00.02
+ Description      : SSI 엔코더 및 W6100 통신용 SPI 하드웨어 제어
+ Programmer       : Kim Jeonghwan
+ Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
- * 
- * 
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
+ * 2026. 06. 11. - SPIC_BASE 엔코더 통신 클럭 주파수 2.5MHz로 변경
  */
 
 
@@ -45,7 +45,7 @@ static void InitSpid(void);
 
 /* ************************** [[  function  ]]  *********************************************************** */
 /*
-@funtion    void Initial_SPI(void)
+@function    void Initial_SPI(void)
 @brief      SPI 드라이버 초기화
 @param      void
 @return     void
@@ -61,7 +61,7 @@ void Initial_SPI(void) {
 
 
 /*
-@funtion    static void InitSpic(void)
+@function    static void InitSpic(void)
 @brief      SSI 엔코더 통신용 SPI-C 모듈 초기화 및 GPIO 설정
 @param      void
 @return     static void
@@ -110,7 +110,7 @@ static void InitSpic(void)
 }
 
 /*
-@funtion    static void InitSpia(void)
+@function    static void InitSpia(void)
 @brief      W6100 이더넷 통신용 SPI-A 모듈 초기화
 @param      void
 @return     static void
@@ -133,18 +133,37 @@ static void InitSpia(void)
 }
 
 /* --- W6100 SPI Callback Wrappers --- */
+
+/*
+@function    void cs_sel(void)
+@brief      W6100 칩 선택 (Chip Select Low) 외부 SPI 콜백
+@param      void
+@return     void
+*/
 void cs_sel(void) 
 { 
     // GPIO 19 핀을 Low 상태로 출력하여 W6100 칩을 활성화(Select) 합니다.
     GPIO_writePin(19U, 0U); 
 }
 
+/*
+@function    void cs_desel(void)
+@brief      W6100 칩 해제 (Chip Select High) 외부 SPI 콜백
+@param      void
+@return     void
+*/
 void cs_desel(void) 
 { 
     // GPIO 19 핀을 High 상태로 출력하여 W6100 칩을 비활성화(Deselect) 합니다.
     GPIO_writePin(19U, 1U); 
 }
 
+/*
+@function    uint8_t spi_read_byte(void)
+@brief      W6100 외부 SPI 데이터 1바이트 읽기 콜백
+@param      void
+@return     uint8_t (수신된 데이터)
+*/
 uint8_t spi_read_byte(void) 
 {
     // C2000 SPI 모듈에서 데이터를 읽기 위해 더미 데이터(0x0000)를 송신하여 클럭을 발생시킵니다.
@@ -153,6 +172,12 @@ uint8_t spi_read_byte(void)
     return (uint8_t)(SPI_readDataBlockingNonFIFO(SPIA_BASE) & 0xFF);
 }
 
+/*
+@function    void spi_write_byte(uint8_t wb)
+@brief      W6100 외부 SPI 데이터 1바이트 쓰기 콜백
+@param      wb: 전송할 8비트 데이터
+@return     void
+*/
 void spi_write_byte(uint8_t wb) 
 {
     // C2000 SPI의 Non-FIFO 8비트 송신 시에는 데이터를 SPITXBUF의 상위 바이트(좌측)에 정렬해야 합니다.
@@ -164,7 +189,7 @@ void spi_write_byte(uint8_t wb)
 /* --- FRAM (SPI-D) Functions --- */
 
 /*
-@funtion    static void InitSpid(void)
+@function    static void InitSpid(void)
 @brief      FRAM 통신용 SPI-D 모듈 초기화 및 GPIO 설정
 @param      void
 @return     static void
@@ -176,41 +201,41 @@ void spi_write_byte(uint8_t wb)
 static void InitSpid(void)
 {
     EALLOW;
-
+ 
     // Pin Set
     GPIO_setPinConfig(GPIO_91_SPID_SIMO);
     GPIO_setPadConfig(91u, GPIO_PIN_TYPE_STD);
     GPIO_setQualificationMode(91u, GPIO_QUAL_ASYNC);
-
+ 
     GPIO_setPinConfig(GPIO_92_SPID_SOMI);
     GPIO_setPadConfig(92u, GPIO_PIN_TYPE_STD);
     GPIO_setQualificationMode(92u, GPIO_QUAL_ASYNC);
-
+ 
     GPIO_setPinConfig(GPIO_93_SPID_CLK);
     GPIO_setPadConfig(93u, GPIO_PIN_TYPE_STD);
     GPIO_setQualificationMode(93u, GPIO_QUAL_ASYNC);
-
+ 
     GPIO_setPinConfig(GPIO_94_GPIO94);
     GPIO_setPadConfig(FRAM_CS_GPIO, GPIO_PIN_TYPE_STD);
     GPIO_setQualificationMode(FRAM_CS_GPIO, GPIO_QUAL_SYNC);
     GPIO_setDirectionMode(FRAM_CS_GPIO, GPIO_DIR_MODE_OUT);
     GPIO_setMasterCore(FRAM_CS_GPIO, GPIO_CORE_CPU1);
-
+ 
     // Spi Init. Use a 1MHz SPICLK, Mode-3(POL1PHA0 in C2000), and 8-bit word size.
     SPI_disableModule(SPID_BASE);
     SPI_setConfig(SPID_BASE, DEVICE_LSPCLK_FREQ, SPI_PROT_POL1PHA0, SPI_MODE_MASTER, 1000000u, 8u);
     SPI_disableFIFO(SPID_BASE);
     SPI_setEmulationMode(SPID_BASE, SPI_EMULATION_STOP_AFTER_TRANSMIT);
     SPI_enableModule(SPID_BASE);
-
+ 
     EDIS;
-
+ 
     // 기본 CS High 상태 유지
     Spid_CsHigh();
 }
 
 /*
-@funtion    void Spid_CsLow(void)
+@function    void Spid_CsLow(void)
 @brief      FRAM CS 핀을 Low 상태로 만듭니다.
 @param      void
 @return     void
@@ -221,7 +246,7 @@ void Spid_CsLow(void)
 }
 
 /*
-@funtion    void Spid_CsHigh(void)
+@function    void Spid_CsHigh(void)
 @brief      FRAM CS 핀을 High 상태로 만듭니다.
 @param      void
 @return     void
@@ -232,7 +257,7 @@ void Spid_CsHigh(void)
 }
 
 /*
-@funtion    uint16_t Spid_Transmit(uint16_t data)
+@function    uint16_t Spid_Transmit(uint16_t data)
 @brief      SPI-D 모듈을 사용하여 1바이트 데이터를 송수신합니다.
 @param      data : 전송할 8비트 데이터
 @return     수신된 8비트 데이터

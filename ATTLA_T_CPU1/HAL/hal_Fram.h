@@ -1,15 +1,16 @@
 /**********************************************************************
-    Nexcom Co., Ltd.
-    Filename         : hal_Fram.h
-    Version          : 00.00
-    Description      : FRAM (CY15B256Q) 제어 모듈 헤더
-    Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 09. (함수명에서 hal_ 접두어 제거 규칙 반영)
+ Nexcom Co., Ltd.
+ Filename         : hal_Fram.h
+ Version          : 00.01
+ Description      : FRAM (CY15B256Q) 제어 모듈 헤더
+ Programmer       : Kim Jeonghwan
+ Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 
@@ -37,9 +38,34 @@
 
 /* ************************** [[  function  ]]  *********************************************************** */
 
+/**
+ * @brief      FRAM 내부 설정 초기화 (보호 영역 BP0, BP1 해제)
+ * @param      void
+ * @return     void
+ */
 void Fram_Init(void);
+
+/**
+ * @brief      FRAM에서 1바이트 읽기
+ * @param      address : 읽어올 메모리 주소
+ * @return     읽어온 1바이트 데이터
+ */
 uint16_t Fram_ReadByte(uint16_t address);
+
+/**
+ * @brief      FRAM에 1바이트 쓰기
+ * @param      address : 데이터를 기록할 주소
+ * @param      writeData : 기록할 8비트 데이터
+ * @return     void
+ */
 void Fram_WriteByte(uint16_t address, uint16_t writeData);
+
+/**
+ * @brief      FRAM에 256바이트 페이지 쓰기
+ * @param      address : 시작 주소
+ * @param      data : 기록할 256바이트 데이터 배열
+ * @return     void
+ */
 void Fram_PageWrite(uint16_t address, const uint16_t* data);
 
 #endif // FRAM_H

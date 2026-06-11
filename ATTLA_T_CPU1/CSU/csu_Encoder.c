@@ -4,12 +4,13 @@
  Version          : 00.05
  Description      : AksIM-2 엔코더 어플리케이션 기능 처리 모듈
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 11. (전역 변수 구조체화 마이그레이션)
+ Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 전역 변수를 stEncoderState 구조체(xEncoder)로 통합하여 네임스페이스 및 상태 관리 개선
  * 2026. 06. 11. - 컴파일러 표준(C89/C90)에 맞게 for 문 변수 선언 위치 변경 및 미사용 변수 경고 해결
  * 2026. 06. 11. - Encoder_LoadOffset 신규 작성 및 Encoder_Init 연동
@@ -32,9 +33,12 @@ stEncoderState xEncoder;
 //---------------------------------------------------------------------------
 static uint8_t Encoder_CalcCrc6(uint64_t data36);
 
-//---------------------------------------------------------------------------
-// Encoder_Init
-//---------------------------------------------------------------------------
+/**
+ * @function Encoder_Init
+ * @brief    엔코더 상태 구조체 변수 초기화 및 하드웨어(SPI-C) 기동
+ * @param    void
+ * @return   void
+ */
 void Encoder_Init(void)
 {
     // 구조체 명시적 초기화
@@ -56,10 +60,12 @@ void Encoder_Init(void)
     Encoder_LoadOffset();
 }
 
-//---------------------------------------------------------------------------
-// Encoder_LoadOffset
-// 초기화 단계에서 FRAM으로부터 8바이트(uint64_t) 오프셋 값을 읽어옵니다.
-//---------------------------------------------------------------------------
+/**
+ * @function Encoder_LoadOffset
+ * @brief    FRAM 비휘발성 영역에서 기존 영점 오프셋(8바이트) 로드
+ * @param    void
+ * @return   void
+ */
 void Encoder_LoadOffset(void)
 {
     uint64_t loadedOffset = 0;
@@ -74,9 +80,13 @@ void Encoder_LoadOffset(void)
     xEncoder.offset = loadedOffset;
 }
 
-//---------------------------------------------------------------------------
-// Encoder_UpdatePosition (100us 주기 등 통신 스케줄에 맞춰 호출)
-//---------------------------------------------------------------------------
+/**
+ * @function Encoder_UpdatePosition
+ * @brief    SPI-C 통신을 통해 엔코더 데이터를 수신하고 위치 및 기계각 환산
+ * @param    void
+ * @return   void
+ * @remark   100us 시스템 운용 파이프라인 주기 내에서 호출됨
+ */
 void Encoder_UpdatePosition(void)
 {
     // SPI-C 통신을 통해 64비트 원시(Raw) 데이터 수신
@@ -157,10 +167,12 @@ void Encoder_UpdatePosition(void)
     }
 }
 
-//---------------------------------------------------------------------------
-// Encoder_CalcCrc6
-// 다항식 0x43 (x^6 + x^1 + 1) 을 이용한 CRC-6 계산 함수
-//---------------------------------------------------------------------------
+/**
+ * @function Encoder_CalcCrc6
+ * @brief    다항식 0x43 (x^6 + x + 1)을 사용한 CRC-6 계산 수행
+ * @param    data36 : 검증 대상 36비트 원시 데이터
+ * @return   계산된 6비트 CRC 값
+ */
 static uint8_t Encoder_CalcCrc6(uint64_t data36)
 {
     uint8_t crc = 0;
@@ -181,10 +193,12 @@ static uint8_t Encoder_CalcCrc6(uint64_t data36)
     return crc;
 }
 
-//---------------------------------------------------------------------------
-// Encoder_SetZero
-// 현재 위치를 영점(Zero)으로 설정 (오프셋 저장)
-//---------------------------------------------------------------------------
+/**
+ * @function Encoder_SetZero
+ * @brief    현재 물리 위치를 영점(Zero)으로 설정하고 FRAM에 오프셋 기록
+ * @param    void
+ * @return   void
+ */
 void Encoder_SetZero(void)
 {
     uint16_t i;

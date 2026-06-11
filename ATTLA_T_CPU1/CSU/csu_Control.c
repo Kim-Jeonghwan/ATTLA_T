@@ -4,12 +4,13 @@
     Version          : 00.02
     Description      : 시스템 제어 모듈 (PBIT, CBIT, 시스템 운용 파이프라인) 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (전역 변수 구조체화 마이그레이션)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stControlState 구조체(xSysCtrl)로 통합
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
@@ -25,6 +26,12 @@ static float32_t sumMot = 0.0f;
 static float32_t sumBrk = 0.0f;
 #define SCALE_ADC_3V (3.0f / 4096.0f)
 
+/**
+ * @function Control_Init
+ * @brief    시스템 제어 모듈 상태 구조체 초기화
+ * @param    void
+ * @return   void
+ */
 void Control_Init(void)
 {
     // 구조체 명시적 초기화
@@ -33,7 +40,7 @@ void Control_Init(void)
 }
 
 /*
-@funtion    void Control_CalibrateCurrentOffset(void)
+@function    void Control_CalibrateCurrentOffset(void)
 @brief      전류 센서 오프셋 영점 조정 (PWM ISR 호출용)
 @param      void
 @return     void
@@ -47,6 +54,7 @@ void Control_CalibrateCurrentOffset(void)
         offsetCount++;
     }
     else
+    {
         xAdc.isenMotOffset = sumMot / 10000.0f;
         xAdc.isenBrkOffset = sumBrk / 10000.0f;
         
@@ -57,7 +65,7 @@ void Control_CalibrateCurrentOffset(void)
 }
 
 /*
-@funtion    void Bit_RunPBIT(void)
+@function    void Bit_RunPBIT(void)
 @brief      초기 점검 (PBIT) 수행 (PWM ISR 호출용)
 @param      void
 @return     void
@@ -77,7 +85,7 @@ void Bit_RunPBIT(void)
 }
 
 /*
-@funtion    void Bit_RunCBIT(void)
+@function    void Bit_RunCBIT(void)
 @brief      주기 점검 (CBIT) 수행
 @param      void
 @return     void
@@ -95,7 +103,7 @@ void Bit_RunCBIT(void)
 }
 
 /*
-@funtion    void Control_SystemOperation(void)
+@function    void Control_SystemOperation(void)
 @brief      100us PWM 인터럽트 기반 시스템 운용 파이프라인
 @param      void
 @return     void

@@ -4,12 +4,14 @@
  Version          : 00.00
  Description      : DRV8343 모터 드라이버 하드웨어 초기화 및 SPI 통신
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 11. (모터 방향 제어 추상화 함수 추가)
+ Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - DRV_ENABLE GPIO 2 제어 로직 추가 (unresolved symbol 에러 해결)
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 모터 방향 제어용 MotorDriver_SetDir() 함수 추가
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
@@ -17,14 +19,22 @@
 
 #include "hal_MotorDriver.h"
 
-//---------------------------------------------------------------------------
-// MotorDriver_Init_Hardware
-//---------------------------------------------------------------------------
+/*
+@function    void MotorDriver_Init_Hardware(void)
+@brief      DRV8343 모터 드라이버 SPI-B GPIO 설정, 모듈 설정 및 1x PWM 모드 설정
+@param      void
+@return     void
+*/
 void MotorDriver_Init_Hardware(void)
 {
     //-----------------------------------------------------------------------
-    // 1. GPIO 핀 설정 (SPI-B)
+    // 1. GPIO 핀 설정 (SPI-B 및 EN_GATE)
     //-----------------------------------------------------------------------
+    // GPIO 2: DRV_ENABLE (Active High 출력)
+    GPIO_setDirectionMode(DRV8343_EN_GATE_PIN, GPIO_DIR_MODE_OUT);
+    GPIO_setPadConfig(DRV8343_EN_GATE_PIN, GPIO_PIN_TYPE_STD);
+    GPIO_setMasterCore(DRV8343_EN_GATE_PIN, GPIO_CORE_CPU1);
+
     // GPIO 58: SPIB_CLK
     GPIO_setPinConfig(GPIO_58_SPIB_CLK);
     GPIO_setDirectionMode(HAL_MOTORDRIVER_SPI_CLK_PIN, GPIO_DIR_MODE_OUT);
@@ -77,9 +87,13 @@ void MotorDriver_Init_Hardware(void)
     MotorDriver_WriteReg(DRV8343_REG_CONTROL_2, ctrl2);
     DEVICE_DELAY_US(10U);
 }
-//---------------------------------------------------------------------------
-// MotorDriver_ReadReg
-//---------------------------------------------------------------------------
+
+/*
+@function    uint16_t MotorDriver_ReadReg(uint16_t addr)
+@brief      DRV8343 레지스터 SPI 읽기 연산 수행
+@param      addr: 읽어올 레지스터 주소
+@return     수신된 레지스터 값 (하위 11비트 유효 데이터)
+*/
 uint16_t MotorDriver_ReadReg(uint16_t addr)
 {
     // DRV8343 SPI Read Frame: Bit 15 = 1 (Read), Bits 14:11 = Addr, Bits 10:0 = Don't care
@@ -93,9 +107,13 @@ uint16_t MotorDriver_ReadReg(uint16_t addr)
     return (rxWord & 0x07FF);
 }
 
-//---------------------------------------------------------------------------
-// MotorDriver_WriteReg
-//---------------------------------------------------------------------------
+/*
+@function    void MotorDriver_WriteReg(uint16_t addr, uint16_t data)
+@brief      DRV8343 레지스터 SPI 쓰기 연산 수행
+@param      addr: 기록할 레지스터 주소
+@param      data: 기록할 레지스터 값 (하위 11비트 유효 데이터)
+@return     void
+*/
 void MotorDriver_WriteReg(uint16_t addr, uint16_t data)
 {
     // DRV8343 SPI Write Frame: Bit 15 = 0 (Write), Bits 14:11 = Addr, Bits 10:0 = Data
@@ -107,11 +125,8 @@ void MotorDriver_WriteReg(uint16_t addr, uint16_t data)
     SPI_readDataBlockingNonFIFO(SPIB_BASE);
 }
 
-//---------------------------------------------------------------------------
-// MotorDriver_SetDir
-//---------------------------------------------------------------------------
 /*
-@funtion    void MotorDriver_SetDir(bool bForward)
+@function    void MotorDriver_SetDir(bool bForward)
 @brief      모터 정/역방향 GPIO 출력 설정
 @param      bForward: true(정방향), false(역방향)
 @return     void
@@ -125,5 +140,23 @@ void MotorDriver_SetDir(bool bForward)
     else
     {
         GPIO_writePin(DRV8343_DIR_PIN, 0U);
+    }
+}
+
+/*
+@function    void MotorDriver_Enable(bool enable)
+@brief      DRV8343 모터 드라이버 활성화/비활성화 (EN_GATE 핀 제어)
+@param      enable: true(활성화 - High), false(비활성화 - Low)
+@return     void
+*/
+void MotorDriver_Enable(bool enable)
+{
+    if (enable)
+    {
+        GPIO_writePin(DRV8343_EN_GATE_PIN, 1U);
+    }
+    else
+    {
+        GPIO_writePin(DRV8343_EN_GATE_PIN, 0U);
     }
 }

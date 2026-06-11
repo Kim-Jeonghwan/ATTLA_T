@@ -1,15 +1,16 @@
 /**********************************************************************
-    Nexcom Co., Ltd.
-    Filename         : hal_Ramfuncs.c
-    Version          : 00.00
-    Description      : RAM 빌드 전용 Ramfuncs 더미 심볼 실제 정의 모듈
-    Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+ Nexcom Co., Ltd.
+ Filename         : hal_Ramfuncs.c
+ Version          : 00.00
+ Description      : RAM 빌드 전용 Ramfuncs 더미 심볼 실제 정의 모듈
+ Programmer       : Kim Jeonghwan
+ Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 

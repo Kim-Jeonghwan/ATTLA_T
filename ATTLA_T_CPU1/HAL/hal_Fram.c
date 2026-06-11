@@ -1,15 +1,16 @@
 /**********************************************************************
-    Nexcom Co., Ltd.
-    Filename         : hal_Fram.c
-    Version          : 00.01
-    Description      : FRAM (CY15B256Q) 제어 모듈 로직 구현부
-    Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (FRAM 10ms 블로킹 지연시간 제거)
+ Nexcom Co., Ltd.
+ Filename         : hal_Fram.c
+ Version          : 00.01
+ Description      : FRAM (CY15B256Q) 제어 모듈 로직 구현부
+ Programmer       : Kim Jeonghwan
+ Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 
@@ -23,14 +24,12 @@
 
 /* ************************** [[  static prototype  ]]  *************************************************** */
 static void Fram_WriteEnable(void);
-// static void Fram_WriteDisable(void);
 static void Fram_WriteStatusRegister(uint16_t statusRegister);
-// static uint16_t Fram_ReadStatusRegister(void);
 
 /* ************************** [[  function  ]]  *********************************************************** */
 
 /*
-@funtion    void Fram_Init(void)
+@function    void Fram_Init(void)
 @brief      FRAM 내부 설정 초기화
 @param      void
 @return     void
@@ -47,7 +46,7 @@ void Fram_Init(void)
 }
 
 /*
-@funtion    uint16_t Fram_ReadByte(uint16_t address)
+@function    uint16_t Fram_ReadByte(uint16_t address)
 @brief      FRAM에서 1바이트 읽기
 @param      address : 읽어올 메모리 주소
 @return     읽어온 1바이트 데이터
@@ -70,7 +69,7 @@ uint16_t Fram_ReadByte(uint16_t address)
 }
 
 /*
-@funtion    void Fram_WriteByte(uint16_t address, uint16_t writeData)
+@function    void Fram_WriteByte(uint16_t address, uint16_t writeData)
 @brief      FRAM에 1바이트 쓰기
 @param      address : 데이터를 기록할 주소
 @param      writeData : 기록할 8비트 데이터
@@ -95,7 +94,7 @@ void Fram_WriteByte(uint16_t address, uint16_t writeData)
 }
 
 /*
-@funtion    void Fram_PageWrite(uint16_t address, const uint16_t* data)
+@function    void Fram_PageWrite(uint16_t address, const uint16_t* data)
 @brief      FRAM에 256바이트 페이지 쓰기
 @param      address : 시작 주소
 @param      data : 기록할 256바이트 데이터 배열
@@ -123,7 +122,7 @@ void Fram_PageWrite(uint16_t address, const uint16_t* data)
 }
 
 /*
-@funtion    static void Fram_WriteEnable(void)
+@function    static void Fram_WriteEnable(void)
 @brief      쓰기 활성화 명령 (WREN) 전송
 @param      void
 @return     static void
@@ -136,19 +135,7 @@ static void Fram_WriteEnable(void)
 }
 
 /*
-@funtion    static void Fram_WriteDisable(void)
-@brief      쓰기 비활성화 명령 (WRDI) 전송
-@param      void
-@return     static void
-*/
-// static void Fram_WriteDisable(void)
-// {
-//     Spid_CsLow();
-//     Spid_Transmit(FRAM_WRDI);
-//     Spid_CsHigh();
-// }
-/*
-@funtion    static void Fram_WriteStatusRegister(uint16_t statusRegister)
+@function    static void Fram_WriteStatusRegister(uint16_t statusRegister)
 @brief      상태 레지스터 설정 (WRSR)
 @param      statusRegister : 기록할 상태 레지스터 값
 @return     static void
@@ -160,21 +147,3 @@ static void Fram_WriteStatusRegister(uint16_t statusRegister)
     Spid_Transmit(statusRegister);
     Spid_CsHigh();
 }
-
-/*
-@funtion    static uint16_t Fram_ReadStatusRegister(void)
-@brief      상태 레지스터 읽기 (RDSR)
-@param      void
-@return     상태 레지스터 값
-*/
-// static uint16_t Fram_ReadStatusRegister(void)
-// {
-//     uint16_t out = 0u;
-
-//     Spid_CsLow();
-//     Spid_Transmit(FRAM_RDSR);
-//     out = Spid_Transmit(DUMMY_EX_FRAM);
-//     Spid_CsHigh();
-
-//     return out;
-// }

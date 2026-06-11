@@ -4,12 +4,13 @@
     Version          : 00.03
     Description      : ADC 데이터 필터링 및 10ms 주기 데이터 처리 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (전역 변수 구조체화 마이그레이션)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stAdcState 구조체(xAdc)로 통합
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  * 2026. 06. 11. - ADC 스케일 팩터 및 오프셋 정밀 교정 (모터/브레이크 전류, 28V 전압)
@@ -56,7 +57,7 @@ static void updateDspTempSensor(void);
 /* ************************** [[  function  ]]  *********************************************************** */
 
 /*
-@funtion    void Initial_Adc(void)
+@function    void Initial_Adc(void)
 @brief      ADC 애플리케이션 초기화
 @param      void
 @return     void
@@ -81,7 +82,7 @@ void Initial_Adc(void)
 
 
 /*
-@funtion    void updateAdcData(void)
+@function    void updateAdcData(void)
 @brief      ADC 데이터 업데이트 (10ms 주기 호출)
 @param      void
 @return     void
@@ -96,7 +97,7 @@ void updateAdcData(void)
 
 
 /*
-@funtion    static void updateDspTempSensor(void)
+@function    static void updateDspTempSensor(void)
 @brief      DSP 내부 온도 센서 데이터 측정 및 섭씨 온도 변환
 @param      void
 @return     static void
@@ -131,7 +132,7 @@ static void updateDspTempSensor(void)
 }
 
 /*
-@funtion    void CalcAdcData(void)
+@function    void CalcAdcData(void)
 @brief      10kHz ADC 인터럽트 루틴 내 데이터 갱신 및 필터링
 @param      void
 @return     void

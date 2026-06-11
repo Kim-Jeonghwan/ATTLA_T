@@ -1,25 +1,18 @@
 /**********************************************************************
-    Nexcom Co., Ltd.
-    Filename         : hal_Timer.c
-    Version          : 00.00
-    Description      : CPU 타이머 하드웨어 제어
-    Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+ Nexcom Co., Ltd.
+ Filename         : hal_Timer.c
+ Version          : 00.00
+ Description      : CPU 타이머 하드웨어 제어
+ Programmer       : Kim Jeonghwan
+ Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
-
-
-/*
- * 수정 이력
- * --------------------
- * 2026. 06. 04. - 100us CPUTimer0 인터럽트 내 SCI 블로킹 송신(sendScia_SCI_PC) 제거
- * 
-*/
 
 
 /* ************************** [[   include  ]]  *********************************************************** */
@@ -35,13 +28,13 @@ stTimer xTimer;
 
 /* ************************** [[  static prototype  ]]  *************************************************** */
 static void initCPUTimers(void);
-
 static void configCPUTimer(uint32_t cpuTimer, float32_t freq, float32_t period);
 
 
 /* ************************** [[  function  ]]  *********************************************************** */
+
 /*
-@funtion    void Initial_TIMER(void)
+@function    void Initial_TIMER(void)
 @brief      CPU1 코어의 하드웨어 타이머 초기화 (0, 1, 2)
 @param      void
 @return     void
@@ -69,7 +62,6 @@ void Initial_TIMER(void)
 	configCPUTimer(CPUTIMER1_BASE, DEVICE_SYSCLK_FREQ, 1000.0f);		// 1 ms
 	configCPUTimer(CPUTIMER2_BASE, DEVICE_SYSCLK_FREQ, 1000000.0f);	// 1000 ms
 
-
 	//
 	// CPU 타이머 0, 1, 2에 연결된 CPU 인터럽트들을 활성화합니다.
 	// PIE에서 TINT0(Group 1, Interrupt 7)을 활성화합니다.
@@ -84,15 +76,10 @@ void Initial_TIMER(void)
 	CPUTimer_startTimer(CPUTIMER0_BASE);
 	CPUTimer_startTimer(CPUTIMER1_BASE);
 	CPUTimer_startTimer(CPUTIMER2_BASE);
-
-
 }
 
-//
-// initCPUTimers - 3개의 CPU 타이머를 모두 알려진 기본 상태로 초기화합니다.
-//
 /*
-@funtion    static void initCPUTimers(void)
+@function    static void initCPUTimers(void)
 @brief      3개의 하드웨어 CPU 타이머 모듈의 기본 레지스터 설정 초기화
 @param      void
 @return     static void
@@ -132,20 +119,15 @@ static void initCPUTimers(void)
     //
     // 인터럽트 카운터 및 구조체 리셋
     //
-	(void)memset(&xTimer, 	0u, sizeof(xTimer));		//  타이머 변수 초기화
+	(void)memset(&xTimer, 0u, sizeof(xTimer));		//  타이머 변수 초기화
 }
 
-
-
-//
-// configCPUTimer - 지정된 타이머를 주파수(Hz) 및 주기(us)에 맞춰 초기화하고, 설정 완료 후 정지 상태로 유지합니다.
-//
 /*
-@funtion    static void configCPUTimer(uint32_t cpuTimer, float32_t freq, float32_t period)
+@function    static void configCPUTimer(uint32_t cpuTimer, float32_t freq, float32_t period)
 @brief      개별 CPU 타이머의 동작 주파수 및 인터럽트 발생 주기 설정
-@param      uint32_t cpuTimer: 설정 대상 타이머 레지스터 베이스 주소
-@param      float32_t freq: 입력 시스템 클럭 주파수 (Hz)
-@param      float32_t period: 원하는 인터럽트 발생 주기 (us)
+@param      cpuTimer: 설정 대상 타이머 레지스터 베이스 주소
+@param      freq: 입력 시스템 클럭 주파수 (Hz)
+@param      period: 원하는 인터럽트 발생 주기 (us)
 @return     static void
 @remark
     - 입력 주기(us)에 도달할 때 인터럽트를 발생시키도록 Period 레지스터 값을 산출하여 로드합니다.
@@ -176,12 +158,8 @@ static void configCPUTimer(uint32_t cpuTimer, float32_t freq, float32_t period)
     CPUTimer_enableInterrupt(cpuTimer);
 }
 
-
-
-
-
 /*
-@funtion    __interrupt void isr_CpuTimer0(void)
+@function    __interrupt void isr_CpuTimer0(void)
 @brief      CPU 타이머 0 인터럽트 서비스 루틴 (100us)
 @param      void
 @return     __interrupt void
@@ -193,13 +171,11 @@ __interrupt void isr_CpuTimer0(void)
     //
     // Group 1 인터럽트를 다시 받기 위해 ACK를 승인합니다.
     //
-
     Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP1);
 }
 
-
 /*
-@funtion    __interrupt void isr_CpuTimer1(void)
+@function    __interrupt void isr_CpuTimer1(void)
 @brief      CPU 타이머 1 인터럽트 서비스 루틴 (1ms)
 @param      void
 @return     __interrupt void
@@ -216,10 +192,8 @@ __interrupt void isr_CpuTimer1(void)
     Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP1);
 }
 
-
-
 /*
-@funtion    __interrupt void isr_CpuTimer2(void)
+@function    __interrupt void isr_CpuTimer2(void)
 @brief      CPU 타이머 2 인터럽트 서비스 루틴 (1000ms = 1s)
 @param      void
 @return     __interrupt void
@@ -231,7 +205,6 @@ __interrupt void isr_CpuTimer2(void)
     //
     // CPU 인터럽트 승인 처리
     //
-
     xTimer.Hz = xTimer.Hzcnt;
     xTimer.Hzcnt = 0u;
 

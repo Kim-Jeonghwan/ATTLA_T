@@ -4,12 +4,13 @@
     Version          : 00.02
     Description      : 메인 백그라운드 루프 및 주기적 태스크 실행
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (전역 변수 구조체화 마이그레이션)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 전역 변수를 상태 구조체(xSysCtrl 등)로 통합 적용
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
@@ -44,7 +45,7 @@ static void cycle_1000ms(void);
 
 /* ************************** [[  function  ]]  *********************************************************** */
 /*
-@funtion	void main(void)
+@function	void main(void)
 @brief		CPU1 코어 메인 엔트리 포인트 및 백그라운드 태스크 스케줄러
 @param		void
 @return		void
@@ -58,15 +59,15 @@ void main(void)
 	// 100us 시스템 운용 파이프라인 인터럽트는 InitialAdc() 내부에서 INT_ADCA1 활성화를 통해 이미 시작됨.
 
 	// 전류센서 Offset 조정 대기
+	// 100us 타이머 내부에서 오프셋 조정이 완료될 때까지 대기
 	while(xSysCtrl.isOffsetCalibrated == 0U)
 	{
-		// 100us 타이머 내부에서 오프셋 조정이 완료될 때까지 대기
 	}
 
 	// 초기점검(PBIT) 대기
+	// 100us 타이머 내부에서 PBIT가 완료될 때까지 대기
 	while(xSysCtrl.isPbitComplete == 0U)
 	{
-		// 100us 타이머 내부에서 PBIT가 완료될 때까지 대기
 	}
 
 	// 이더넷 (W6100) 초기화 및 통신 인터럽트 활성화
@@ -76,7 +77,7 @@ void main(void)
 	// 백그라운드 유휴 루프 (Background Loop)
 	while(1u)
 	{
-		sendScia_SCI_PC(); // 디버깅용?
+		sendScia_SCI_PC(); // 디버깅용 비동기 SCI 송신 처리
 
 		while(xTimer.Cycle_1ms >= 1u)
 		{
@@ -107,7 +108,7 @@ void main(void)
 
 
 /*
-@funtion	static void cycle_1ms(void)
+@function	static void cycle_1ms(void)
 @brief		1ms 주기로 실행되는 주기 Task
 @param		void
 @return		static void
@@ -123,7 +124,7 @@ static void cycle_1ms(void)
 
 
 /*
-@funtion	static void cycle_10ms(void)
+@function	static void cycle_10ms(void)
 @brief		10ms 주기로 실행되는 주기 Task
 @param		void
 @return		static void
@@ -138,7 +139,7 @@ static void cycle_10ms(void)
 
 
 /*
-@funtion	static void cycle_100ms(void)
+@function	static void cycle_100ms(void)
 @brief		100ms 주기로 실행되는 주기 Task
 @param		void
 @return		static void
@@ -154,7 +155,7 @@ static void cycle_100ms(void)
 
 
 /*
-@funtion	static void cycle_1000ms(void)
+@function	static void cycle_1000ms(void)
 @brief		1000ms(1초) 주기로 실행되는 주기 Task
 @param		void
 @return		static void
@@ -163,9 +164,4 @@ static void cycle_100ms(void)
 */
 static void cycle_1000ms(void)
 {
-#if 0 // 2026-06-08 FRAM SPI-D Test Code
-    Fram_WriteByte(0x0010u, 0xAAu);
-    FramTest = Fram_ReadByte(0x0010u);
-    //Fram_WriteByte(0x0000u, 0x00u);
-#endif
 }

@@ -1,15 +1,16 @@
-﻿/**********************************************************************
+/**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Adc.c
     Version          : 00.03
     Description      : ADC 및 내부 온도 센서 하드웨어 제어
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (함수명 명명 규칙 위반 접두어 제거)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
  */
@@ -33,7 +34,7 @@ AdcRawData_t adcRawData; // 실시간 ADC 채널 RAW 데이터 버퍼
 /* ************************** [[  function  ]] *********************************************************** */
 
 /*
-@funtion    void InitialAdc(void)
+@function    void InitialAdc(void)
 @brief      ADC 초기화 기동 및 인터럽트 등록
 @param      void
 @return     void
@@ -48,7 +49,7 @@ void InitialAdc(void)
 }
 
 /*
-@funtion    void InitAdcModules(void)
+@function    void InitAdcModules(void)
 @brief      ADC 모듈 초기 설정 (Driverlib 적용)
 @param      void
 @return     void
@@ -97,7 +98,7 @@ void InitAdcModules(void)
 // (Removed EPWM8 and EPWM9 specific setups as they are now unified under EPWM1 10kHz timer)
 
 /*
-@funtion    __interrupt void AdcaIsr(void)
+@function    __interrupt void AdcaIsr(void)
 @brief      ADCINA1 인터럽트 서비스 루틴 (백그라운드 실시간 초고속 데이터 취득)
 @param      void
 @return     __interrupt void

@@ -4,12 +4,13 @@
     Version          : 00.01
     Description      : W6100 이더넷 컨트롤러 제어 및 소켓 통신(Ext. Interrupt)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (csu_Ethernet과 hal_W6100 병합 및 초기화 로직 캡슐화)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 
@@ -20,7 +21,7 @@
 
 
 /*
-@funtion    void Initial_W6100(void)
+@function    void Initial_W6100(void)
 @brief      W6100 하드웨어 초기화 및 IP/MAC 설정
 @param      void
 @return     void
@@ -35,7 +36,6 @@ void Initial_W6100(void)
     uint8_t txsize[8] = {2, 2, 2, 2, 2, 2, 2, 2};
     uint8_t rxsize[8] = {2, 2, 2, 2, 2, 2, 2, 2};
     
-    // W6100 메모리 초기화 (TX/RX 버퍼 8개의 소켓에 각각 2KB씩 할당)
     // 반환값이 0 미만이면 초기화 실패를 의미합니다.
     if (wizchip_init(txsize, rxsize) < 0) 
     {
@@ -59,7 +59,7 @@ void Initial_W6100(void)
 }
 
 /*
-@funtion    void Ethernet_Init(void)
+@function    void Ethernet_Init(void)
 @brief      이더넷 통신망, 소켓 개방 및 W6100 외부 인터럽트 등록
 @param      void
 @return     void
@@ -83,7 +83,7 @@ void Ethernet_Init(void)
 }
 
 /*
-@funtion    __interrupt void isr_EthernetExtInt(void)
+@function    __interrupt void isr_EthernetExtInt(void)
 @brief      W6100 외부 인터럽트 (XINT1) 서비스 루틴
 @param      void
 @return     __interrupt void
@@ -98,7 +98,7 @@ __interrupt void isr_EthernetExtInt(void)
 }
 
 /*
-@funtion    void Ethernet_Process(void)
+@function    void Ethernet_Process(void)
 @brief      W6100 인터럽트 발생 시 패킷 수신 및 즉각 응답
 @param      void
 @return     void

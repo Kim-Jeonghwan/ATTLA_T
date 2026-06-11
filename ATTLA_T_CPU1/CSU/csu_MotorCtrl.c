@@ -4,12 +4,13 @@
     Version          : 00.01
     Description      : 1x PWM 모드 기반 모터 제어 모듈
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (전역 변수 구조체화 마이그레이션)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stMotorCtrlState 구조체(xMotorCtrl)로 통합
  * 2026. 06. 11. - Driverlib 직접 호출 제거 및 HAL 추상화, Include 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -27,7 +28,7 @@ PID_Controller_t posPid;
 
 
 /*
-@funtion    void MotorCtrl_Init(void)
+@function    void MotorCtrl_Init(void)
 @brief      모터 제어기 초기화
 @param      void
 @return     void
@@ -53,7 +54,7 @@ void MotorCtrl_Init(void)
 }
 
 /*
-@funtion    void MotorCtrl_UpdateFeedback(void)
+@function    void MotorCtrl_UpdateFeedback(void)
 @brief      엔코더 위치 및 속도 피드백 갱신
 @param      void
 @return     void
@@ -76,7 +77,7 @@ void MotorCtrl_UpdateFeedback(void)
 }
 
 /*
-@funtion    void MotorCtrl_SetOutput(float32_t outputDuty)
+@function    void MotorCtrl_SetOutput(float32_t outputDuty)
 @brief      1x PWM Duty 및 방향 설정
 @param      outputDuty: -100.0 ~ 100.0 (%)
 @return     void
@@ -102,7 +103,7 @@ void MotorCtrl_SetOutput(float32_t outputDuty)
 }
 
 /*
-@funtion    void MotorCtrl_Run(void)
+@function    void MotorCtrl_Run(void)
 @brief      100us 주기 모터 제어 메인 루틴
 @param      void
 @return     void

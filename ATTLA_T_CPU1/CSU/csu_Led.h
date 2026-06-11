@@ -4,12 +4,13 @@
     Version          : 00.01
     Description      : 시스템 상태 표시 LED 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 09. (하드웨어 제어 분리)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 
@@ -31,8 +32,6 @@
 
 /* nG 상태 표시용 LED(GPIO 30)*/
 #define GPIO_LED_nG     30u
-// /* ERROR 상태 표시용 LED(GPIO 146)*/
-// #define GPIO_LED_ERROR       146u
 
 
 /* ************************** [[   enum or struct   ]]  **************************************************** */
@@ -43,7 +42,6 @@
 typedef enum
 {
 	eLED_nG			            = 30u,
-//	eLED_ERROR				    = 146u,
 
 } eLed;
 
@@ -66,7 +64,6 @@ typedef struct
 typedef struct
 {
 	stLed	lednG;
-//	stLed	ledError;
 
 } stLedStatus;
 
@@ -77,37 +74,39 @@ extern stLedStatus xLed;
 
 
 
-/* ************************** [[  function  ]]  *********************************************************** */
-
+/* ************************** [[  function  ]] *********************************************************** */
 
 
 /**
- * @brief LED 변수 초기화 및 기본 동작 설정
+ * @brief      LED 변수 초기화 및 기본 동작 설정
+ * @param      void
+ * @return     void
  */
 void Initial_Led(void);
 
 /**
- * @brief LED 동작 상태 업데이트 (Main Loop 호출)
+ * @brief      LED 동작 상태 업데이트 (Main Loop 호출)
+ * @param      void
+ * @return     void
  */
 void updateLedStatus(void);
 
 /**
- * @brief LED의 On/Off 상태를 직접 설정 (토글 중단)
-
+ * @brief      LED의 On/Off 상태를 직접 설정 (토글 중단)
+ * @param      pLed : 대상 LED 구조체 포인터
+ * @param      State : LED_ON(1) 또는 LED_OFF(0)
+ * @return     void
  */
 void setLedStatus(stLed *pLed, bool State);
 
 /**
- * @brief LED 토글 모드 활성화 및 주기 설정
+ * @brief      LED 토글 모드 활성화 및 주기 설정
+ * @param      pLed : 대상 LED 구조체 포인터
+ * @param      State : LED_TOGGLE(1) 또는 LED_NONE(0)
+ * @param      Time : 토글 유지 카운트 (100ms 단위)
+ * @return     void
  */
 void setLedModeToggle(stLed *pLed, bool State, uint16_t Time);
-
-/**
- * @brief IPC 커맨드에 따른 GPIO LED 직접 제어
- */
-void updateGpioLed(void);
-
-
 
 #endif	// #ifndef CSU_LED_H
 

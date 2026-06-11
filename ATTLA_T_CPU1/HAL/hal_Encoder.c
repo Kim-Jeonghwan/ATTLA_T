@@ -4,12 +4,13 @@
  Version          : 00.03
  Description      : AksIM-2 엔코더 제어를 위한 HAL (하드웨어 초기화 및 SPI 통신)
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 11. (64-bit FIFO 연속 수신 및 100ms 지연 추가)
+ Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 64-bit FIFO 연속 수신 구조 적용 (BiSS 타임아웃 회피) 및 100ms 안정화 지연 추가
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
@@ -17,9 +18,12 @@
 
 #include "hal_Encoder.h"
 
-//---------------------------------------------------------------------------
-// Encoder_Init_Hardware
-//---------------------------------------------------------------------------
+/**
+ * @function Encoder_Init_Hardware
+ * @brief    엔코더용 SPI-C 포트 및 FIFO, 전원 안정화 대기 하드웨어 설정
+ * @param    void
+ * @return   void
+ */
 void Encoder_Init_Hardware(void)
 {
     // 센서 전원 안정화 대기 (100ms)
@@ -59,10 +63,12 @@ void Encoder_Init_Hardware(void)
     SPI_enableModule(SPIC_BASE);
 }
 
-//---------------------------------------------------------------------------
-// Encoder_ReadSpiData
-//---------------------------------------------------------------------------
-// SSI 통신은 더미 데이터를 전송하며 클럭을 발생시켜 수신합니다.
+/**
+ * @function Encoder_ReadSpiData
+ * @brief    RX FIFO를 활용하여 엔코더로부터 64비트 원시 데이터 블로킹 수신
+ * @param    void
+ * @return   수신된 64비트 원시 데이터 전체
+ */
 uint64_t Encoder_ReadSpiData(void)
 {
     uint16_t w1, w2, w3, w4;

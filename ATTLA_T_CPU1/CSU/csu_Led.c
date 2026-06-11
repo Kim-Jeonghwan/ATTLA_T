@@ -1,15 +1,16 @@
-﻿/**********************************************************************
+/**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Led.c
     Version          : 00.02
     Description      : 시스템 상태 표시 LED 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (함수명 명명 규칙 위반 접두어 제거)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
  */
@@ -36,7 +37,7 @@ stLedStatus xLed;
 /* ************************** [[  function  ]]  *********************************************************** */
 
 /*
-@funtion    void Initial_Led(void)
+@function    void Initial_Led(void)
 @brief      LED 모드 초기값 설정
 @param      void
 @return     void
@@ -48,16 +49,10 @@ void Initial_Led(void)
     // nG LED (GPIO30) 설정
     xLed.lednG.Index  = eLED_nG;
     setLedModeToggle(&xLed.lednG, LED_TOGGLE, 10u); // 1초 주기 토글
-
-    // // ERROR LED (GPIO146) 설정
-    // xLed.ledError.Index = eLED_ERROR;
-    // setLedModeToggle(&xLed.ledError, LED_NONE, 0u);   // 기본 꺼짐
-    // setLedStatus(&xLed.ledError, LED_OFF);
-
 }
 
 /*
-@funtion    void updateLedStatus(void)
+@function    void updateLedStatus(void)
 @brief      LED 상태 머신 업데이트
 @param      void
 @return     void
@@ -73,7 +68,6 @@ void updateLedStatus(void)
     
     // 1. 구조체 포인터 배열 매핑
     pLed[0] = &xLed.lednG;
-//    pLed[1] = &xLed.ledError;
 
     // 2. 전체 LED 상태 업데이트 루프
     for(i = 0u; i < 1u; i++)
@@ -100,7 +94,7 @@ void updateLedStatus(void)
 
 
 /*
-@funtion    void setLedStatus(stLed *pLed, bool State)
+@function    void setLedStatus(stLed *pLed, bool State)
 @brief      개별 LED 상태(점등/소등) 강제 설정
 @param      pLed: 대상 LED 구조체 포인터
 @param      State: LED_ON(1) 또는 LED_OFF(0)
@@ -121,7 +115,7 @@ void setLedStatus(stLed *pLed, bool State)
 
 
 /*
-@funtion    void setLedModeToggle(stLed *pLed, bool State, uint16_t Time)
+@function    void setLedModeToggle(stLed *pLed, bool State, uint16_t Time)
 @brief      LED 토글 모드 설정
 @param      pLed: 대상 LED 구조체 포인터
 @param      State: LED_TOGGLE(1) 또는 LED_NONE(0)

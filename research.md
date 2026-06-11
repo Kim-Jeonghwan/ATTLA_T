@@ -1,159 +1,73 @@
-# CSU / HAL 계층 함수명 및 변수명 명명 규칙 조사 보고서
+# CSU / HAL / main 계층 주석 현황 및 개선 방안 조사 보고서
 
-## 1. 개요
-사용자의 지시에 따라 CSU, HAL, main 계층의 모든 소스 코드(.c) 및 헤더 파일(.h)을 대상으로, 함수명 및 변수명에 csu_ 또는 hal_ 접두어가 사용되었는지 전수 조사를 진행하였습니다.
+## 1. 헤더 주석 및 이력 관리 규정 준수 현황
+글로벌 룰(`RULE[user_global]`)에서 정의한 파일 최상단의 헤더 주석 템플릿과 `Modification History` 주석 규칙의 준수 여부를 검토했습니다.
 
-**규칙 기준:** 모듈 및 파일명에만 소문자 csu_, hal_ 접두어를 사용해야 하며, 함수나 변수명에는 해당 접두어 사용을 엄격히 금지합니다. (단, 헤더 가드 등의 매크로는 대문자 HAL_, CSU_ 사용 허용)
-
-## 2. 변수명 위반 사항 조사 결과
-- 전체 코드베이스 검색 결과, csu_ 또는 hal_ 접두어가 포함된 **변수명은 발견되지 않았습니다.**
-
-## 3. 함수명 위반 사항 조사 결과 (총 7건)
-아래의 7개 함수들이 명명 규칙을 위반하여 소문자 접두어를 포함하고 있으므로, 접두어를 제거하는 수정이 필요합니다.
-
-### [CSU 계층 위반 함수 - 4건]
-1. csu_Bit_RunPBIT()
-   - 위치: csu_Bit.c, csu_Bit.h, csu_Control.c
-2. csu_Bit_RunCBIT()
-   - 위치: csu_Bit.c, csu_Bit.h, csu_Control.c
-3. csu_Control_CalibrateCurrentOffset()
-   - 위치: csu_Control.c, csu_Control.h
-4. csu_Control_SystemOperation()
-   - 위치: csu_Control.c, csu_Control.h, hal_Adc.c
-
-### [HAL 계층 위반 함수 - 3건]
-1. hal_Led_InitGpio()
-   - 위치: hal_Led.c, hal_Led.h, hal_DspInit.c
-2. hal_Led_WritePin()
-   - 위치: hal_Led.c, hal_Led.h, csu_Led.c
-3. hal_Led_TogglePin()
-   - 위치: hal_Led.c, hal_Led.h, csu_Led.c
-
-## 4. 매크로 위반 여부 (위반 없음)
-- HAL_MOTORDRIVER_SPI_CLK_PIN 등 대문자로 시작하는 매크로나, CSU_ADC_H 등의 헤더 가드는 명명 규칙(대문자 허용)에 부합하여 위반 사항이 아님을 확인하였습니다.
-
-## 5. 개선 및 리팩토링 방안
-위 7개의 함수를 선언, 정의, 호출하는 모든 소스 코드 영역에서 접두어를 제거하여 다음과 같이 수정합니다.
-
-- csu_Bit_RunPBIT -> Bit_RunPBIT
-- csu_Bit_RunCBIT -> Bit_RunCBIT
-- csu_Control_CalibrateCurrentOffset -> Control_CalibrateCurrentOffset
-- csu_Control_SystemOperation -> Control_SystemOperation
-- hal_Led_InitGpio -> Led_InitGpio
-- hal_Led_WritePin -> Led_WritePin
-- hal_Led_TogglePin -> Led_TogglePin
-
-> 사용자 승인 시, 이 내용을 바탕으로 plan.md를 작성하고 즉시 전체 코드 수정을 진행하겠습니다.
+### 1.1 개선이 필요한 사항 (공통)
+- **헤더 이력 미반영**: 헤더 내의 `Last Updated` 내용과 `Version` 번호는 수정되어 있으나, 그 바로 아래 `Modification History` 목록에 수정 기록이 누적되어 있지 않거나 날짜가 맞지 않는 파일이 다수 식별되었습니다. (예: `main.h`, `csu_Led.h`, `csu_SciPc.h`, `hal_DspInit.h`, `hal_Ethernet.h`, `hal_MotorDriver.h` 등)
+- **중복 이력 섹션**: `hal_Timer.c` 및 `hal_Timer.h` 파일의 경우, 표준 이력 테이블 외에 별도로 `수정 이력`, `변경 이력`이라는 레거시 주석 영역이 중복 선언되어 있어 제거가 권장됩니다.
 
 ---
 
-# 전역 변수 구조체(Struct) 관리 전환 조사 보고서
+## 2. 함수 및 프로토타입 주석 분석
+각 계층의 소스 파일(`.c`) 및 헤더 파일(`.h`) 내 함수 주석의 품질, 누락 여부, 오타를 상세 조사하였습니다.
 
-## 1. 개요
-사용자의 지시에 따라 기존에 낱개로 흩어져 관리되던 전역 변수들(`extern` 선언)을 기능 단위의 구조체(`struct`)로 묶어 관리할 수 있도록 프로젝트 전체(CSU 계층 중심)를 조사하였습니다. 사용자가 제시한 엔코더(`Encoder`) 예시 코드를 참고하여, 각 모듈별로 산재해 있는 변수들을 파악하고 구조체화(struct-ify)하는 방안을 설계했습니다.
+### 2.1 공통 발견 이슈: `@funtion` 오타
+프로젝트 내의 거의 모든 Doxygen 스타일 주석에서 `@function`이 **`@funtion`**으로 오타가 나 있는 것을 발견했습니다.
+- **대상 모듈**: `main.c`, `csu_Adc.c`, `csu_Control.c`, `csu_Led.c`, `csu_MotorCtrl.c`, `csu_PID.c`, `csu_SciPc.c`, `hal_Adc.c`, `hal_DspInit.c`, `hal_Epwm.c`, `hal_Ethernet.c`, `hal_Fram.c`, `hal_Sci.c`, `hal_Spi.c`, `hal_Timer.c`
+- **조치 계획**: 주석 일괄 적용 시 `@funtion`을 `@function`으로 일제히 수정합니다.
 
-## 2. 모듈별 전역 변수 조사 및 구조체 변환 설계안
+### 2.2 헤더 파일(`.h`) 내 프로토타입 주석 누락 (전수 누락)
+대부분의 헤더 파일에서 선언된 함수 프로토타입 앞에 Doxygen 주석이 완전히 누락되어 있거나, 형식에 맞지 않는 간단한 한 줄짜리 슬래시 주석만 기재되어 있습니다.
+- **주석 전무 헤더**: `csu_Bit.h`, `csu_Control.h`, `csu_Encoder.h`, `csu_MotorCtrl.h`, `csu_MotorDriver.h`, `csu_PID.h`, `hal_Adc.h`, `hal_Encoder.h`, `hal_Epwm.h`, `hal_Ethernet.h`, `hal_Fram.h`, `hal_Led.h`, `hal_MotorDriver.h`, `hal_Sci.h`, `hal_Spi.h`
+- **조치 계획**: 소스 파일의 함수 정의부 Doxygen 상세 주석을 헤더 파일의 프로토타입 선언부에도 형식을 맞춰 함께 반영해 줍니다.
 
-### 1) 엔코더 (Encoder) 모듈 `csu_Encoder.h / .c`
-**기존 변수:** `encRawData`, `encOffset`, `encPosition`, `encAngleDeg`, `isEncError` 등 낱개 선언.
-**구조체 적용 설계:** 사용자의 예시를 바탕으로 원시 데이터 파싱 결과와 어플리케이션 상태를 분리/통합하여 관리.
-```c
-typedef struct {
-    // 1. 수신 원시 데이터 관련
-    uint64_t fullFrame;   // SPI에서 수신된 64비트 전체 데이터 보관
-    uint64_t rawPos;      // 파싱된 34비트 Position 원시값
-    uint8_t  errBit;      // 파싱된 Error 비트 (Active Low)
-    uint8_t  warnBit;     // 파싱된 Warning 비트
-    uint8_t  crcRecv;     // 파싱된 수신 CRC (6비트)
-    uint8_t  crcCalc;     // 자체 계산한 CRC (6비트)
+### 2.3 소스 파일(`.c`) 내 함수 주석 누락 모듈
+일부 핵심 모듈들의 경우 소스 파일 내부 함수 위에도 Doxygen 형태가 아닌, 단순히 함수 이름만 적힌 슬래시 주석이 있거나 주석이 아예 없는 경우가 많습니다.
+- **`csu_Bit.c`**: `Bit_Init`, `Bit_OvCurrent_Check` 등 6개 함수 전원 주석 누락.
+- **`csu_Control.c`**: `Control_Init` 주석 누락.
+- **`csu_Encoder.c`**: `Encoder_Init`, `Encoder_LoadOffset` 등 5개 함수 전체 Doxygen 주석 누락.
+- **`csu_MotorDriver.c`**: `MotorDriver_Init`, `MotorDriver_ClearFaults`, `MotorDriver_UpdateStatus` 3개 함수 Doxygen 주석 누락.
+- **`hal_Encoder.c`**: `Encoder_Init_Hardware`, `Encoder_ReadSpiData` 2개 함수 Doxygen 주석 누락.
+- **`hal_Led.c`**: `Led_InitGpio`, `Led_WritePin`, `Led_TogglePin` 3개 함수 Doxygen 주석 누락.
+- **`hal_MotorDriver.c`**: `MotorDriver_Init_Hardware`, `MotorDriver_ReadReg`, `MotorDriver_WriteReg` 3개 함수 Doxygen 주석 누락.
+- **`hal_Spi.c`**: `cs_sel`, `cs_desel`, `spi_read_byte`, `spi_write_byte` 4개 이더넷 연동 콜백 함수 주석 누락.
 
-    // 2. 어플리케이션 상태
-    uint64_t offset;      // 제로셋 오프셋 값
-    uint64_t position;    // 오프셋 적용 및 롤오버가 반영된 실시간 위치
-    float32_t angleDeg;   // 360도 환산 기계각 (소수점 유지)
-    bool      isValid;    // Error 비트 및 CRC 검증 결과에 따른 최종 유효성 (기존 isEncError 대체)
-} stEncoderState;
+---
 
-extern stEncoderState xEncoder;
-```
+## 3. 불필요한 주석 및 레거시 코드 조사 결과
+소스 코드 내에 주석 처리된 채 잔존해 있어 가독성을 해치거나, 정적 분석에 불리하게 작용할 수 있는 불필요한 영역들을 발굴했습니다.
 
-### 2) 모터 제어 (MotorCtrl) 모듈 `csu_MotorCtrl.h / .c`
-**기존 변수:** `currentMotorMode`, `targetSpeedRpm`, `targetPosition`, `currentSpeedRpm`, `currentPosition`
-**구조체 적용 설계:**
-```c
-typedef struct {
-    MotorControlMode_t mode;
-    float32_t targetSpeedRpm;
-    float32_t targetPosition;
-    float32_t currentSpeedRpm;
-    float32_t currentPosition;
-} stMotorCtrlState;
+### 3.1 불필요한 선언 및 소멸된 코드 주석
+- **`csu_Led.h`**: 
+  - 34~35라인: `#define GPIO_LED_ERROR 146u` 주석 처리됨.
+  - 46라인: `// eLED_ERROR = 146u,` 주석 처리됨.
+  - 69라인: `// stLed ledError;` 주석 처리됨.
+  - 108라인: `void updateGpioLed(void);` 프로토타입 선언이 존재하나, `.c` 내 구현부가 없어 불필요한 쓰레기 선언임.
+- **`csu_Led.c`**:
+  - 52~56라인: `ERROR LED (GPIO146) 설정` 관련 코드가 통째로 주석 처리되어 있음.
+  - 76라인: `pLed[1] = &xLed.ledError;` 레거시 주석 처리.
+- **`hal_Led.c`**:
+  - 41~43라인 / 59~61라인: `case eLED_ERROR:` 분기 코드들이 전부 주석 처리된 레거시로 잔존.
+- **`hal_Fram.c`**:
+  - 139~149라인: `Fram_WriteDisable` 함수 정의와 Doxygen 주석 전체가 주석 처리됨.
+  - 170~180라인: `Fram_ReadStatusRegister` 함수 정의와 Doxygen 주석 전체가 주석 처리됨.
+  
+### 3.2 디버깅 및 컴파일 제어 레거시 주석
+- **`main.c`**: 
+  - 79라인: `sendScia_SCI_PC(); // 디버깅용?` 모호한 주석 기재.
+  - 166~170라인: `#if 0 ... #endif`로 ePWM 기반 테스트 코드가 비활성화되어 잔존.
+- **`hal_Sci.c`**:
+  - 270~279라인: `#if 1 ... #else ... #endif`를 이용해 기존 direct 블로킹 송신 함수인 `SCI_writeCharArray` 호출 코드가 주석 처리된 채 잔존.
+- **`csu_Adc.h`**:
+  - 51라인: `updateAdcData` 프로토타입 주석에 `(뼈대) - 더 이상 사용하지 않음`이라고 기재되어 있으나, 실제 `csu_Adc.c`에서 이 함수가 활성화되어 `updateDspTempSensor`를 호출하여 실시간 온도를 업데이트하고 있어 주석 내용이 왜곡됨.
 
-extern stMotorCtrlState xMotorCtrl;
-```
+---
 
-### 3) 모터 드라이버 (MotorDriver) 모듈 `csu_MotorDriver.h / .c`
-**기존 변수:** `motorDriverFaultStatus`
-**구조체 적용 설계:** 단일 변수지만 확장성을 고려하여 구조체화.
-```c
-typedef struct {
-    uint16_t faultStatus;
-} stMotorDriverState;
-
-extern stMotorDriverState xMotorDriver;
-```
-
-### 4) 아날로그 센싱 (ADC) 모듈 `csu_Adc.h / .c`
-**기존 변수:** `Isen_Mot_lpf`, `Isen_Brk_lpf`, `Vsen_28V_lpf`, `Vsen_5VD_lpf`, `Vsen_Ref_lpf`, `Tsen_Bd_lpf`, `Isen_Mot_Offset`, `Isen_Brk_Offset`
-**구조체 적용 설계:** 센싱 데이터와 오프셋을 한데 묶어 가독성 및 캐시 효율 상승. (CamelCase 명명법으로 통일 제안)
-```c
-typedef struct {
-    float32_t isenMotLpf;
-    float32_t isenBrkLpf;
-    float32_t vsen28VLpf;
-    float32_t vsen5VDLpf;
-    float32_t vsenRefLpf;
-    float32_t tsenBdLpf;
-    float32_t isenMotOffset;
-    float32_t isenBrkOffset;
-} stAdcState;
-
-extern stAdcState xAdc;
-```
-
-### 5) 시스템 BIT(Built-In Test) 진단 상태 `csu_Bit.h / .c`
-**기존 변수:** `Bit_Inform_all`, `BitStartFlag_Set`, `BitFaultFlag_Set`, `BitFault_OvCurr_Mot` 등 8개 이상.
-**구조체 적용 설계:**
-```c
-typedef struct {
-    Uint32 informAll;
-    Uint16 startFlagSet;
-    Uint16 faultFlagSet;
-    Uint16 faultOvCurrMot;
-    Uint16 faultOvCurrBrk;
-    Uint16 faultOvTempBd;
-    Uint16 faultOvVolt28V;
-    Uint16 faultDrv8343nFault;
-} stBitState;
-
-extern stBitState xBit;
-```
-
-### 6) 시스템 상태 제어 (Control) 모듈 `csu_Control.h / .c`
-**기존 변수:** `isOffsetCalibrated`, `isPbitComplete` (volatile)
-**구조체 적용 설계:**
-```c
-typedef struct {
-    uint16_t isOffsetCalibrated;
-    uint16_t isPbitComplete;
-} stControlState;
-
-extern volatile stControlState xSysCtrl;
-```
-
-## 3. 구조체 변환에 따른 장점
-1. **네임스페이스 및 충돌 방지**: `xEncoder.position`, `xAdc.isenMotLpf` 와 같이 변수명 앞에 모듈 객체명이 붙으므로 변수 이름 충돌을 원천 차단합니다.
-2. **디버깅 가시성 극대화**: CCS 디버거에서 구조체 객체(`xEncoder`) 하나만 Watch 윈도우에 등록하면 내부의 모든 상태(Raw, Error, Position 등)를 계층적으로 한눈에 모니터링할 수 있습니다.
-3. **통신 연동 용이성**: PC나 상위 제어기로 데이터를 쏠 때 `memcpy` 등을 활용해 구조체 통째로 쉽게 버퍼에 복사할 수 있어 IPC나 SCI 통신 관리가 편리해집니다.
-
-> 사용자 승인 시, 이 내용을 바탕으로 `plan.md`를 업데이트(또는 새로 작성)하여 전체 코드의 구조체 마이그레이션(리팩토링)을 진행하겠습니다.
+## 4. 종합 개선 계획
+1. **헤더 주석 통일**: 모든 `.c` 및 `.h` 파일 최상단의 버전을 표준 템플릿 형식으로 재점검하며, `Modification History`에 누락된 수정 사항 이력을 기입합니다.
+2. **함수 Doxygen 양식 일치**:
+   - 모든 함수의 주석을 `@function`으로 오타 수정 및 교정합니다.
+   - 주석이 누락된 함수(CSU 및 HAL)들에 대해 매개변수(`@param`), 반환값(`@return`), 세부 동작 설명(`@remark`)을 갖춘 정식 Doxygen 주석을 전원 신규 추가합니다.
+3. **헤더 파일 주석 추가**: 소스 파일의 상세 주석과 100% 매칭되는 설명 주석을 헤더 파일의 프로토타입 앞부분에도 정밀 추가하여 헤더만 보고도 API 사양을 파악할 수 있도록 개선합니다.
+4. **레거시 및 불필요 주석 제거**: 위에 보고된 주석 처리되어 잔존하는 미사용 코드들(`ERROR LED` 잔재, 주석 처리된 함수, 컴파일 지시어 잔재 등)을 사용자 승인 하에 일괄 삭제하여 정적 신뢰성을 강화합니다.

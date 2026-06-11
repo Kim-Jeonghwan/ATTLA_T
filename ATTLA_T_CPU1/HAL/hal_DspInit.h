@@ -4,15 +4,14 @@
     Version          : 00.01
     Description      : CPU1 마스터 초기화 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (DSP_Initialization 함수명을 System_Initialization으로 변경)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
- * 
- * 
-*/
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
+ */
 
 
 #ifndef HAL_DSPINIT_H
@@ -35,7 +34,11 @@
 
 
 /* ************************** [[  function  ]]  *********************************************************** */
-/*   시스템 전반 초기화   */
+/**
+ * @brief      DSP 및 주변장치 초기화 수행의 진입점
+ * @param      void
+ * @return     void
+ */
 void System_Initialization(void);
 
 

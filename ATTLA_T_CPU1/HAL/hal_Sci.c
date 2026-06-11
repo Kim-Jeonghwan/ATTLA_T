@@ -1,18 +1,18 @@
 /**********************************************************************
-    Nexcom Co., Ltd.
-    Filename         : hal_Sci.c
-    Version          : 00.00
-    Description      : SCI (시리얼 통신) 하드웨어 제어
-    Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+ Nexcom Co., Ltd.
+ Filename         : hal_Sci.c
+ Version          : 00.00
+ Description      : SCI (시리얼 통신) 하드웨어 제어
+ Programmer       : Kim Jeonghwan
+ Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
- * 
- * 
-*/
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
+ * 2026. 06. 08. - 주석 템플릿 일괄 적용
+ */
 
 
 /* ************************** [[   include  ]]  *********************************************************** */
@@ -45,7 +45,7 @@ static uint16_t dequeueSci(stQsci *pstQ, uint16_t *pData);
 
 /* ************************** [[  function  ]]  *********************************************************** */
 /*
-@funtion    void Initial_SCI(void)
+@function    void Initial_SCI(void)
 @brief      SCI PC 통신 드라이버 초기화
 @param      void
 @return     void
@@ -61,7 +61,7 @@ void Initial_SCI(void)
 
 
 /*
-@funtion    static void initScia_SCI_PC(void)
+@function    static void initScia_SCI_PC(void)
 @brief      SCIA 포트 디바이스 내부 초기화 호출
 @param      void
 @return     static void
@@ -78,7 +78,7 @@ static void initScia_SCI_PC(void)
 
 
 /*
-@funtion    static void setupSciaPC_GPIO(void)
+@function    static void setupSciaPC_GPIO(void)
 @brief      SCIA PC 통신용 GPIO 핀 설정 (RX: Pullup, TX: Standard)
 @param      void
 @return     static void
@@ -106,7 +106,7 @@ static void setupSciaPC_GPIO(void)
 
 
 /*
-@funtion    static void setupSciaPC_Interrupt(void)
+@function    static void setupSciaPC_Interrupt(void)
 @brief      SCIA 인터럽트 ISR 등록 및 활성화
 @param      void
 @return     static void
@@ -125,7 +125,7 @@ static void setupSciaPC_Interrupt(void)
 
 
 /*
-@funtion    static void setupSciaPC_HW(void)
+@function    static void setupSciaPC_HW(void)
 @brief      SCIA 하드웨어 파라미터 및 FIFO, 인터럽트 플래그 설정
 @param      void
 @return     static void
@@ -161,7 +161,7 @@ static void setupSciaPC_HW(void)
 
 
 /*
-@funtion    __interrupt void isrScia_SCI_PC(void)
+@function    __interrupt void isrScia_SCI_PC(void)
 @brief      SCIA 수신 인터럽트 서비스 루틴
 @param      void
 @return     __interrupt void
@@ -223,7 +223,7 @@ __interrupt void isrScia_SCI_PC(void)
   	case eSciA_CRC:
   		if((xRcvSCI_PC.CRC & 0xFFu) == Data[0u])
   		{
-			xRcvSCI_PC.Frame	= eSciA_EOT;	// 맞으면 EOT 대기
+ 			xRcvSCI_PC.Frame	= eSciA_EOT;	// 맞으면 EOT 대기
 		}
 		else
 		{
@@ -257,7 +257,7 @@ __interrupt void isrScia_SCI_PC(void)
 
 
 /*
-@funtion    void xmtScia_SCI_PC(uint16_t data[], uint16_t len)
+@function    void xmtScia_SCI_PC(uint16_t data[], uint16_t len)
 @brief      SCI 송신 큐에 데이터 삽입
 @param      data[]: 송신할 데이터 배열
 @param      len: 전송 길이
@@ -267,22 +267,18 @@ __interrupt void isrScia_SCI_PC(void)
 */
 void xmtScia_SCI_PC(uint16_t data[], uint16_t len)
 {
-#if 1 // 2025-08-05 9:13:57
 	uint16_t i = 0u;
 
 	for(i = 0u; i < len; i++)
 	{
 		enqueueSci(&xQueSCI_PC, data[i]);
 	}
-#else
-	SCI_writeCharArray(SCIA_BASE, data, len);
-#endif // #if 0 // 2025-08-05 9:13:57
 }
 
 
 
 /*
-@funtion    void sendScia_SCI_PC(void)
+@function    void sendScia_SCI_PC(void)
 @brief      비동기 SCI 데이터 송신 처리 (백그라운드 루프 폴링)
 @param      void
 @return     void
@@ -314,7 +310,7 @@ void sendScia_SCI_PC(void)
 
 
 /*
-@funtion    static void enqueueSci(stQsci *pstQ, uint16_t Data)
+@function    static void enqueueSci(stQsci *pstQ, uint16_t Data)
 @brief      SCI 송신 큐(원형 버퍼)에 1바이트 데이터 삽입
 @param      pstQ: 대상 큐 구조체 포인터
 @param      Data: 삽입할 1바이트 데이터
@@ -345,7 +341,7 @@ static void enqueueSci(stQsci *pstQ, uint16_t Data)
 
 
 /*
-@funtion    static uint16_t dequeueSci(stQsci *pstQ, uint16_t *pData)
+@function    static uint16_t dequeueSci(stQsci *pstQ, uint16_t *pData)
 @brief      SCI 송신 큐(원형 버퍼)에서 1바이트 데이터 추출
 @param      pstQ: 대상 큐 구조체 포인터
 @param      pData: 추출된 데이터를 담을 포인터

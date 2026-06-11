@@ -4,12 +4,13 @@
     Version          : 00.00
     Description      : PC 인터페이스 통신 (SCI_PC) 프로토콜 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 
@@ -72,12 +73,17 @@ extern stXmtSciPcMsg1	xXmtSciPcMsg1;
 
 /* ************************** [[  function  ]]  *********************************************************** */
 /**
- * @brief PC로부터 수신된 SCI_PC 메시지를 해석하여 구조체에 저장
+ * @brief      PC로부터 수신된 SCI_PC 메시지를 해석하여 구조체에 저장
+ * @param      ID : 수신된 메시지의 식별 ID
+ * @param      Data : 수신 데이터 버퍼 포인터
+ * @return     void
  */
 void recvSciPcMessage(uint16_t ID, uint16_t Data[]);
 
 /**
- * @brief 현재 시스템 상태 및 엔코더 데이터를 PC로 송신 (10ms 주기)
+ * @brief      현재 시스템 상태 및 엔코더 데이터를 PC로 송신 (10ms 주기)
+ * @param      void
+ * @return     void
  */
 void sendSciPcMessage1(void);
 

@@ -4,12 +4,13 @@
     Version          : 00.00
     Description      : PC 인터페이스 통신 (SCI_PC) 프로토콜 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 
@@ -34,7 +35,7 @@ stXmtSciPcMsg1	xXmtSciPcMsg1;
 /* ************************** [[  function  ]]  *********************************************************** */
 
 /*
-@funtion    void recvSciPcMessage(uint16_t ID, uint16_t Data[])
+@function    void recvSciPcMessage(uint16_t ID, uint16_t Data[])
 @brief      PC로부터 수신된 SCI_PC 메시지 해석 및 구조체 업데이트
 @param      ID: 수신된 메시지의 식별 번호 (0x10u)
 @param      Data: 수신된 데이터 배열 (바이트 단위)
@@ -62,7 +63,7 @@ void recvSciPcMessage(uint16_t ID, uint16_t Data[])
 }
 
 /*
-@funtion    void sendSciPcMessage1(void)
+@function    void sendSciPcMessage1(void)
 @brief      엔코더 상태 및 데이터를 PC로 전송 (10ms 주기)
 @param      void
 @return     void

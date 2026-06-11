@@ -4,12 +4,13 @@
     Version          : 00.00
     Description      : 표준 PID 제어기 (안티와인드업 포함)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (신규 생성)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 
@@ -17,7 +18,7 @@
 #include "csu_PID.h"
 
 /*
-@funtion    void PID_Init(PID_Controller_t* pid, float32_t kp, float32_t ki, float32_t kd, float32_t dt, float32_t max_out, float32_t min_out)
+@function    void PID_Init(PID_Controller_t* pid, float32_t kp, float32_t ki, float32_t kd, float32_t dt, float32_t max_out, float32_t min_out)
 @brief      PID 제어기 초기화
 @param      pid: 제어기 구조체 포인터
 @param      kp, ki, kd: PID 게인
@@ -40,7 +41,7 @@ void PID_Init(PID_Controller_t* pid, float32_t kp, float32_t ki, float32_t kd, f
 }
 
 /*
-@funtion    float32_t PID_Calculate(PID_Controller_t* pid, float32_t setpoint, float32_t feedback)
+@function    float32_t PID_Calculate(PID_Controller_t* pid, float32_t setpoint, float32_t feedback)
 @brief      PID 제어 연산 수행
 @param      pid: 제어기 구조체 포인터
 @param      setpoint: 목표값

@@ -4,15 +4,15 @@
     Version          : 00.01
     Description      : ADC 및 내부 온도 센서 하드웨어 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 09. (RAW 데이터 구조체 추가)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
- * 2026. 06. 02. - 온도 센서 전용 1kHz 느린 트리거용 ePWM9 함수 전역 선언 추가
- * 
-*/
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
+ * 2026. 06. 09. - RAW 데이터 구조체 추가
+ */
 
 
 /* DESCRIPTION
@@ -54,13 +54,25 @@ extern AdcRawData_t adcRawData;
 
 
 /* ************************** [[  function  ]]  *********************************************************** */
-// ADC ISR 초기화
+/**
+ * @brief      ADC 초기화 기동 및 인터럽트 등록
+ * @param      void
+ * @return     void
+ */
 void InitialAdc(void);
 
-// ADC 모듈 초기화 함수
+/**
+ * @brief      ADC 모듈 초기 설정 (Driverlib 적용)
+ * @param      void
+ * @return     void
+ */
 void InitAdcModules(void);
 
-// ADCINA1 인터럽트 서비스 루틴 (뼈대)
+/**
+ * @brief      ADCINA1 인터럽트 서비스 루틴 (ISR)
+ * @param      void
+ * @return     void
+ */
 __interrupt void AdcaIsr(void);
 
 #endif	// #ifndef HAL_ADC_H

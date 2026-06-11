@@ -4,12 +4,13 @@
     Version          : 00.02
     Description      : EPWM 제어 및 초기화 로직 (GPIO0 EPWM1A 모터 PWM 통합)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (모터 1x PWM Duty 제어 함수 추가)
+    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 모터 1x PWM Duty 제어용 Epwm_SetMotorDuty_1x() 구현
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
@@ -24,7 +25,7 @@
 /* ISR 정적 선언 (제거됨) */
 
 /*
-@funtion    void Initial_EpwmTimer(void)
+@function    void Initial_EpwmTimer(void)
 @brief      EPWM1 기반 100us 타이머 및 모터 PWM (EPWM1A / GPIO0) 초기화
 @param      void
 @return     void
@@ -76,7 +77,7 @@ void Initial_EpwmTimer(void)
 }
 
 /*
-@funtion    void Epwm_SetMotorDuty_1x(float32_t dutyPercent)
+@function    void Epwm_SetMotorDuty_1x(float32_t dutyPercent)
 @brief      1x PWM 모드 Duty 및 SW Force 제어
 @param      dutyPercent: 0.0 ~ 100.0 (%)
 @return     void

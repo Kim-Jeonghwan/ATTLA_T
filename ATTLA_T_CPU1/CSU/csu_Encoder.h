@@ -4,12 +4,13 @@
  Version          : 00.04
  Description      : AksIM-2 엔코더 어플리케이션 기능 처리 모듈
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 11. (전역 변수 구조체화 마이그레이션)
+ Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 전역 변수를 stEncoderState 구조체(xEncoder)로 통합하여 네임스페이스 및 상태 관리 개선
  * 2026. 06. 11. - FRAM 오프셋 연동을 위한 매크로(ENC_OFFSET_FRAM_ADDR) 및 Load 함수 추가
  * 2026. 06. 11. - 64비트 원시/오프셋/위치 변수, 에러 플래그, 기계각(float) 변수, 제로셋 함수 추가
@@ -55,9 +56,32 @@ extern stEncoderState xEncoder;
 //---------------------------------------------------------------------------
 // 함수 프로토타입
 //---------------------------------------------------------------------------
+/**
+ * @brief      엔코더 상태 구조체 변수 초기화 및 하드웨어(SPI-C) 기동
+ * @param      void
+ * @return     void
+ */
 extern void Encoder_Init(void);
+
+/**
+ * @brief      FRAM 비휘발성 영역에서 기존 영점 오프셋(8바이트) 로드
+ * @param      void
+ * @return     void
+ */
 extern void Encoder_LoadOffset(void);
+
+/**
+ * @brief      SPI-C 통신을 통해 엔코더 데이터를 수신하고 위치 및 기계각 환산
+ * @param      void
+ * @return     void
+ */
 extern void Encoder_UpdatePosition(void);
+
+/**
+ * @brief      현재 물리 위치를 영점(Zero)으로 설정하고 FRAM에 오프셋 기록
+ * @param      void
+ * @return     void
+ */
 extern void Encoder_SetZero(void);
 
 #ifdef __cplusplus

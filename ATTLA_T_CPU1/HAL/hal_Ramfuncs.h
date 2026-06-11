@@ -1,17 +1,18 @@
 /**********************************************************************
-    Nexcom Co., Ltd.
-    Filename         : hal_Ramfuncs.h
-    Version          : 00.00
-    Description      : RAM 빌드 전용 Ramfuncs 더미 심볼 정의 모듈
-    Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+ Nexcom Co., Ltd.
+ Filename         : hal_Ramfuncs.h
+ Version          : 00.00
+ Description      : RAM 빌드 전용 Ramfuncs 더미 심볼 정의 모듈
+ Programmer       : Kim Jeonghwan
+ Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
- * 2026.06.04 - 최초 작성 (RAM 빌드 시 링커 미정의 심볼 에러 해소 목적)
- * 2026.06.04 - 중복 정의 해결을 위해 변수 실체를 hal_Ramfuncs.c로 이관 및 extern 선언으로 변경
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
+ * 2026. 06. 04. - 최초 작성 (RAM 빌드 시 링커 미정의 심볼 에러 해소 목적)
+ * 2026. 06. 04. - 중복 정의 해결을 위해 변수 실체를 hal_Ramfuncs.c로 이관 및 extern 선언으로 변경
  */
 
 #ifndef HAL_RAMFUNCS_H

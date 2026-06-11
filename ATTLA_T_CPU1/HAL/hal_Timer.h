@@ -1,24 +1,17 @@
 /**********************************************************************
-    Nexcom Co., Ltd.
-    Filename         : hal_Timer.h
-    Version          : 00.00
-    Description      : CPU 타이머 하드웨어 제어 헤더
-    Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+ Nexcom Co., Ltd.
+ Filename         : hal_Timer.h
+ Version          : 00.00
+ Description      : CPU 타이머 하드웨어 제어 헤더
+ Programmer       : Kim Jeonghwan
+ Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
- */
-
-
-/*
- * 변경 이력
- * --------------------
- * 
- * 
  */
 
 
@@ -50,16 +43,33 @@ extern stTimer xTimer;
 
 
 /* ************************** [[  function  ]]  *********************************************************** */
-// DSP 타이머 초기화 
+
+/**
+ * @brief      CPU1 코어의 하드웨어 타이머 초기화 (0, 1, 2)
+ * @param      void
+ * @return     void
+ */
 void Initial_TIMER(void);
 
+/**
+ * @brief      CPU 타이머 0 인터럽트 서비스 루틴 (100us)
+ * @param      void
+ * @return     void (__interrupt)
+ */
 __interrupt void isr_CpuTimer0(void);
 
+/**
+ * @brief      CPU 타이머 1 인터럽트 서비스 루틴 (1ms)
+ * @param      void
+ * @return     void (__interrupt)
+ */
 __interrupt void isr_CpuTimer1(void);
 
+/**
+ * @brief      CPU 타이머 2 인터럽트 서비스 루틴 (1000ms = 1s)
+ * @param      void
+ * @return     void (__interrupt)
+ */
 __interrupt void isr_CpuTimer2(void);
 
 #endif	// #ifndef HAL_TIMER_H
-
-
-
