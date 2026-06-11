@@ -10,6 +10,7 @@
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 위치 제한 클램핑 로직 및 속도/전류 PID 한계치(Soft Limit) 적용
  * 2026. 06. 11. - 위치 제어기를 4ms 루프로 추가 분리하여 기구적 대역폭 안정성 확보
  * 2026. 06. 11. - 속도 및 위치 제어기 1ms 루프 분리 (Multi-Rate 캐스케이드 구조 개선)
  * 2026. 06. 11. - 전류 크기(Magnitude) 제어기(currPid) 추가 및 Cascade 제어루프 편입
@@ -55,10 +56,10 @@ void MotorCtrl_Init(void)
     PID_Init(&currPid, 2.0f, 0.05f, 0.0f, 0.0001f, 100.0f, 0.0f);     // Current 출력은 절대 Duty 크기 (0~100)
     
     // 속도 제어기는 1ms (0.001s) 루프에서 동작
-    PID_Init(&speedPid, 0.5f, 0.01f, 0.0f, 0.001f, 10.0f, -10.0f);    // Speed 출력은 타겟 전류량 (최대 ±10.0A)
+    PID_Init(&speedPid, 0.5f, 0.01f, 0.0f, 0.001f, LIMIT_CURRENT_MAX, LIMIT_CURRENT_MIN);    // Speed 출력은 타겟 전류량 (최대 ±10.0A)
     
     // 위치 제어기는 기계적 관성을 고려하여 4ms (0.004s) 루프에서 동작
-    PID_Init(&posPid, 1.0f, 0.0f, 0.0f, 0.004f, 3000.0f, -3000.0f);   // Position 출력은 Speed 명령
+    PID_Init(&posPid, 1.0f, 0.0f, 0.0f, 0.004f, LIMIT_SPEED_MAX, LIMIT_SPEED_MIN);           // Position 출력은 Speed 명령
     
     // 방향 핀(INHC)은 hal_DspInit.c 의 Init_GpioDout() 에서 이미 초기화 완료됨
 }
@@ -153,6 +154,8 @@ void MotorCtrl_Run(void)
             {
                 if (xMotorCtrl.mode == MOTOR_MODE_POS_CTRL)
                 {
+                    // 위치 명령 소프트 리미트 적용
+                    xMotorCtrl.targetPosition = CLAMP_F32(xMotorCtrl.targetPosition, LIMIT_POS_MIN, LIMIT_POS_MAX);
                     speedCmd = PID_Calculate(&posPid, xMotorCtrl.targetPosition, xMotorCtrl.currentPosition);
                 }
                 loop4msDivider = 0U;

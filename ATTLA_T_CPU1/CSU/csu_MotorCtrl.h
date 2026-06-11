@@ -10,6 +10,7 @@
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 11. - 모터 제어 소프트 리미트(위치, 속도, 전류) 상수 및 매크로 추가
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stMotorCtrlState 구조체(xMotorCtrl)로 통합
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -20,6 +21,20 @@
 #define CSU_MOTORCTRL_H
 
 #include "main.h"
+
+// --- 모터 제어 소프트 리미트 (Soft Limits) ---
+#define LIMIT_POS_MIN       0.0f        // 기구부 최소 각도 (0도)
+#define LIMIT_POS_MAX       15840.0f    // 기구부 최대 각도 (44바퀴 * 360도)
+
+#define LIMIT_SPEED_MAX     3500.0f     // 최대 동작 속도 (RPM)
+#define LIMIT_SPEED_MIN     -3500.0f    // 최소 동작 속도 (RPM)
+
+#define LIMIT_CURRENT_MAX   10.0f       // 최대 동작 전류 (A)
+#define LIMIT_CURRENT_MIN   -10.0f      // 최소 동작 전류 (A)
+
+// 클램핑 매크로 유틸리티
+#define CLAMP_F32(x, min, max)  (((x) < (min)) ? (min) : (((x) > (max)) ? (max) : (x)))
+
 
 // 목표 구동 모드
 typedef enum {

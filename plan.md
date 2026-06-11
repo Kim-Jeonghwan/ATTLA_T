@@ -1,49 +1,56 @@
-# ATTLA_T 모터 전류 제어기(Current PID) 추가 구현 계획서
+# ATTLA_T 모터 제어 소프트 리미트(Soft Limit) 적용 계획서
 
-본 문서는 사용자의 "1x PWM 모드 하에서의 전류 제어기 구현 및 조사" 요청에 따라 작성된 구현 계획입니다.
+사용자의 요청에 따라 기계적 구동 범위를 제한하고, 속도 및 전류 지령의 한계치를 오류 점검(BIT) 임계치와 동일하게 맞추는 구현 계획입니다.
 
-## 1. 전류 제어 루프 도입 배경 및 아키텍처 조사
-- **조사 배경**: 앞서 TDU 프로젝트 조사 결과 1x PWM 모드에서는 소프트웨어적인 전류 벡터 제어(FOC)가 생략되었음을 확인하였습니다. 그러나 사용자의 요청에 따라, 비록 3상 교류 전류 제어(FOC) 방식은 아니지만 **DC 링크 전류 크기를 제어하는 "토크/전류 크기(Magnitude) 제어 루프"**를 도입하여 전류 제어기를 구현하는 방안을 설계하였습니다.
-- **제어 아키텍처 변경 (Cascade 연장)**:
-  - 기존: 위치 제어 ➡️ 속도 제어 ➡️ **PWM Duty 직결**
-  - 변경: 위치 제어 ➡️ 속도 제어 ➡️ **전류(토크) 제어** ➡️ PWM Duty 인가
+## 1. 구현 목표 및 파라미터 설계
+- **위치 제한 (Position Limit)**
+  - 범위: `0.0f` ~ `15840.0f` (기계각 44바퀴 × 360도)
+  - 방법: 목표 위치 지령(`targetPosition`)을 PID 제어기에 인가하기 전에 범위 내로 클램핑(Clamping)합니다.
+- **속도 제한 (Speed Limit)**
+  - 범위: `-3500.0f` ~ `3500.0f` RPM (과속 오류 기준과 동일)
+  - 방법: 위치 제어기(`posPid`)의 출력 제한(Limit) 값을 기존 ±3000.0에서 ±3500.0으로 상향 조정하여 최대 속도 명령을 제한합니다.
+- **전류 제한 (Current Limit)**
+  - 범위: `-10.0f` ~ `10.0f` A (과전류 오류 기준과 동일)
+  - 방법: 속도 제어기(`speedPid`)의 출력 제한(Limit) 값을 ±10.0A로 설정하여 하드웨어 제어 전류를 제한합니다. (이미 기존 코드에 10.0A로 반영되어 있으므로 유지/확인합니다)
 
-## 2. 파일별 구현 상세 계획
+## 2. 파일별 수정 상세 계획
 
-### 2.1 [MODIFY] `csu_MotorCtrl.c`
-- **PID 인스턴스 추가**: `PID_Controller_t currPid;` 전역 제어기 변수 추가.
+### 2.1 [MODIFY] `csu_MotorCtrl.h`
+- 안전 제한용 매크로 상수 추가.
+  ```c
+  // --- 모터 제어 소프트 리미트 (Soft Limits) ---
+  #define LIMIT_POS_MIN       0.0f        // 기구부 최소 각도 (0도)
+  #define LIMIT_POS_MAX       15840.0f    // 기구부 최대 각도 (44바퀴 * 360도)
+  
+  #define LIMIT_SPEED_MAX     3500.0f     // 최대 동작 속도 (RPM)
+  #define LIMIT_SPEED_MIN     -3500.0f    // 최소 동작 속도 (RPM)
+  
+  #define LIMIT_CURRENT_MAX   10.0f       // 최대 동작 전류 (A)
+  #define LIMIT_CURRENT_MIN   -10.0f      // 최소 동작 전류 (A)
+  
+  // 클램핑 매크로 유틸리티
+  #define CLAMP_F32(x, min, max)  (((x) < (min)) ? (min) : (((x) > (max)) ? (max) : (x)))
+  ```
+
+### 2.2 [MODIFY] `csu_MotorCtrl.c`
 - **`MotorCtrl_Init()` 함수 수정**:
-  - `currPid` 초기화 추가. (출력 범위: `0.0f` ~ `100.0f` 절대 Duty 크기)
-  - 기존 `speedPid`의 출력 범위를 Duty(±100)에서 전류(예: ±10.0A)로 변경.
-    ```c
-    // speedPid 출력은 전류(Torque) 지령치이므로 최대 ±10.0A 로 제한
-    PID_Init(&speedPid, 0.5f, 0.01f, 0.0f, 0.0001f, 10.0f, -10.0f);
-    // currPid 출력은 Duty 크기이므로 0.0 ~ 100.0% 로 제한
-    PID_Init(&currPid, 2.0f, 0.05f, 0.0f, 0.0001f, 100.0f, 0.0f);
-    ```
+  - `posPid` 초기화 시 출력 제한(Max/Min)을 ±3500.0f로 변경.
+  - `speedPid` 초기화 시 출력 제한(Max/Min)을 ±10.0f로 명시적 변수화.
+  ```c
+  PID_Init(&speedPid, 0.5f, 0.01f, 0.0f, 0.001f, LIMIT_CURRENT_MAX, LIMIT_CURRENT_MIN);
+  PID_Init(&posPid, 1.0f, 0.0f, 0.0f, 0.004f, LIMIT_SPEED_MAX, LIMIT_SPEED_MIN);
+  ```
+
 - **`MotorCtrl_Run()` 함수 수정**:
-  - 속도 제어 및 위치 제어 모드에서 `speedPid`의 출력을 `duty`가 아닌 `currentCmd`로 취급합니다.
-  - 전류 지령(`currentCmd`)과 측정 전류(`xAdc.isenMotLpf`)의 **절대값(크기)**을 추출하여 전류 PID(`currPid`)를 연산합니다.
-  - 산출된 `dutyAbs`에 원래의 `currentCmd` 부호를 다시 씌워 `MotorCtrl_SetOutput(duty)`로 인가합니다.
+  - 위치 제어 연산 루프 직전에 `targetPosition`을 `CLAMP_F32`를 통해 제한 범위 내에 묶어둡니다.
+  ```c
+  // 위치 명령 소프트 리미트 적용
+  xMotorCtrl.targetPosition = CLAMP_F32(xMotorCtrl.targetPosition, LIMIT_POS_MIN, LIMIT_POS_MAX);
+  speedCmd = PID_Calculate(&posPid, xMotorCtrl.targetPosition, xMotorCtrl.currentPosition);
+  ```
 
-    ```c
-    float32_t currentCmd = PID_Calculate(&speedPid, xMotorCtrl.targetSpeedRpm, xMotorCtrl.currentSpeedRpm);
-    
-    // 1. 크기(Magnitude) 기반 전류 제어 연산
-    float32_t currentCmdAbs = (currentCmd >= 0.0f) ? currentCmd : -currentCmd;
-    float32_t currentFdbkAbs = (xAdc.isenMotLpf >= 0.0f) ? xAdc.isenMotLpf : -xAdc.isenMotLpf;
-    
-    // 2. 전류 PID (입력: 타겟 전류 크기, 피드백 전류 크기 -> 출력: 목표 Duty 크기)
-    float32_t dutyAbs = PID_Calculate(&currPid, currentCmdAbs, currentFdbkAbs);
-    
-    // 3. 목표 전류의 부호(방향) 복원
-    float32_t duty = (currentCmd >= 0.0f) ? dutyAbs : -dutyAbs;
-    MotorCtrl_SetOutput(duty);
-    ```
+## 3. 검증 계획
+- 속도 및 전류 한계치가 PID 제어기의 포화(Saturation) 특성으로 잘 동작하는지 검토합니다.
+- `Project_Spec.md`의 소프트 리미트 관련 내용을 `0도 ~ 15840도 (44바퀴)`로 업데이트합니다.
 
-### 2.2 [MODIFY] `Project_Spec.md`
-- **프로젝트 명세서 업데이트**: 전류 제어 루프가 1x PWM 구조에 맞춰 크기(Magnitude) 기반 전류 피드백 제어로 확장되었음을 명시하고, 제어 순서(Cascade) 설명을 업데이트합니다.
-
----
-
-> 위 계획에 따라 직렬 제어(Cascade) 구조를 위치 ➡️ 속도 ➡️ 전류(토크) ➡️ Duty 순으로 확장하는 코드 수정을 진행하고자 합니다. 해당 방향으로 구현을 시작해도 될지 확인 부탁드립니다.
+> 위 계획에 따라 위치(0~44바퀴), 속도(±3500RPM), 전류(±10A)의 소프트웨어 제약(Limit)을 구현하고자 합니다. 승인해 주시면 즉시 코드에 적용하겠습니다!
