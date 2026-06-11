@@ -7,6 +7,13 @@
     Last Updated     : 2026. 06. 11. (초기화 시퀀스 재배치 및 루프 구조 개편)
 **********************************************************************/
 
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ */
+
+
 #include "main.h"
 
 
@@ -47,8 +54,7 @@ void main(void)
 {
 	System_Initialization();
 
-	// 100us 시스템 운용 파이프라인 인터럽트 시작
-	Interrupt_enable(INT_EPWM1);
+	// 100us 시스템 운용 파이프라인 인터럽트는 InitialAdc() 내부에서 INT_ADCA1 활성화를 통해 이미 시작됨.
 
 	// 전류센서 Offset 조정 대기
 	while(isOffsetCalibrated == 0U)

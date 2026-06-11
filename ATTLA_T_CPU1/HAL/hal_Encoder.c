@@ -1,25 +1,30 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : hal_Encoder.c
- Version          : 00.01
- Description      : AksIM-2 엔코더 제어를 위한 HAL (하드웨어 초기화 및 pm_bissc 연동)
+ Version          : 00.03
+ Description      : AksIM-2 엔코더 제어를 위한 HAL (하드웨어 초기화 및 SPI 통신)
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 09. (신규 생성)
+ Last Updated     : 2026. 06. 11. (64-bit FIFO 연속 수신 및 100ms 지연 추가)
 **********************************************************************/
 
-#include "hal_Encoder.h"
-#include "hal_Adc.h"
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 64-bit FIFO 연속 수신 구조 적용 (BiSS 타임아웃 회피) 및 100ms 안정화 지연 추가
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ */
 
-//---------------------------------------------------------------------------
-// 전역 변수
-//---------------------------------------------------------------------------
-uint32_t encRawData = 0;
+
+#include "hal_Encoder.h"
 
 //---------------------------------------------------------------------------
 // Encoder_Init_Hardware
 //---------------------------------------------------------------------------
 void Encoder_Init_Hardware(void)
 {
+    // 센서 전원 안정화 대기 (100ms)
+    DEVICE_DELAY_US(100000);
+
     //-----------------------------------------------------------------------
     // 1. GPIO 핀 설정 (SPI-C)
     //-----------------------------------------------------------------------
@@ -40,16 +45,15 @@ void Encoder_Init_Hardware(void)
     // SPI 리셋
     SPI_disableModule(SPIC_BASE);
     
-    // SPI 마스터 모드 설정, 5MHz 통신 예시 (LSPCLK가 50MHz일 경우)
-    // AksIM-2 등 SSI 엔코더는 보통 CPOL=0, CPHA=1 또는 CPOL=1, CPHA=0 등을 사용합니다. (확인 필요)
-    // 여기서는 기본적으로 Data on Falling Edge (CPOL=0, CPHA=1) 로 설정합니다.
+    // SPI 마스터 모드 설정, 2.5MHz 통신
+    // Data on Falling Edge (CPOL=0, CPHA=1)
     SPI_setConfig(SPIC_BASE, DEVICE_LSPCLK_FREQ, SPI_PROT_POL0PHA1,
-                  SPI_MODE_MASTER, 1000000, 16); // 1MHz, 16-bit word
+                  SPI_MODE_MASTER, 2500000, 16); // 2.5MHz, 16-bit word
     
     // FIFO 활성화
     SPI_enableFIFO(SPIC_BASE);
     SPI_clearInterruptStatus(SPIC_BASE, SPI_INT_RXFF | SPI_INT_TXFF);
-    SPI_setFIFOInterruptLevel(SPIC_BASE, SPI_FIFO_TXEMPTY, SPI_FIFO_RX1);
+    SPI_setFIFOInterruptLevel(SPIC_BASE, SPI_FIFO_TXEMPTY, SPI_FIFO_RX4);
     
     // SPI 모듈 활성화
     SPI_enableModule(SPIC_BASE);
@@ -59,19 +63,31 @@ void Encoder_Init_Hardware(void)
 // Encoder_ReadSpiData
 //---------------------------------------------------------------------------
 // SSI 통신은 더미 데이터를 전송하며 클럭을 발생시켜 수신합니다.
-uint32_t Encoder_ReadSpiData(void)
+uint64_t Encoder_ReadSpiData(void)
 {
-    uint16_t highWord, lowWord;
+    uint16_t w1, w2, w3, w4;
+    uint64_t rawData64;
     
-    // 32비트 프레임을 읽기 위해 16비트씩 두 번 전송 및 수신
-    SPI_writeDataBlockingNonFIFO(SPIC_BASE, 0xFFFF);
-    highWord = SPI_readDataBlockingNonFIFO(SPIC_BASE);
+    // BiSS 타임아웃(13.5us) 방어를 위해 FIFO를 사용하여 16비트 데이터를 4번 연속 푸시
+    SPI_writeDataBlockingFIFO(SPIC_BASE, 0xFFFF);
+    SPI_writeDataBlockingFIFO(SPIC_BASE, 0xFFFF);
+    SPI_writeDataBlockingFIFO(SPIC_BASE, 0xFFFF);
+    SPI_writeDataBlockingFIFO(SPIC_BASE, 0xFFFF);
     
-    SPI_writeDataBlockingNonFIFO(SPIC_BASE, 0xFFFF);
-    lowWord = SPI_readDataBlockingNonFIFO(SPIC_BASE);
+    // RX FIFO에 4개의 데이터(총 64비트)가 모두 찰 때까지 대기
+    while(SPI_getRxFIFOStatus(SPIC_BASE) < SPI_FIFO_RX4)
+    {
+        // Blocking wait
+    }
     
-    encRawData = ((uint32_t)highWord << 16) | lowWord;
+    // 4개의 16비트 워드 일괄 수신
+    w1 = SPI_readDataBlockingFIFO(SPIC_BASE);
+    w2 = SPI_readDataBlockingFIFO(SPIC_BASE);
+    w3 = SPI_readDataBlockingFIFO(SPIC_BASE);
+    w4 = SPI_readDataBlockingFIFO(SPIC_BASE);
     
-    return encRawData;
+    // 64비트 변수로 통합
+    rawData64 = ((uint64_t)w1 << 48) | ((uint64_t)w2 << 32) | ((uint64_t)w3 << 16) | (uint64_t)w4;
+    
+    return rawData64;
 }
-

@@ -1,11 +1,19 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Adc.c
-    Version          : 00.01
+    Version          : 00.02
     Description      : ADC 데이터 필터링 및 10ms 주기 데이터 처리 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 09. (하드웨어 종속성 분리)
+    Last Updated     : 2026. 06. 11. (ADC 스케일 팩터 및 오프셋 정밀 교정)
 **********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ * 2026. 06. 11. - ADC 스케일 팩터 및 오프셋 정밀 교정 (모터/브레이크 전류, 28V 전압)
+ */
+
 
 /* ************************** [[   include  ]]  *********************************************************** */
 #include "csu_Adc.h"
@@ -24,6 +32,10 @@ float32_t Vsen_28V_lpf = 0.0f;
 float32_t Vsen_5VD_lpf = 0.0f;
 float32_t Vsen_Ref_lpf = 0.0f;
 float32_t Tsen_Bd_lpf = 0.0f;
+
+// --- 오프셋 변수 ---
+float32_t Isen_Mot_Offset = 1.49702f; // 회로도 기준 0A = 1.49702V
+float32_t Isen_Brk_Offset = 1.49702f; // 회로도 기준 0A = 1.49702V
 
 // ADC 기준 변환 상수 (3.0V Reference)
 #define SCALE_ADC_3V (3.0f / 4096.0f)
@@ -60,8 +72,8 @@ static void updateDspTempSensor(void);
 */
 void Initial_Adc(void)
 {
-    // DSP 내부 온도 센서 활성화(캘리브레이션 초기화, 외부 레퍼런스 3.3V 적용)
-    InitTempSensor(3.3f);
+    // DSP 내부 온도 센서 활성화(캘리브레이션 초기화, 외부 레퍼런스 3.0V 적용 - 스펙 문서 일치)
+    InitTempSensor(3.0f);
 }
 
 
@@ -129,33 +141,35 @@ void CalcAdcData(void)
     float32_t V_in;
     float32_t curr_val;
 
-    // 1. ISEN_MOT (ADCA SOC2)
+// 1. ISEN_MOT (ADCA SOC2): TMCS1126 (100mV/A). 영점 1.49702V 기준 -24A~+24A 맵핑. 역산 상수 16.1550888f 적용.
     V_in = (float32_t)adcRawData.isenMot * SCALE_ADC_3V;
-    curr_val = (V_in - 1.49702f) * 16.155f;
+    curr_val = (V_in - Isen_Mot_Offset) * 16.1550888f;
     Isen_Mot_lpf = (LPF_OLD_CV * Isen_Mot_lpf) + (LPF_REAL_CV * curr_val);
 
-    // 2. ISEN_BRK (ADCA SOC3)
+    // 2. ISEN_BRK (ADCA SOC3): TMCS1126. 영점 1.49702V 기준 -2.4A~+2.4A 맵핑. 역산 상수 1.6155088f 적용.
     V_in = (float32_t)adcRawData.isenBrk * SCALE_ADC_3V;
-    curr_val = (V_in - 1.49702f) * 1.6155f;
+    curr_val = (V_in - Isen_Brk_Offset) * 1.6155088f;
     Isen_Brk_lpf = (LPF_OLD_CV * Isen_Brk_lpf) + (LPF_REAL_CV * curr_val);
 
-    // 3. VSEN_28V (ADCA SOC4)
+    // 3. VSEN_28V (ADCA SOC4): 50V 입력 시 약 2.96451V -> 50 / 2.96451 = 16.86619f
     V_in = (float32_t)adcRawData.vsen28v * SCALE_ADC_3V;
-    curr_val = V_in * 16.866f;
+    curr_val = V_in * 16.86619f;
     Vsen_28V_lpf = (LPF_OLD_CV * Vsen_28V_lpf) + (LPF_REAL_CV * curr_val);
 
-    // 4. 5VD (ADCA SOC5)
+    // 4. 5VD (ADCA SOC5): 5V 입력 시 약 2.500V -> 5 / 2.5 = 2.0
     V_in = (float32_t)adcRawData.vsen5vd * SCALE_ADC_3V;
     curr_val = V_in * 2.0f;
     Vsen_5VD_lpf = (LPF_OLD_CV * Vsen_5VD_lpf) + (LPF_REAL_CV * curr_val);
 
-    // 5. VSEN_REF (ADCB SOC1)
+    // 5. VSEN_REF (ADCB SOC1): 2.048V 측정
     V_in = (float32_t)adcRawData.vsenRef * SCALE_ADC_3V;
-    curr_val = V_in * 2.0f;
+    curr_val = V_in;
     Vsen_Ref_lpf = (LPF_OLD_CV * Vsen_Ref_lpf) + (LPF_REAL_CV * curr_val);
 
-    // 6. TSEN_BD (ADCB SOC3)
+    // 6. TSEN_BD (ADCB SOC3): MAX6605. -55도 ~ +125도 (Delta 180도) -> 0V ~ 2.142V (Delta 2.142V)
+    // T = (V_in / 2.142) * 180 - 55 = V_in * 84.033613f - 55
     V_in = (float32_t)adcRawData.tsenBd * SCALE_ADC_3V;
-    curr_val = (V_in * 84.0336f) - 55.0f;
+    curr_val = (V_in * 84.033613f) - 55.0f;
     Tsen_Bd_lpf = (LPF_OLD_TEMP * Tsen_Bd_lpf) + (LPF_REAL_TEMP * curr_val);
 }
+

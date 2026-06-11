@@ -1,11 +1,19 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Epwm.c
-    Version          : 00.01
-    Description      : EPWM 제어 및 초기화 로직
+    Version          : 00.02
+    Description      : EPWM 제어 및 초기화 로직 (GPIO0 EPWM1A 모터 PWM 통합)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 11. (모터 1x PWM Duty 제어 함수 추가)
 **********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 모터 1x PWM Duty 제어용 Epwm_SetMotorDuty_1x() 구현
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ */
+
 
 #include "hal_Epwm.h"
 /* ************************** [[   define   ]]  *********************************************************** */
@@ -13,73 +21,28 @@
 
 
 /* ************************** [[   global   ]]  *********************************************************** */
-/* ISR 정적 선언 */
-static __interrupt void isr_Epwm1Timer100us(void);
-
-/*
-@funtion    static void initEpwm7aGpio(void)
-@brief      EPWM7A(GPIO12) 핀 설정
-@param      void
-@return     static void
-@remark
-    - GPIO 12번 핀을 EPWM7A 출력으로 할당합니다.
-*/
-static void initEpwm7aGpio(void)
-{
-    EALLOW;
-    GPIO_setPinConfig(GPIO_12_EPWM7A);
-    GPIO_setPadConfig(12, GPIO_PIN_TYPE_STD);
-    GPIO_setDirectionMode(12, GPIO_DIR_MODE_OUT);
-    EDIS;
-}
-
-/*
-@funtion    void Initial_Epwm7a(void)
-@brief      EPWM7A 모듈 초기화
-@param      void
-@return     void
-@remark
-    - 기본 설정: 100Hz, 50% Duty 로 구성하되, 최초 기동 시에는 출력 정지(Force Low) 상태로 설정합니다.
-*/
-void Initial_Epwm7a(void)
-{
-    initEpwm7aGpio();
-
-    EALLOW;
-    SysCtl_enablePeripheral(SYSCTL_PERIPH_CLK_EPWM7); // ePWM7 클럭 활성화
-    EDIS;
-
-    // 기본 설정: Up-count mode (Driverlib 적용)
-    EPWM_setTimeBaseCounterMode(EPWM7_BASE, EPWM_COUNTER_MODE_UP);
-    EPWM_disablePhaseShiftLoad(EPWM7_BASE);
-    EPWM_disableSyncOutPulseSource(EPWM7_BASE, EPWM_SYNC_OUT_PULSE_ON_ALL); // 동기화 비활성화
-    EPWM_setTimeBaseCounter(EPWM7_BASE, 0u);
-
-    // 액션 한정기 설정
-    EPWM_setActionQualifierAction(EPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA); // CMPA 도달 시 Low
-    EPWM_setActionQualifierAction(EPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);   // 0 도달 시 High
-    
-    // PWM 출력 오프 (Force Low)로 시작
-    EPWM_setActionQualifierContSWForceAction(EPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
-
-    // 클럭 동기화 (ePWM7 활성화)
-    EALLOW;
-    SysCtl_enablePeripheral(SYSCTL_PERIPH_CLK_TBCLKSYNC); 
-    EDIS;
-}
+/* ISR 정적 선언 (제거됨) */
 
 /*
 @funtion    void Initial_EpwmTimer(void)
-@brief      EPWM1 기반 100us 타이머 초기화 및 ISR 등록
+@brief      EPWM1 기반 100us 타이머 및 모터 PWM (EPWM1A / GPIO0) 초기화
 @param      void
 @return     void
 @remark
     - EPWM1 모듈을 UP-DOWN 카운터 모드로 설정합니다.
     - Period = 10,000 (200MHz 기준 100us 주기)
+    - EPWM1A (GPIO 0)를 모터 드라이버 PWM 출력 핀으로 설정합니다.
     - Zero Event 인터럽트 활성화 후 ISR 등록
 */
 void Initial_EpwmTimer(void)
 {
+    /* EPWM1A (GPIO 0) 출력 핀 설정 */
+    EALLOW;
+    GPIO_setPinConfig(GPIO_0_EPWM1A);
+    GPIO_setPadConfig(0U, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(0U, GPIO_DIR_MODE_OUT);
+    EDIS;
+
     /* EPWM1 클럭 활성화 */
     SysCtl_enablePeripheral(SYSCTL_PERIPH_CLK_EPWM1);
 
@@ -93,37 +56,54 @@ void Initial_EpwmTimer(void)
                            EPWM_TIMER1_CLK_DIV,
                            EPWM_TIMER1_HCLK_DIV);
 
-    /* Zero Event 인터럽트 활성화 (카운터가 0이 될 때마다 인터럽트) */
-    EPWM_setInterruptSource(EPWM_TIMER1_BASE, EPWM_INT_TBCTR_ZERO);
-    EPWM_enableInterrupt(EPWM_TIMER1_BASE);
-    EPWM_setInterruptEventCount(EPWM_TIMER1_BASE, 1U); /* 매 1회 이벤트마다 인터럽트 */
+    // 액션 한정기 설정 (Symmetric Active High PWM)
+    // Up-count CMPA 도달 시 Low, Down-count CMPA 도달 시 High
+    EPWM_setActionQualifierAction(EPWM_TIMER1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+    EPWM_setActionQualifierAction(EPWM_TIMER1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_DOWN_CMPA);
+
+    // 최초 기동 시에는 출력 정지(Force Low) 상태로 설정합니다.
+    EPWM_setActionQualifierContSWForceAction(EPWM_TIMER1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
 
     /* ADC 트리거용 SOCA 활성화 (Zero Event 시 발생) */
     EPWM_enableADCTrigger(EPWM_TIMER1_BASE, EPWM_SOC_A);
     EPWM_setADCTriggerSource(EPWM_TIMER1_BASE, EPWM_SOC_A, EPWM_SOC_TBCTR_ZERO);
     EPWM_setADCTriggerEventPrescale(EPWM_TIMER1_BASE, EPWM_SOC_A, 1U); /* 매 1회 마다 SOCA */
 
-    /* PIE 인터럽트 등록 및 활성화 */
-    Interrupt_register(INT_EPWM1, isr_Epwm1Timer100us);
+    // 클럭 동기화 (ePWM 활성화)
+    EALLOW;
+    SysCtl_enablePeripheral(SYSCTL_PERIPH_CLK_TBCLKSYNC); 
+    EDIS;
 }
 
 /*
-@funtion    static __interrupt void isr_Epwm1Timer100us(void)
-@brief      EPWM1 타이머 100us Zero Event ISR - 시스템 운용 제어 파이프라인 실행
-@param      void
-@return     static __interrupt void
-@remark
-    - 100us 마다 호출되어 전체 시스템 제어 로직을 순차적으로 수행합니다.
+@funtion    void Epwm_SetMotorDuty_1x(float32_t dutyPercent)
+@brief      1x PWM 모드 Duty 및 SW Force 제어
+@param      dutyPercent: 0.0 ~ 100.0 (%)
+@return     void
 */
-static __interrupt void isr_Epwm1Timer100us(void)
+void Epwm_SetMotorDuty_1x(float32_t dutyPercent)
 {
-    // 시스템 제어 및 운용 로직 일괄 수행
-    csu_Control_SystemOperation();
+    // EPWM1 주기 기준 Duty 계산 (Period = 10000 이라면, Duty% = CMPA)
+    // float 기반 연산 수행
+    uint16_t cmpa_val = (uint16_t)(dutyPercent * ((float32_t)EPWM_TIMER1_PERIOD / 100.0f));
 
-    /* EPWM 인터럽트 플래그 클리어 */
-    EPWM_clearEventTriggerInterruptFlag(EPWM_TIMER1_BASE);
+    // 제한 값 검사
+    if (cmpa_val >= EPWM_TIMER1_PERIOD)
+    {
+        cmpa_val = EPWM_TIMER1_PERIOD;
+    }
 
-    /* PIE ACK */
-    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);
+    // Duty가 0%일 때는 하드웨어 SW Force Low 상태로 확실히 차단하고, 그렇지 않을 때 해제
+    if (cmpa_val == 0U)
+    {
+        EPWM_setActionQualifierContSWForceAction(EPWM_TIMER1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+    }
+    else
+    {
+        EPWM_setActionQualifierContSWForceAction(EPWM_TIMER1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+    }
+
+    EPWM_setCounterCompareValue(EPWM_TIMER1_BASE, EPWM_COUNTER_COMPARE_A, cmpa_val);
 }
+
 

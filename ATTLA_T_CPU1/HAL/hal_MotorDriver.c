@@ -4,8 +4,16 @@
  Version          : 00.00
  Description      : DRV8343 모터 드라이버 하드웨어 초기화 및 SPI 통신
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 09. (신규 생성)
+ Last Updated     : 2026. 06. 11. (모터 방향 제어 추상화 함수 추가)
 **********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 모터 방향 제어용 MotorDriver_SetDir() 함수 추가
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ */
+
 
 #include "hal_MotorDriver.h"
 
@@ -53,8 +61,22 @@ void MotorDriver_Init_Hardware(void)
     SPI_clearInterruptStatus(SPIB_BASE, SPI_INT_RXFF | SPI_INT_TXFF);
     
     SPI_enableModule(SPIB_BASE);
-}
 
+    // DRV8343 wake up 대기
+    DEVICE_DELAY_US(2000U);
+
+    //-----------------------------------------------------------------------
+    // 3. DRV8343 1x PWM 모드 설정 (Control 2 Register)
+    //-----------------------------------------------------------------------
+    uint16_t ctrl2 = MotorDriver_ReadReg(DRV8343_REG_CONTROL_2);
+    
+    // Bits 6:5 (PWM_MODE) 클리어 후 10b (1x PWM) 설정
+    ctrl2 &= ~(0x03U << 5);
+    ctrl2 |= DRV8343_CTRL2_PWM_MODE_1X;
+    
+    MotorDriver_WriteReg(DRV8343_REG_CONTROL_2, ctrl2);
+    DEVICE_DELAY_US(10U);
+}
 //---------------------------------------------------------------------------
 // MotorDriver_ReadReg
 //---------------------------------------------------------------------------
@@ -83,4 +105,25 @@ void MotorDriver_WriteReg(uint16_t addr, uint16_t data)
     
     // Write 시에는 응답 데이터를 무시하지만 FIFO를 비우기 위해 읽어줌
     SPI_readDataBlockingNonFIFO(SPIB_BASE);
+}
+
+//---------------------------------------------------------------------------
+// MotorDriver_SetDir
+//---------------------------------------------------------------------------
+/*
+@funtion    void MotorDriver_SetDir(bool bForward)
+@brief      모터 정/역방향 GPIO 출력 설정
+@param      bForward: true(정방향), false(역방향)
+@return     void
+*/
+void MotorDriver_SetDir(bool bForward)
+{
+    if (bForward)
+    {
+        GPIO_writePin(DRV8343_DIR_PIN, 1U);
+    }
+    else
+    {
+        GPIO_writePin(DRV8343_DIR_PIN, 0U);
+    }
 }

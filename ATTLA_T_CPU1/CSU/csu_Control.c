@@ -1,74 +1,107 @@
-/**********************************************************************
+﻿/**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.00
+    Version          : 00.01
     Description      : 시스템 제어 모듈 (PBIT, CBIT, 시스템 운용 파이프라인) 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (신규 생성)
+    Last Updated     : 2026. 06. 11. (함수명 명명 규칙 위반 접두어 제거)
 **********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
+ */
+
 
 #include "csu_Control.h"
 
 volatile uint16_t isOffsetCalibrated = 0U;
 volatile uint16_t isPbitComplete = 0U;
 
+// 100us 주기 기준, 10000회 누적 시 1초 대기
+static uint16_t offsetCount = 0U;
+static float32_t sumMot = 0.0f;
+static float32_t sumBrk = 0.0f;
+#define SCALE_ADC_3V (3.0f / 4096.0f)
+
 /*
-@funtion    void csu_Control_CalibrateCurrentOffset(void)
+@funtion    void Control_CalibrateCurrentOffset(void)
 @brief      전류 센서 오프셋 영점 조정 (PWM ISR 호출용)
 @param      void
 @return     void
 */
-void csu_Control_CalibrateCurrentOffset(void)
+void Control_CalibrateCurrentOffset(void)
 {
-    // TODO: 모터/브레이크 미구동 상태에서 ADC 값 누적 및 영점 계산
-    // TODO: FRAM에 오프셋 값 저장
-    
-    // 임시: 즉시 완료 처리
-    isOffsetCalibrated = 1U;
+    if (offsetCount < 10000U)
+    {
+        sumMot += (float32_t)adcRawData.isenMot * SCALE_ADC_3V;
+        sumBrk += (float32_t)adcRawData.isenBrk * SCALE_ADC_3V;
+        offsetCount++;
+    }
+    else
+    {
+        Isen_Mot_Offset = sumMot / 10000.0f;
+        Isen_Brk_Offset = sumBrk / 10000.0f;
+        
+        // TODO: FRAM에 오프셋 값 저장
+        
+        isOffsetCalibrated = 1U;
+    }
 }
 
 /*
-@funtion    void csu_Bit_RunPBIT(void)
+@funtion    void Bit_RunPBIT(void)
 @brief      초기 점검 (PBIT) 수행 (PWM ISR 호출용)
 @param      void
 @return     void
 */
-void csu_Bit_RunPBIT(void)
+void Bit_RunPBIT(void)
 {
-    // TODO: 각 하드웨어 및 센서 상태 초기 점검 로직 구현
-    
-    // 임시: 즉시 완료 처리
-    isPbitComplete = 1U;
+    // 초기에는 과전류 대신 전압, 온도, 게이트 펄트 확인
+    Bit_OvVoltage_Check();
+    Bit_OvTemperature_Check();
+    Bit_GateFault_Check();
+
+    // 치명적 결함이 없으면 초기화 완료
+    if (BitFaultFlag_Set == 0U)
+    {
+        isPbitComplete = 1U;
+    }
 }
 
 /*
-@funtion    void csu_Bit_RunCBIT(void)
+@funtion    void Bit_RunCBIT(void)
 @brief      주기 점검 (CBIT) 수행
 @param      void
 @return     void
 */
-void csu_Bit_RunCBIT(void)
+void Bit_RunCBIT(void)
 {
-    // TODO: 시스템 운용 중 주기적인 점검 로직 구현
+    Bit_OvVoltage_Check();
+    Bit_OvCurrent_Check();
+    Bit_OvTemperature_Check();
+    Bit_GateFault_Check();
 }
 
 /*
-@funtion    void csu_Control_SystemOperation(void)
+@funtion    void Control_SystemOperation(void)
 @brief      100us PWM 인터럽트 기반 시스템 운용 파이프라인
 @param      void
 @return     void
 */
-void csu_Control_SystemOperation(void)
+void Control_SystemOperation(void)
 {
     if (isOffsetCalibrated == 0U)
     {
-        csu_Control_CalibrateCurrentOffset();
+        Control_CalibrateCurrentOffset();
         return; // 오프셋 완료 전까지 운용 로직 대기
     }
     
     if (isPbitComplete == 0U)
     {
-        csu_Bit_RunPBIT();
+        Bit_RunPBIT();
         return; // PBIT 완료 전까지 운용 로직 대기
     }
 
@@ -85,10 +118,10 @@ void csu_Control_SystemOperation(void)
     // updateMotorDriverStatus();
 
     // 5. 주기점검(CBIT) CSU
-    csu_Bit_RunCBIT();
+    Bit_RunCBIT();
 
     // 6. 모터 구동제어 CSU
-    // runMotorControl();
+    MotorCtrl_Run();
 
     // 7. 데이터 저장 CSU
     // saveData();

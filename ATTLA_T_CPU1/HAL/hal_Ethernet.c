@@ -7,6 +7,13 @@
     Last Updated     : 2026. 06. 11. (csu_Ethernet과 hal_W6100 병합 및 초기화 로직 캡슐화)
 **********************************************************************/
 
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ */
+
+
 #include "hal_Ethernet.h"
 #define SOCK_UDP_COM 0
 #define PORT_UDP_COM 5001

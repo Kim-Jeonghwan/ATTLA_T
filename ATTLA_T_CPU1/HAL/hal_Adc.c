@@ -1,11 +1,19 @@
-/**********************************************************************
+﻿/**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Adc.c
-    Version          : 00.02
+    Version          : 00.03
     Description      : ADC 및 내부 온도 센서 하드웨어 제어
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 09. (VREF 설정 코드 제거)
+    Last Updated     : 2026. 06. 11. (함수명 명명 규칙 위반 접두어 제거)
 **********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
+ */
+
 
 /* ************************** [[   include  ]] *********************************************************** */
 #include "hal_Adc.h"
@@ -106,6 +114,9 @@ __interrupt void AdcaIsr(void)
 
     // 실시간 ADC 데이터 스케일링 및 필터링 호출
     CalcAdcData();
+
+    // 시스템 제어 및 운용 로직 일괄 수행 (100us 주기)
+    Control_SystemOperation();
 
     // 인터럽트 오버플로우(Interrupt Overflow) 감지 시 강제 해제하여 ADC 락업 방어 (CWE-658 방어 규격 준수)
     if (ADC_getInterruptOverflowStatus(ADCA_BASE, ADC_INT_NUMBER1))

@@ -7,6 +7,13 @@
     Last Updated     : 2026. 06. 09. (CSU 및 HAL 구조 리팩토링 반영)
 **********************************************************************/
 
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ */
+
+
 #ifndef MAIN_H
 #define MAIN_H
 
@@ -59,6 +66,9 @@
 #include "csu_Led.h"
 #include "csu_Control.h"
 #include "csu_MotorDriver.h"
+#include "csu_MotorCtrl.h"
+#include "csu_PID.h"
+#include "csu_Bit.h"
 #include "csu_SciPc.h"
 
 

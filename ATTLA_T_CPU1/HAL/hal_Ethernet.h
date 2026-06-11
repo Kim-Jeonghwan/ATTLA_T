@@ -7,6 +7,13 @@
     Last Updated     : 2026. 06. 11. (csu_Ethernet과 hal_W6100 구조 병합)
 **********************************************************************/
 
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ */
+
+
 #ifndef HAL_ETHERNET_H
 #define HAL_ETHERNET_H
 

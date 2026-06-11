@@ -1,10 +1,10 @@
-/**********************************************************************
+﻿/**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_DspInit.c
     Version          : 00.03
-    Description      : DSP 초기화 (CM 코어 통신 버퍼 포함)
+    Description      : DSP 초기화 및 GPIO/인터럽트 기본 설정
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (DSP_Initialization 함수명을 System_Initialization으로 변경)
+    Last Updated     : 2026. 06. 11. (함수명 명명 규칙 위반 접두어 제거)
 **********************************************************************/
 
 /*
@@ -20,6 +20,8 @@
  * 2026. 06. 04. - IPC 동기화(Initial_IPC) 호출을 DSP_Initialization 내부에서 main.c로 상향 이동
  * 2026. 06. 04. - CM 하드폴트 원천 박멸을 위해 미존재 인터럽트 권한 양도 API 삭제 및 초기화 안정화
  * 2026. 06. 11. - DSP_Initialization 함수명을 System_Initialization으로 변경
+ * 2026. 06. 11. - DSP_BRAKE 핀 제어 로직 회로도 스펙(Active Low) 일치화
+ * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
  */
 
 
@@ -117,19 +119,19 @@ static void Init_GpioDin(void)
     GPIO_setDirectionMode(10U, GPIO_DIR_MODE_IN);
     GPIO_setQualificationMode(10U, GPIO_QUAL_ASYNC);
 
-    // HALL_A_IN (GPIO 11)
+    // HALL_A_IN (INLA, GPIO 11)
     GPIO_setPinConfig(GPIO_11_GPIO11);
     GPIO_setPadConfig(11U, GPIO_PIN_TYPE_PULLUP);
     GPIO_setDirectionMode(11U, GPIO_DIR_MODE_IN);
     GPIO_setQualificationMode(11U, GPIO_QUAL_ASYNC);
 
-    // HALL_B_IN (GPIO 12)
+    // HALL_B_IN (INHB, GPIO 12)
     GPIO_setPinConfig(GPIO_12_GPIO12);
     GPIO_setPadConfig(12U, GPIO_PIN_TYPE_PULLUP);
     GPIO_setDirectionMode(12U, GPIO_DIR_MODE_IN);
     GPIO_setQualificationMode(12U, GPIO_QUAL_ASYNC);
 
-    // HALL_C_IN (GPIO 13)
+    // HALL_C_IN (INLB, GPIO 13)
     GPIO_setPinConfig(GPIO_13_GPIO13);
     GPIO_setPadConfig(13U, GPIO_PIN_TYPE_PULLUP);
     GPIO_setDirectionMode(13U, GPIO_DIR_MODE_IN);
@@ -188,27 +190,27 @@ static void Init_GpioDin(void)
 */
 static void Init_GpioDout(void)
 {
-    hal_Led_InitGpio();
+    Led_InitGpio();
 
     // --- 모터 드라이버 제어 출력 (DRV8343) ---
-    // DRV_ENABLE (GPIO 2 / EPWM1A)
+    // DRV_ENABLE (GPIO 2 / EPWM2A)
     GPIO_setPinConfig(GPIO_2_GPIO2);
     GPIO_setPadConfig(2U, GPIO_PIN_TYPE_STD);
     GPIO_setDirectionMode(2U, GPIO_DIR_MODE_OUT);
     GPIO_writePin(2U, 0U); // Active High 이므로 기본 Low (OFF)
 
-    // DRV_DIR (GPIO 3 / EPWM2A)
+    // DRV_DIR (INHC, GPIO 3 / EPWM2B)
     GPIO_setPinConfig(GPIO_3_GPIO3);
     GPIO_setPadConfig(3U, GPIO_PIN_TYPE_STD);
     GPIO_setDirectionMode(3U, GPIO_DIR_MODE_OUT);
     GPIO_writePin(3U, 0U); // Active High 이므로 기본 Low (OFF)
 
-    // // DRV_nBRAKE (GPIO 4 / EPWM2B)
-    // nBRAKE 사용하지 않으므로, 주석처리
-    // GPIO_setPinConfig(GPIO_4_GPIO4);
-    // GPIO_setPadConfig(4U, GPIO_PIN_TYPE_STD);
-    // GPIO_setDirectionMode(4U, GPIO_DIR_MODE_OUT);
-    // GPIO_writePin(4U, 1U); // Active Low 이므로 기본 High (OFF)
+    // DRV_nBRAKE (INLC, GPIO 4 / EPWM3A)
+    // DRV8343 1x PWM 모드 구동을 위해 브레이크 해제 상태(High)로 초기화
+    GPIO_setPinConfig(GPIO_4_GPIO4);
+    GPIO_setPadConfig(4U, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(4U, GPIO_DIR_MODE_OUT);
+    GPIO_writePin(4U, 1U); // Active Low 이므로 High 출력이 브레이크 해제 (Normal 구동) 상태임
 
     // --- 외부 장비 표시 및 제어용 IO ---
     // LED_nNORMAL (GPIO 31 할당)
@@ -227,7 +229,7 @@ static void Init_GpioDout(void)
     GPIO_setPinConfig(GPIO_35_GPIO35);
     GPIO_setPadConfig(35U, GPIO_PIN_TYPE_STD);
     GPIO_setDirectionMode(35U, GPIO_DIR_MODE_OUT);
-    GPIO_writePin(35U, 0U); // Active High 이므로 기본 Low (OFF)
+    GPIO_writePin(35U, 1U); // Active Low 이므로 기본 High (기계적 잠금 상태 유지)
 }
 
 /*
@@ -248,6 +250,8 @@ static void InitialPeripherals(void)
     // 주변장치 드라이버 초기화 (PBIT 진행을 위해 선행)
     Fram_Init();
     Encoder_Init();
+    MotorDriver_Init_Hardware(); // DRV8343 초기화 (1x PWM 모드 설정 포함)
+    MotorCtrl_Init();            // 모터 제어기 (PID, DIR 핀 등) 초기화
 }
 
 /*
@@ -264,15 +268,13 @@ static void initSystemAnalogAdc(void)
 
 /*
 @funtion    static void initSystemPwm(void)
-@brief      EPWM 등 펄스 폭 변조 제어 하드웨어 초기화
+@brief      EPWM 등 펄스 폭 변조 제어 하드웨어 초기화 (EPWM1은 initSystemCommunications에서 초기화됨)
 @param      void
 @return     static void
 */
 static void initSystemPwm(void)
 {
-    // initEPWM8(); // EPWM1 트리거 사용으로 불필요 (삭제 또는 미정의)
-    // initEPWM9(); // 온도 센서 전용 1kHz 느린 주기 ADC 트리거용 ePWM9 추가 기동 (EPWM1으로 통합)
-    Initial_Epwm7a();
+    // EPWM1 기반 100us 타이머 및 모터 PWM(GPIO0)은 initSystemCommunications에서 호출됩니다.
 }
 
 /*

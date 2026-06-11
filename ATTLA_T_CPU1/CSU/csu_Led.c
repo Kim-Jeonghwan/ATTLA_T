@@ -1,11 +1,19 @@
-/**********************************************************************
+﻿/**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Led.c
-    Version          : 00.01
+    Version          : 00.02
     Description      : 시스템 상태 표시 LED 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 09. (하드웨어 제어 분리)
+    Last Updated     : 2026. 06. 11. (함수명 명명 규칙 위반 접두어 제거)
 **********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
+ */
+
 
 /* ************************** [[   include  ]]  *********************************************************** */
 #include "csu_Led.h"
@@ -74,7 +82,7 @@ void updateLedStatus(void)
         {
             if(pLed[i]->Temp == 0u)
             {
-                hal_Led_TogglePin(pLed[i]->Index);
+                Led_TogglePin(pLed[i]->Index);
                 pLed[i]->Temp = pLed[i]->Time;
             }
             else
@@ -85,7 +93,7 @@ void updateLedStatus(void)
         else
         {
             // State 값에 따라 물리 핀 출력
-            hal_Led_WritePin(pLed[i]->Index, pLed[i]->State);
+            Led_WritePin(pLed[i]->Index, pLed[i]->State);
         }
     }
 }
@@ -106,7 +114,7 @@ void setLedStatus(stLed *pLed, bool State)
         {
             pLed->State = State;
             pLed->Toggle = LED_NONE; 
-            hal_Led_WritePin(pLed->Index, State);
+            Led_WritePin(pLed->Index, State);
         }
     }
 }

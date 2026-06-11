@@ -7,6 +7,13 @@
     Last Updated     : 2026. 06. 09. (함수명에서 csu_ 접두어 제거)
 **********************************************************************/
 
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ */
+
+
 #ifndef CSU_ADC_H
 #define CSU_ADC_H
 
@@ -26,6 +33,9 @@ extern float32_t Vsen_28V_lpf;
 extern float32_t Vsen_5VD_lpf;
 extern float32_t Vsen_Ref_lpf;
 extern float32_t Tsen_Bd_lpf;
+
+extern float32_t Isen_Mot_Offset;
+extern float32_t Isen_Brk_Offset;
 
 /* ************************** [[  function  ]]  *********************************************************** */
 /**

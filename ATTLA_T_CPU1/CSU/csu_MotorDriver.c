@@ -1,11 +1,19 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : csu_MotorDriver.c
- Version          : 00.00
+ Version          : 00.01
  Description      : DRV8343 모터 드라이버 제어 어플리케이션 계층
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 09. (신규 생성)
+ Last Updated     : 2026. 06. 11. (DRV8343 레지스터 매크로명 변경)
 **********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - hal_MotorDriver.h의 레지스터 매크로(DRV8343_REG_CONTROL_1)로 변경 반영
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ */
+
 
 #include "csu_MotorDriver.h"
 
@@ -26,7 +34,7 @@ void MotorDriver_Init(void)
     MotorDriver_ClearFaults();
     
     // 예: DRV_CTRL 레지스터 설정 (PWM Mode 등)
-    // MotorDriver_WriteReg(DRV8343_REG_DRV_CTRL, 0x00...);
+    // MotorDriver_WriteReg(DRV8343_REG_CONTROL_1, 0x00...);
 }
 
 //---------------------------------------------------------------------------
@@ -36,9 +44,9 @@ void MotorDriver_ClearFaults(void)
 {
     // CLR_FLT 비트(Bit 0)를 세트하여 에러 해제
     // (데이터시트 확인: DRV_CTRL 레지스터의 비트 0이 CLR_FLT인 경우)
-    uint16_t currentCtrl = MotorDriver_ReadReg(DRV8343_REG_DRV_CTRL);
+    uint16_t currentCtrl = MotorDriver_ReadReg(DRV8343_REG_CONTROL_1);
     currentCtrl |= 0x01; 
-    MotorDriver_WriteReg(DRV8343_REG_DRV_CTRL, currentCtrl);
+    MotorDriver_WriteReg(DRV8343_REG_CONTROL_1, currentCtrl);
 }
 
 //---------------------------------------------------------------------------

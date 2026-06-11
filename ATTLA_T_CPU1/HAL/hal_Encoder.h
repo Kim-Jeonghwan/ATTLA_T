@@ -1,11 +1,19 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : hal_Encoder.h
- Version          : 00.01
- Description      : AksIM-2 엔코더 제어를 위한 HAL (하드웨어 초기화 및 pm_bissc 연동)
+ Version          : 00.02
+ Description      : AksIM-2 엔코더 제어를 위한 HAL (하드웨어 초기화 및 SPI 통신)
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 09. (신규 생성)
+ Last Updated     : 2026. 06. 11. (64비트 수신 반환형 변경 및 불필요 변수 제거)
 **********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 64비트 수신 반환형 변경 및 불필요 변수 제거
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ */
+
 
 #ifndef HAL_ENCODER_H_
 #define HAL_ENCODER_H_
@@ -23,16 +31,10 @@ extern "C" {
 #define ENC_CLK_PIN         52      // SPIC_CLK
 
 //---------------------------------------------------------------------------
-// 전역 변수 선언
-//---------------------------------------------------------------------------
-// BiSS-C 대신 위치값을 수신할 변수 (임시, 필요시 CSU에서 관리)
-extern uint32_t encRawData;
-
-//---------------------------------------------------------------------------
 // 함수 프로토타입
 //---------------------------------------------------------------------------
 extern void Encoder_Init_Hardware(void);
-extern uint32_t Encoder_ReadSpiData(void);
+extern uint64_t Encoder_ReadSpiData(void);
 
 #ifdef __cplusplus
 }

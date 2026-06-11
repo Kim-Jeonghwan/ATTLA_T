@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Spi.c
-    Version          : 00.01
+    Version          : 00.02
     Description      : SSI 엔코더 및 W6100 통신용 SPI 하드웨어 제어
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 09. (함수명에서 hal_ 접두어 제거)
+    Last Updated     : 2026. 06. 11. (SPIC_BASE 엔코더 통신 클럭 주파수 2.5MHz로 변경)
 **********************************************************************/
 
 /*
@@ -67,7 +67,7 @@ void Initial_SPI(void) {
 @return     static void
 @remark
     - GPIO 51(SOMI), 52(CLK)를 SPI-C 기능으로 할당합니다.
-    - Master 모드, Mode 2(POL1PHA0), 1MHz 속도 및 16비트 워드 규격으로 초기화합니다.
+    - Master 모드, Mode 2(POL1PHA0), 2.5MHz 속도 및 16비트 워드 규격으로 초기화합니다.
 */
 static void InitSpic(void)
 {
@@ -94,13 +94,13 @@ static void InitSpic(void)
 
 
 
-	// SPI 초기화. 1MHz SPICLK, Mode-2(POL1PHA0), 16비트 워드 크기 설정.
+	// SPI 초기화. 2.5MHz SPICLK, Mode-2(POL1PHA0), 16비트 워드 크기 설정.
     SPI_disableModule(SPIC_BASE);
     SPI_setConfig(SPIC_BASE, 
 					DEVICE_LSPCLK_FREQ, 
 					SPI_PROT_POL1PHA0,                                          // SSI엔코더는 보통 클럭이 High로 대기하다가 첫 번째 하강 엣지에서 데이터를 내보내는 Mode 2 나 Mode 3 많이 씀 (현재 모드2)
 					SPI_MODE_MASTER, 
-					1000000u,                                                   // 일단 1MHz(260126) - 필요 시 10MHz로 변경
+					2500000u,                                                   // 2.5MHz
 					16);                                                        // 8 비트 : 8, 16 비트 : 16
     SPI_disableFIFO(SPIC_BASE);
     SPI_setEmulationMode(SPIC_BASE, SPI_EMULATION_STOP_AFTER_TRANSMIT);

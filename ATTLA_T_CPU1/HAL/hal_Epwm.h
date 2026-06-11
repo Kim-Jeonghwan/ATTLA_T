@@ -1,11 +1,19 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Epwm.h
-    Version          : 00.01
+    Version          : 00.02
     Description      : EPWM 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 08. (주석 템플릿 일괄 적용)
+    Last Updated     : 2026. 06. 11. (모터 1x PWM Duty 제어 함수 추가)
 **********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 11. - 모터 1x PWM Duty 제어용 Epwm_SetMotorDuty_1x() 원형 추가
+ * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
+ */
+
 
 #ifndef HAL_EPWM_H
 #define HAL_EPWM_H
@@ -26,6 +34,7 @@
 /* ************************** [[   global   ]]  *********************************************************** */
 
 /* ************************** [[  function  ]]  *********************************************************** */
-void Initial_Epwm7a(void);
 void Initial_EpwmTimer(void);
+void Epwm_SetMotorDuty_1x(float32_t dutyPercent);
+
 #endif // HAL_EPWM_H
