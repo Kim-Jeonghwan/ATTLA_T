@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.06
+    Version          : 00.07
     Description      : 시스템 제어 모듈 (동적 인터럽트 스위칭 및 ADC 폴링) 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (매크로 상수 및 전역 변수 헤더로 이동)
+    Last Updated     : 2026. 06. 12. (매크로 상수명 추상화: ADC_SCALE_REF_VOLT 반영)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 매크로 상수명 추상화: ADC_SCALE_REF_VOLT 반영
  * 2026. 06. 12. - 오프셋 보정 변수 및 ADC 상수 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 12. - 이산신호(DIO) 디바운싱 갱신 및 FRAM 저장 로직(saveData) 연동
  * 2026. 06. 12. - 3단계 동적 인터럽트 전환 적용 (csu_Offset_Isr, Pbit, MainControl)
@@ -170,8 +171,8 @@ __interrupt void csu_Offset_Isr(void)
     // 오프셋 누적 (1.5V 기준)
     if (xSysCtrl.offsetCount < 10000U)
     {
-        xSysCtrl.sumMot += (float32_t)adcRawData.isenMot * SCALE_ADC_3V;
-        xSysCtrl.sumBrk += (float32_t)adcRawData.isenBrk * SCALE_ADC_3V;
+        xSysCtrl.sumMot += (float32_t)adcRawData.isenMot * ADC_SCALE_REF_VOLT;
+        xSysCtrl.sumBrk += (float32_t)adcRawData.isenBrk * ADC_SCALE_REF_VOLT;
         xSysCtrl.offsetCount++;
     }
     else

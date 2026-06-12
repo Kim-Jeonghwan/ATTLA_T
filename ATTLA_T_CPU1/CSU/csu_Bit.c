@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Bit.c
-    Version          : 00.06
+    Version          : 00.07
     Description      : 1x PWM 구조용 간소화된 BIT 로직 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (매크로 상수들을 헤더 파일로 이동하여 중복 제거)
+    Last Updated     : 2026. 06. 12. (매크로 상수명 추상화: BIT_CNT_FILTER_REF 반영)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 매크로 상수명 추상화: BIT_CNT_FILTER_REF 반영
  * 2026. 06. 12. - 매크로 상수들을 헤더 파일로 이동하여 중복 제거
  * 2026. 06. 12. - PM_n24V 및 GateFault 점검 로직을 디바운싱된 xDio 변수 참조로 변경
  * 2026. 06. 11. - 신규 결함 진단(Stall, OverSpeed, Encoder) 함수 구현
@@ -53,7 +54,7 @@ void Bit_OvCurrent_Check(void)
     // 모터 과전류 체크
     if (xAdc.isenMotLpf > BIT_LIMIT_OVC_MOT_MAX)
     {
-        if (BitCnt_Mot > BIT_CNT_REF_100MS)
+        if (BitCnt_Mot > BIT_CNT_FILTER_REF)
         {
             xBit.faultOvCurrMot = 1U;
             xBit.faultFlagSet = 1U;
@@ -70,7 +71,7 @@ void Bit_OvCurrent_Check(void)
     // 브레이크 과전류 체크
     if (xAdc.isenBrkLpf > BIT_LIMIT_OVC_BRK_MAX)
     {
-        if (BitCnt_Brk > BIT_CNT_REF_100MS)
+        if (BitCnt_Brk > BIT_CNT_FILTER_REF)
         {
             xBit.faultOvCurrBrk = 1U;
             xBit.faultFlagSet = 1U;
@@ -97,7 +98,7 @@ void Bit_OvTemperature_Check(void)
 
     if (xAdc.tsenBdLpf > BIT_LIMIT_OVT_BD_MAX)
     {
-        if (BitCnt_Bd > BIT_CNT_REF_100MS)
+        if (BitCnt_Bd > BIT_CNT_FILTER_REF)
         {
             xBit.faultOvTempBd = 1U;
             xBit.faultFlagSet = 1U;
@@ -126,7 +127,7 @@ void Bit_OvVoltage_Check(void)
     // 28V 과전압 감시
     if (xAdc.vsen28VLpf > BIT_LIMIT_OVV_28V_MAX)
     {
-        if (BitCnt_28V > BIT_CNT_REF_100MS)
+        if (BitCnt_28V > BIT_CNT_FILTER_REF)
         {
             xBit.faultOvVolt28V = 1U;
             xBit.faultFlagSet = 1U;

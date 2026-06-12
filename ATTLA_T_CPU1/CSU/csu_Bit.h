@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Bit.h
-    Version          : 00.05
+    Version          : 00.06
     Description      : 1x PWM 구조용 간소화된 BIT 로직 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (csu_Bit.c 내부의 매크로 상수를 통합)
+    Last Updated     : 2026. 06. 12. (매크로 상수명 추상화: BIT_CNT_FILTER_REF)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 매크로 상수명 추상화: BIT_CNT_FILTER_REF 반영
  * 2026. 06. 12. - csu_Bit.c 내부의 매크로 상수를 통합
  * 2026. 06. 11. - BIT 임계값 매크로 집중화 및 신규 결함 구조체/함수 추가
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
@@ -39,7 +40,7 @@
 
 #define BIT_LIMIT_OVS_TIME_CNT      1000U    // 과속 감지 지연시간 (100ms, 100us * 1000)
 #define BIT_LIMIT_OVV_BRK_TIME_CNT  1000U    // 브레이크 전압 감지 지연시간 (100ms, 100us * 1000)
-#define BIT_CNT_REF_100MS           1000U    // 공통 100ms 누적 필터 카운트 (100us * 1000)
+#define BIT_CNT_FILTER_REF          1000U    // 100ms 누적 필터 카운트 기준 (100us * 1000)
 
 typedef struct {
     Uint32 informAll;

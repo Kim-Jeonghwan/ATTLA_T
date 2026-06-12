@@ -1,16 +1,18 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Dio.h
-    Version          : 00.00
+    Version          : 00.01
     Description      : 이산신호(DIO) 입력 처리 및 디바운싱 필터 모듈 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (파일 생성 및 기본 구조 작성)
+    Last Updated     : 2026. 06. 12. (매크로 상수명 추상화: DIO_CNT_DEBOUNCE_REF)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 매크로 상수명 추상화 (DIO_CNT_DEBOUNCE_REF) 및 주석 보강
  * 2026. 06. 12. - 파일 생성 및 기본 구조 작성
+ * 2026. 06. 12. - 홀센서(Hall A, B, C) 입력 변수 추가
  */
 
 #ifndef CSU_DIO_H
@@ -18,7 +20,7 @@
 
 #include "main.h"
 
-#define DIO_CNT_REF_1MS   10U    // 신호 입력 식별 카운트 , 1ms(10kHz 100us 기준)
+#define DIO_CNT_DEBOUNCE_REF   10U    // 1ms 신호 입력 식별 디바운싱 카운트 (10kHz 100us 기준)
 
 typedef struct {
     uint16_t limit1No;
@@ -28,6 +30,9 @@ typedef struct {
     uint16_t pm24V;
     uint16_t cableLoop;
     uint16_t drvFault;
+    uint16_t hallA;
+    uint16_t hallB;
+    uint16_t hallC;
 } stDioState;
 
 extern volatile stDioState xDio;

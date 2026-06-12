@@ -1,16 +1,18 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Dio.c
-    Version          : 00.00
+    Version          : 00.01
     Description      : 이산신호(DIO) 입력 처리 및 디바운싱 필터 모듈 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (파일 생성 및 디바운싱 로직 구현)
+    Last Updated     : 2026. 06. 12. (매크로 상수명 DIO_CNT_DEBOUNCE_REF 반영)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 매크로 상수명 추상화 (DIO_CNT_DEBOUNCE_REF) 적용
  * 2026. 06. 12. - 파일 생성 및 디바운싱 로직 구현
+ * 2026. 06. 12. - 홀센서(Hall A, B, C) 핀 입력 스캔 및 디바운싱 추가
  */
 
 #include "csu_Dio.h"
@@ -34,6 +36,9 @@ void Dio_Init(void)
     xDio.pm24V = 1U;
     xDio.cableLoop = 1U;
     xDio.drvFault = 1U;
+    xDio.hallA = 1U;
+    xDio.hallB = 1U;
+    xDio.hallC = 1U;
 }
 
 /**
@@ -48,7 +53,7 @@ static uint16_t Dio_Debounce(uint16_t rawValue, volatile uint16_t* pFilteredValu
     if (rawValue != *pFilteredValue)
     {
         (*pCount)++;
-        if (*pCount >= DIO_CNT_REF_1MS)
+        if (*pCount >= DIO_CNT_DEBOUNCE_REF)
         {
             *pFilteredValue = rawValue;
             *pCount = 0U;
@@ -75,6 +80,9 @@ void Dio_UpdateInput(void)
     static uint16_t cnt_pm24V = 0U;
     static uint16_t cnt_cableLoop = 0U;
     static uint16_t cnt_drvFault = 0U;
+    static uint16_t cnt_hallA = 0U;
+    static uint16_t cnt_hallB = 0U;
+    static uint16_t cnt_hallC = 0U;
 
     // 리미트 스위치 1
     Dio_Debounce(GPIO_readPin(36U), &xDio.limit1No, &cnt_limit1No);
@@ -88,4 +96,9 @@ void Dio_UpdateInput(void)
     Dio_Debounce(GPIO_readPin(40U), &xDio.pm24V, &cnt_pm24V);
     Dio_Debounce(GPIO_readPin(46U), &xDio.cableLoop, &cnt_cableLoop);
     Dio_Debounce(GPIO_readPin(10U), &xDio.drvFault, &cnt_drvFault);
+
+    // 홀센서 (모니터링용 병렬 입력)
+    Dio_Debounce(GPIO_readPin(11U), &xDio.hallA, &cnt_hallA);
+    Dio_Debounce(GPIO_readPin(12U), &xDio.hallB, &cnt_hallB);
+    Dio_Debounce(GPIO_readPin(13U), &xDio.hallC, &cnt_hallC);
 }

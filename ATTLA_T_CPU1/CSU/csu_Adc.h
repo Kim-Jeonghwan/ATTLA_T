@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Adc.h
-    Version          : 00.02
+    Version          : 00.03
     Description      : ADC 데이터 처리 로직 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (ADC 스케일 팩터 및 필터 상수 헤더로 통합)
+    Last Updated     : 2026. 06. 12. (매크로 상수명 추상화: ADC_SCALE_REF_VOLT)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 매크로 상수명 추상화 (ADC_SCALE_REF_VOLT)
  * 2026. 06. 12. - ADC 스케일 팩터 및 필터 상수를 헤더로 통합
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stAdcState 구조체(xAdc)로 통합
@@ -26,7 +27,7 @@
 /* ************************** [[   define   ]]  *********************************************************** */
 
 // ADC 기준 변환 상수 (3.0V Reference)
-#define SCALE_ADC_3V (3.0f / 4096.0f)
+#define ADC_SCALE_REF_VOLT (3.0f / 4096.0f) // 3V 레퍼런스 기준 변환 상수
 
 // LPF 상수 (전압/전류)
 #define LPF_OLD_CV 0.3f

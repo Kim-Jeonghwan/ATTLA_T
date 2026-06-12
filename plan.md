@@ -1,73 +1,36 @@
-# 구현 계획 (Implementation Plan): 헤더 파일 선언부 분리 및 매직 넘버 상수화
+# 구현 완료 (Implementation Completed): 하드코딩된 숫자 포함 매크로 상수명 추상화
 
-본 계획은 새롭게 추가된 글로벌 코딩 룰인 **"모든 매크로 상수(`#define`)와 변수 선언은 헤더(`.h`)에 작성"** 규칙을 준수하여 작성되었습니다. 각 파일 쌍(`.c` / `.h`)에 대해 상단 버전(Version) 및 수정 이력(Modification History) 업데이트가 함께 진행됩니다.
+사용자의 요청에 따라 `28V`, `5VD`, `34BIT`, `18BIT` 등의 물리적 하드웨어 제약 및 외부 입력 스펙에 해당하는 매크로 상수명은 기존 그대로 유지하였으며, 유연하게 바뀔 수 있는 소프트웨어 필터링 및 ADC 레퍼런스 상수명만 추상화하여 반영 완료했습니다.
 
-## 1. CSU 계층 리팩토링 계획
+## 1. 매크로 상수명 추상화(Abstract Naming) 적용 결과
 
-### 1) csu_Control.c / .h
-- **.c에서 제거:** 
-  - `static uint16_t offsetCount;`
-  - `static float32_t sumMot;`
-  - `static float32_t sumBrk;`
-  - `#define SCALE_ADC_3V (3.0f / 4096.0f)`
-- **.h에 추가:**
-  - `SCALE_ADC_3V` 매크로 정의 추가.
-  - 제거된 3개의 `static` 변수를 `stControlState` 구조체(`xSysCtrl`)의 멤버 변수로 통합하여 상태 관리 응집도를 높이고 헤더를 통해 공유 가능하도록 선언.
-- **수정 로직:** `csu_Control.c` 내에서 기존의 `offsetCount` 등 정적 변수를 사용하던 부분을 `xSysCtrl.offsetCount` 형태로 변경.
+### 1) csu_Dio.h & .c [✅ 완료]
+- **대상:** `#define DIO_CNT_REF_1MS   10U`
+- **수정:** `#define DIO_CNT_DEBOUNCE_REF   10U` 로 변경.
+- **주석 반영:** `// 1ms 신호 입력 식별 디바운싱 카운트 (10kHz 100us 기준)` 등 1ms 목적을 주석에 명확히 표기 완료.
+- **반영 범위:** `csu_Dio.h`, `csu_Dio.c` 일괄 교체 완료.
 
-### 2) csu_Encoder.c / .h
-- **.c에서 제거:** 매직 넘버 하드코딩된 값 `0x400000000ULL` 및 `0.001373291015625f`
-- **.h에 추가:**
-  - `#define ENC_ROLLOVER_34BIT   0x400000000ULL`
-  - `#define ENC_SCALE_18BIT_DEG  0.001373291015625f`
-- **수정 로직:** `Encoder_UpdatePosition()` 내에서 상수가 사용되던 부분을 새로 선언된 직관적인 매크로명으로 전부 대체.
+### 2) csu_Bit.h & .c [✅ 완료]
+- **대상:** `#define BIT_CNT_REF_100MS           1000U`
+- **수정:** `#define BIT_CNT_FILTER_REF          1000U` 로 변경.
+- **주석 반영:** `// 100ms 누적 필터 카운트 기준 (100us * 1000)` 등 100ms 목적을 주석에 명확히 표기 완료.
+- **반영 범위:** `csu_Bit.h`, `csu_Bit.c` 일괄 교체 완료.
+- **유지 항목:** `BIT_LIMIT_OVV_28V_MAX` (28V 입력 스펙 고정이므로 유지)
 
-### 3) csu_MotorCtrl.c / .h
-- **.c에서 제거:** 
-  - 엔코더 스케일 상수 `0.001373291f`, 속도 연산 스케일 상수 `166.6667f`
-  - PID 한계/제한 매직넘버 `100.0f`
-  - PID 초기화 Gain 상숫값들 (전류, 속도, 위치 제어기)
-- **.h에 추가:**
-  - `#define MOTOR_SCALE_POS_DEG    0.001373291f`
-  - `#define MOTOR_SCALE_SPEED_RPM  166.6667f`
-  - `#define MOTOR_DUTY_MAX         100.0f`
-  - 전류 제어기 상수: `#define PID_CURR_KP 2.0f`, `KI 0.05f`, `KD 0.0f`, `DT 0.0001f` 등
-  - 속도 제어기 상수: `#define PID_SPD_KP 0.5f` 등
-  - 위치 제어기 상수: `#define PID_POS_KP 1.0f` 등
-- **수정 로직:** `.c`의 로직 연산부와 `MotorCtrl_Init()` 함수에서 매크로 상수명을 호출하도록 일괄 변경.
+### 3) csu_Adc.h & .c / csu_Control.h & .c [✅ 완료]
+- **대상:** `#define SCALE_ADC_3V (3.0f / 4096.0f)`
+- **수정:** `#define ADC_SCALE_REF_VOLT (3.0f / 4096.0f)` 로 변경.
+- **주석 반영:** `// 3V 레퍼런스 기준 변환 상수` 표기 완료.
+- **반영 범위:** `csu_Adc.h`, `csu_Adc.c`, `csu_Control.h`, `csu_Control.c` 일괄 교체 완료.
+- **유지 항목:** `ADC_SCALE_VSEN_28V`, `ADC_SCALE_VSEN_5VD` (28V/5V 계통 스펙 고정이므로 유지)
 
-## 2. HAL 계층 리팩토링 계획
+### 4) csu_Encoder.h & .c [유지]
+- **결과:** 하드웨어 스펙이 고정됨에 따라 `ENC_ROLLOVER_34BIT`, `ENC_SCALE_18BIT_DEG` 상수명은 모두 기존 이름으로 유지.
 
-### 1) hal_Adc.c / .h
-- **.c에서 제거:** 
-  - `#define DEFAULT_MAVE_COUNT 100u`
-  - `#define DEFAULT_PWM_HZ 100000u`
-- **.h에 추가:** 제거된 두 매크로를 헤더의 `#define` 영역으로 복사하여 글로벌하게 정의.
-
-### 2) hal_Ethernet.c / .h
-- **.c에서 제거:**
-  - `#define SOCK_UDP_COM 0`
-  - `#define PORT_UDP_COM 5001`
-- **.h에 추가:** 해당 상수들을 헤더 파일 상단으로 이동.
-
-### 3) hal_Sci.c / .h
-- **.c에서 제거:**
-  - RX/TX GPIO 핀 및 설정 매크로 4종 (`SCI_PC_GPIO_PIN_SCIA_RXD` 등)
-  - `static stQsci xQueSCI_PC;` (정적 큐 변수 선언부)
-- **.h에 추가:**
-  - 제거된 핀 매크로 4종 추가.
-  - `extern stQsci xQueSCI_PC;` 선언을 헤더에 명시적으로 추가하여 외부 접근성을 제공하고 선언을 분리.
-- **수정 로직:** `.c`에서는 전역 선언 `stQsci xQueSCI_PC;` (static 키워드 제거)로 유지하여 헤더의 extern 선언과 연결.
-
-### 4) hal_Spi.c / .h
-- **.c에서 제거:**
-  - `#define ENCODER_SOMI_GPIC 51u`
-  - `#define ENCODER_CLK_GPIC 52u`
-- **.h에 추가:** 핀 설정 매크로들을 헤더 파일로 이동.
+## 2. Architecture.md 
+- **결과:** 상수 명칭 중 `Architecture.md` 문서 내부에 언급되어 있던 상수들은 모두 유지하기로 결정된 항목들(`ENC_ROLLOVER_34BIT` 등)이므로, 아키텍처 문서는 수정 없이 기존 내용으로 유지하였습니다.
 
 ---
-**검토 요청 (User Review Required)**
-1. `csu_Control.c`의 `static` 정적 변수들을 글로벌 `stControlState xSysCtrl` 구조체 멤버로 편입시키는 방안으로 진행해도 좋습니까? (추천 방식)
-2. `hal_Sci.c`의 큐 구조체인 `xQueSCI_PC` 변수는 `.h` 파일에 `extern`으로 노출하여 사용하는 것이 의도에 부합합니까?
-
-확인 후 **"승인"** 또는 **"구현해"** 라고 지시해 주시면 즉시 코드 변경 작업을 수행하겠습니다.
+**작업 완료 (Task Completed)**
+- 모든 파일의 헤더 주석에 버전(`Version`) 증가 및 `Modification History` 이력을 업데이트 완료했습니다.
+- 요청하신 대로 변수 변경 및 유지 작업이 모두 성공적으로 구현되었습니다.
