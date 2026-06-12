@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Bit.c
-    Version          : 00.04
+    Version          : 00.05
     Description      : 1x PWM 구조용 간소화된 BIT 로직 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (신규 결함 진단 로직 추가 및 Driverlib 적용)
+    Last Updated     : 2026. 06. 12. (디바운싱된 xDio 구조체 값 참조로 변경)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - PM_n24V 및 GateFault 점검 로직을 디바운싱된 xDio 변수 참조로 변경
  * 2026. 06. 11. - 신규 결함 진단(Stall, OverSpeed, Encoder) 함수 구현
  * 2026. 06. 11. - PM_n24V 및 GateFault 점검에 Driverlib(GPIO_readPin) 적용
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
@@ -146,8 +147,8 @@ void Bit_OvVoltage_Check(void)
         if (BitCnt_28V > 0U) BitCnt_28V--;
     }
 
-    // 신규 PM_n24V 브레이크 전압 감시 (Active Low, GPIO 40)
-    if (GPIO_readPin(40U) == 0U)
+    // 신규 PM_n24V 브레이크 전압 감시 (Active Low, 디바운싱 필터 적용)
+    if (xDio.pm24V == 0U)
     {
         if (BitCnt_Brk24V > BIT_LIMIT_OVV_BRK_TIME_CNT)
         {
@@ -173,9 +174,9 @@ void Bit_OvVoltage_Check(void)
 void Bit_GateFault_Check(void)
 {
     // DRV8343 nFAULT 확인 로직
-    // nFAULT 핀은 Active Low 이므로 '0'일 때 에러 상태입니다. (GPIO 10번 가정)
-    // Driverlib 규칙 준수를 위해 GpioDataRegs 대신 GPIO_readPin() API 사용
-    if (GPIO_readPin(10U) == 0U)
+    // nFAULT 핀은 Active Low 이므로 '0'일 때 에러 상태입니다.
+    // 디바운싱 처리된 xDio.drvFault 변수를 참조합니다.
+    if (xDio.drvFault == 0U)
     {
         xBit.faultDrv8343nFault = 1U;
         xBit.faultFlagSet = 1U;

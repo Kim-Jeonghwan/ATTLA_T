@@ -1,82 +1,74 @@
-# 구현 계획 (Implementation Plan): ADC 폴링 전환 및 동적 인터럽트 스위칭
+# ATTLA_T 시스템 이산신호(DIO) 디바운싱 및 FRAM 저장 로직 구현 계획
 
-## 1. 목표 (Goal)
-상무님의 지시사항 및 TDU 참조 코드 분석 결과에 따라, 다음 사항들을 구현합니다.
-1. **ADC 변환 방식 변경**: 하드웨어 ADC 인터럽트 진입 방식에서 **EPWM1 인터럽트 내 ADC 완료 폴링(대기) 방식**으로 전환.
-2. **동적 인터럽트 스위칭 구현**: 메인 백그라운드 루프에서의 블로킹 대기를 제거하고, `csu_Offset_Isr` ➡️ `csu_Pbit_Isr` ➡️ `csu_MainControl_Isr` 순서로 인터럽트 벡터를 동적으로 변경하여 100us 시퀀스를 제어.
-3. **명세서 정리 및 이름 변경**: 기존 `Project_Spec.md`의 세부 내용(GPIO, 변수, 함수명 등)을 일체 유실 없이 유지하면서 문서를 보기 좋게 정리하고, 파일명을 변경하여 최신 구현 내용을 반영.
+본 계획서는 요구사항에 따라 1) 불필요한 GPIO 1 초기화 코드를 삭제하고, 2) 1ms 디바운싱 필터가 적용된 이산신호(DIO) 수집 모듈을 신규 구현하며, 3) FRAM을 통한 중요 데이터(오프셋 등) 저장 래퍼 모듈을 구현하는 방안을 설명합니다.
 
----
-
-## 2. 사용자 피드백 요청 (User Review Required)
-> [!NOTE]
-> **명세서(Spec) 파일명 추천**
-> "프로젝트스펙" 이라는 단어 대신, 소프트웨어 구조와 하드웨어 제어 규격을 모두 담고 있으므로 **`Architecture.md` (아키텍처)** 또는 **`SystemDesign.md` (시스템 설계서)** 를 추천합니다.
-> 하지만 사용하기 가장 깔끔하고 짧은 단어를 원하신다면 **`Spec.md`** 로 변경하는 것도 좋습니다. 마음에 드시는 명칭을 알려주시면 해당 이름으로 정리하겠습니다.
+## User Review Required
 
 > [!IMPORTANT]
-> **PBIT 대기 및 검증 시간 질문**
-> Offset은 10,000회(1초) 수행 후 PBIT로 넘어갑니다. PBIT 인터럽트(`csu_Pbit_Isr`)에서는 과전압/과열/게이트폴트를 점검하는데, **1회라도 정상이면 바로 메인 제어 루프로 넘어갈지**, 아니면 PBIT 단계에서도 **수백 ms 정도의 안정화(대기) 시간**을 가진 뒤 넘어갈지 결정이 필요합니다. (별도 지시가 없으시다면 1회 정상 확인 후 즉시 메인 제어로 스위칭하도록 구현하겠습니다.)
+> **구조 설계 승인 요청**
+> 1. 이산신호 수집을 전담하는 모듈(`csu_Dio.c`, `csu_Dio.h`)을 신규 생성하여 독립적으로 관리하고자 합니다.
+> 2. `csu_Bit.c`에 있던 기존 `GPIO_readPin(40U)`(24V 감시) 및 `GPIO_readPin(10U)`(DRV nFAULT) 직접 접근 로직을, 새롭게 구현될 디바운싱된 구조체 값(`xDio.pm24v`, `xDio.drvFault`)을 참조하도록 수정합니다.
+> 3. 오프셋 값을 FRAM에 저장하기 위해 `csu_Control.c` 내에 `Control_SaveDataToFram()` 함수를 구현하고, 초기 오프셋 산출 완료 시(`csu_Offset_Isr`) 1회 저장하도록 구성합니다.
+
+해당 아키텍처 및 변경 사항에 대해 승인해 주시면 즉시 구현을 진행하겠습니다.
+
+## Proposed Changes
 
 ---
 
-## 3. 제안된 코드 변경 사항 (Proposed Changes)
+### 하드웨어 초기화 (HAL)
 
-### 3.1. ADC 모듈 (HAL 계층)
-#### [MODIFY] `hal_Adc.c` / `hal_Adc.h`
-- `InitAdcModules()` 내의 `ADC_enableInterrupt(ADCA_BASE, ADC_INT_NUMBER1);` 구문을 제거하여 PIE로의 인터럽트 발생을 차단합니다. (인터럽트 플래그 세팅 로직은 폴링을 위해 유지)
-- 기존의 `AdcaIsr()` 함수를 완전히 제거합니다.
-
-### 3.2. EPWM 모듈 (HAL 계층)
-#### [MODIFY] `hal_Epwm.c` / `hal_Epwm.h`
-- `Initial_EpwmTimer()` 내에서 `EPWM1` 모듈이 `TBCTR_ZERO` 시점에 인터럽트를 발생시키도록 설정합니다.
-  ```c
-  EPWM_setInterruptSource(EPWM_TIMER1_BASE, EPWM_INT_TBCTR_ZERO);
-  EPWM_enableInterrupt(EPWM_TIMER1_BASE);
-  EPWM_setInterruptEventCount(EPWM_TIMER1_BASE, 1U);
-  ```
-
-### 3.3. 시스템 제어 모듈 (CSU 계층)
-#### [MODIFY] `csu_Control.c` / `csu_Control.h`
-- 신규 ISR 3종 세트를 선언하고 구현합니다. (함수는 RAM 공간인 `.TI.ramfunc`에 할당)
-- **`csu_Offset_Isr()`**:
-  1. ADC INT 플래그 `while` 대기 및 플래그 클리어
-  2. ADC 데이터 리드 (`CalcAdcData()`)
-  3. 전류/브레이크 오프셋 누적 연산
-  4. 10,000 카운트(1초) 도달 시 평균 적용 및 `Interrupt_register(INT_EPWM1, &csu_Pbit_Isr);` 스위칭
-- **`csu_Pbit_Isr()`**:
-  1. ADC INT 플래그 대기 및 클리어
-  2. ADC 데이터 리드
-  3. `Bit_RunPBIT()` 수행. 이상 없을 경우 `Interrupt_register(INT_EPWM1, &csu_MainControl_Isr);` 스위칭
-- **`csu_MainControl_Isr()`**:
-  1. ADC INT 플래그 대기 및 클리어
-  2. ADC 데이터 리드
-  3. 메인 파이프라인 수행 (`Encoder_UpdatePosition()`, `Bit_RunCBIT()`, `MotorCtrl_Run()` 등)
-- 기존에 `Control_SystemOperation()` 내부에 있던 Offset 캘리브레이션과 PBIT 대기 분기 로직은 제거하여 최적화합니다.
-
-#### [MODIFY] `csu_Adc.c` / `csu_Adc.h`
-- 오프셋 누적을 위해 1.5V를 읽는 과정에서 기존 EMA 필터를 거치기 전의 RAW 데이터(혹은 1차 선형 스케일링 된 데이터)를 직접 10,000번 합산할 수 있도록 로직을 다듬습니다.
-
-### 3.4. 메인 루프 (Main)
-#### [MODIFY] `main.c`
-- 부팅 및 초기화(`System_Initialization`) 직후에 `Interrupt_register(INT_EPWM1, &csu_Offset_Isr);` 및 `Interrupt_enable(INT_EPWM1);`을 수행하여 최초 오프셋 인터럽트를 가동합니다.
-- 메인 함수에 있던 다음의 폴링(블로킹) 대기 while 문들을 완전히 제거합니다. (인터럽트 동적 스위칭이 이를 대체함)
-  ```c
-  while(xSysCtrl.isOffsetCalibrated == 0U) {}
-  while(xSysCtrl.isPbitComplete == 0U) {}
-  ```
-
-### 3.5. 명세서 (Documentation)
-#### [NEW] `Spec.md` (또는 확정된 이름)
-- 기존 `Project_Spec.md` 내용 전체 복사 후, 가독성 높은 헤더/표/강조 포맷팅 적용.
-- 구현 완료될 "동적 인터럽트 스위칭 (Offset -> PBIT -> Main)" 및 "ADC 폴링 아키텍처" 내용을 스펙에 업데이트.
-#### [DELETE] `Project_Spec.md`
-- 기존 파일 삭제
+#### [MODIFY] [hal_DspInit.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/HAL/hal_DspInit.c)
+* `Init_GpioDin(void)` 함수 내부의 GPIO 1 입력 설정(GND 체크용) 관련 코드 3줄 삭제.
+```c
+    // GPIO 1: 입력 설정 (GND 체크용)
+    // GPIO_setPinConfig(GPIO_1_GPIO1);
+    // GPIO_setPadConfig(1u, GPIO_PIN_TYPE_PULLUP);
+    // GPIO_setDirectionMode(1u, GPIO_DIR_MODE_IN);
+```
 
 ---
 
-## 4. 검증 계획 (Verification Plan)
-- `main.c`에서 블로킹 대기 구문 삭제 후에도 펌웨어가 정상적으로 부팅되는지 확인.
-- `csu_Offset_Isr`가 100us 간격으로 10,000회 정상 호출되며 1초간 지연되는지 검증.
-- `csu_Pbit_Isr`를 거쳐 `csu_MainControl_Isr`로 ISR 벡터가 성공적으로 전환되는지(모터 구동 및 CBIT 진입 여부) 확인.
-- ISR 내에서 ADC 폴링 `while` 문이 무한 루프(Deadlock)에 빠지지 않고 정상 탈출하는지 확인.
+### 이산신호 입력 처리 (CSU)
+
+#### [NEW] `ATTLA_T_CPU1/CSU/csu_Dio.h`
+* 이산신호 상태를 담는 구조체 `stDioState xDio` 선언.
+* 핀 매크로 및 디바운싱 기준 카운트(`DIO_CNT_REF_1MS = 10U`) 매크로 정의.
+* `Dio_Init()`, `Dio_UpdateInput()` 프로토타입 선언.
+
+#### [NEW] `ATTLA_T_CPU1/CSU/csu_Dio.c`
+* 100us 주기로 호출되는 `Dio_UpdateInput()` 구현.
+* TDU 프로젝트의 디바운싱 방식을 적용하여, 각 입력 핀(GPIO 36, 37, 38, 39, 40, 46, 10)에 대해 10카운트(1ms) 동안 상태가 유지되었을 때만 `xDio` 구조체 변수를 갱신.
+
+---
+
+### 상태 진단 (CSU)
+
+#### [MODIFY] [csu_Bit.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_Bit.c)
+* `Bit_OvVoltage_Check()` 내부의 24V 브레이크 전압 감시를 `if (GPIO_readPin(40U) == 0U)` 에서 `if (xDio.pm24V == 0U)` 로 변경.
+* `Bit_GateFault_Check()` 내부의 드라이버 폴트 감시를 `if (GPIO_readPin(10U) == 0U)` 에서 `if (xDio.drvFault == 0U)` 로 변경.
+* (노이즈에 강인한 디바운싱 상태값을 기반으로 에러를 판별하도록 구조 개선)
+
+---
+
+### 메인 제어 및 FRAM (CSU)
+
+#### [MODIFY] [csu_Control.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_Control.c)
+* `Control_SystemOperation()` 함수 내 주석 처리된 `// updateDioInput();` 대신 `Dio_UpdateInput();` 호출 삽입.
+* `// saveData();` 주석 위치에 FRAM 데이터 저장 함수 호출 또는 스케줄러 구현.
+* FRAM 저장 래퍼 함수인 `Control_SaveDataToFram()` 신규 작성.
+* `csu_Offset_Isr()`에서 오프셋 측정이 완료되어 `xSysCtrl.isOffsetCalibrated = 1U;`가 되는 시점에 `Control_SaveOffsetToFram()`을 호출하여 전류 오프셋을 FRAM의 특정 주소(예: 0x0000)에 기록.
+
+#### [MODIFY] [csu_Control.h](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_Control.h)
+* FRAM 저장 관련 함수(`Control_SaveOffsetToFram()`, `Control_SaveDataToFram()`) 프로토타입 선언.
+
+---
+
+## Verification Plan
+
+### Manual Verification
+1. **빌드 검증**: 사용자가 CCS에서 빌드하여 오류 없이 컴파일되는지 확인합니다.
+2. **디버깅 모니터링**: 
+   - easyDSP나 CCS 디버거를 통해 `xDio` 구조체에 리미트 스위치 등의 값이 1ms 지연 후 정확하게 갱신되는지 확인합니다.
+   - GPIO 1이 더 이상 설정되지 않음을 레지스터 뷰(Registers View)에서 검증합니다.
+   - 1초 경과 시 측정된 오프셋 값이 지정된 FRAM 주소에서 `Fram_ReadByte()`를 통해 다시 정상적으로 읽혀오는지 확인합니다.

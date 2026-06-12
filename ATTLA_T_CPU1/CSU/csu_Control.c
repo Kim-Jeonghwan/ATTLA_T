@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.04
+    Version          : 00.05
     Description      : 시스템 제어 모듈 (동적 인터럽트 스위칭 및 ADC 폴링) 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (동적 인터럽트 스위칭 적용)
+    Last Updated     : 2026. 06. 12. (이산신호 갱신 및 FRAM 저장 연동)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 이산신호(DIO) 디바운싱 갱신 및 FRAM 저장 로직(saveData) 연동
  * 2026. 06. 12. - 3단계 동적 인터럽트 전환 적용 (csu_Offset_Isr, Pbit, MainControl)
  * 2026. 06. 11. - CBIT(Bit_RunCBIT)에 스톨, 과속, 엔코더 신규 점검 함수 추가
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
@@ -41,8 +42,39 @@ static float32_t sumBrk = 0.0f;
 void Control_Init(void)
 {
     // 구조체 명시적 초기화
+    Dio_Init();
     xSysCtrl.isOffsetCalibrated = 0U;
     xSysCtrl.isPbitComplete = 0U;
+}
+
+/*
+@function    void Control_SaveOffsetToFram(void)
+@brief      초기 1초 오프셋 보정 완료 후 FRAM에 오프셋 값 저장
+@param      void
+@return     void
+*/
+void Control_SaveOffsetToFram(void)
+{
+    // 오프셋 값을 밀리암페어(mA) 단위 정수형으로 변환 후 FRAM(0x0000)에 저장
+    uint16_t motOffset_mA = (uint16_t)(xAdc.isenMotOffset * 1000.0f);
+    uint16_t brkOffset_mA = (uint16_t)(xAdc.isenBrkOffset * 1000.0f);
+
+    Fram_WriteByte(0x0000U, (motOffset_mA >> 8U) & 0xFFU);
+    Fram_WriteByte(0x0001U, motOffset_mA & 0xFFU);
+    
+    Fram_WriteByte(0x0002U, (brkOffset_mA >> 8U) & 0xFFU);
+    Fram_WriteByte(0x0003U, brkOffset_mA & 0xFFU);
+}
+
+/*
+@function    void Control_SaveDataToFram(void)
+@brief      시스템 운영 중 특정 조건에 맞춰 데이터 저장 래퍼 함수
+@param      void
+@return     void
+*/
+void Control_SaveDataToFram(void)
+{
+    // 추후 데이터 저장 조건(주기적 로깅 또는 고장 발생 시 에러 코드 기록) 구현 예정
 }
 
 // 기존의 PWM 인터럽트 내에서 처리하던 오프셋 로직은 제거되고 csu_Offset_Isr 로 이동됨
@@ -92,7 +124,7 @@ void Control_SystemOperation(void)
     // CalcAdcData(); // (참고용. ADC 자체 인터럽트로 분리될 경우 호출 안 함)
     
     // 2. 이산신호 입력 CSU
-    // updateDioInput();
+    Dio_UpdateInput();
 
     // 3. 위치(각도) 정보 획득 및 처리 CSU
     Encoder_UpdatePosition();
@@ -107,7 +139,7 @@ void Control_SystemOperation(void)
     MotorCtrl_Run();
 
     // 7. 데이터 저장 CSU
-    // saveData();
+    Control_SaveDataToFram();
 }
 
 
@@ -155,6 +187,9 @@ __interrupt void csu_Offset_Isr(void)
         EALLOW;
         PieVectTable.EPWM1_INT = &csu_Pbit_Isr;
         EDIS;
+
+        // FRAM에 오프셋 저장 래퍼 함수 호출 (인터럽트 교체 후 지연 처리)
+        Control_SaveOffsetToFram();
     }
 
     EPWM_clearEventTriggerInterruptFlag(EPWM_TIMER1_BASE);

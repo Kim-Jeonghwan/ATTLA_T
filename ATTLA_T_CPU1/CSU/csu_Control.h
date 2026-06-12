@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.h
-    Version          : 00.04
+    Version          : 00.05
     Description      : 시스템 제어 모듈 (PBIT, CBIT, 오프셋 조정 등) 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (동적 인터럽트 ISR 선언 추가)
+    Last Updated     : 2026. 06. 12. (이산신호 및 FRAM 로깅 연동)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - DIO 디바운싱 필터 및 FRAM 저장 래퍼 연동
  * 2026. 06. 12. - 3단계 동적 인터럽트 ISR 선언 추가 (csu_Offset_Isr, csu_Pbit_Isr, csu_MainControl_Isr)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stControlState 구조체(xSysCtrl)로 통합
@@ -63,6 +64,20 @@ void Bit_RunCBIT(void);
  * @return     void
  */
 void Control_SystemOperation(void);
+
+/**
+ * @brief      전류 오프셋을 FRAM에 저장 (초기화 완료 시 1회 호출)
+ * @param      void
+ * @return     void
+ */
+void Control_SaveOffsetToFram(void);
+
+/**
+ * @brief      주기적인 데이터 FRAM 저장 래퍼 함수 (미정)
+ * @param      void
+ * @return     void
+ */
+void Control_SaveDataToFram(void);
 
 // 시스템 제어 시퀀스 ISR 체인 (EPWM1 인터럽트 발생)
 __interrupt void csu_Offset_Isr(void);

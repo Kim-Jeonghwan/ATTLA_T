@@ -2,6 +2,7 @@
 "./CSU/csu_Adc.obj"
 "./CSU/csu_Bit.obj"
 "./CSU/csu_Control.obj"
+"./CSU/csu_Dio.obj"
 "./CSU/csu_Encoder.obj"
 "./CSU/csu_Led.obj"
 "./CSU/csu_MotorCtrl.obj"

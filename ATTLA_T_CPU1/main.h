@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : main.h
-    Version          : 00.02
+    Version          : 00.03
     Description      : 코어 시스템 통합 헤더 파일
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (CM 및 IPC 관련 매크로 제거)
+    Last Updated     : 2026. 06. 12. (csu_Dio.h 인클루드 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - csu_Dio.h 인클루드 추가
  * 2026. 06. 12. - CM 및 IPC 관련 매크로 제거
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -60,6 +61,7 @@
 #include "hal_Ethernet.h"
 
 /* CSU Library */
+#include "csu_Dio.h"
 #include "csu_Adc.h"
 #include "csu_Encoder.h"
 #include "csu_Led.h"

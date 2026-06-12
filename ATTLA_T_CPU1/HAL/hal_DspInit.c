@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_DspInit.c
-    Version          : 00.04
+    Version          : 00.05
     Description      : DSP 초기화 및 GPIO/인터럽트 기본 설정
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (CM 및 IPC 관련 주석 제거)
+    Last Updated     : 2026. 06. 12. (GPIO 1 입력 설정 제거)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - GPIO 1 입력 설정(GND 체크용) 제거
  * 2026. 06. 12. - CM 및 IPC 관련 주석 제거
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 02. - 온도 센서 전용 1kHz 느린 트리거용 ePWM9 모듈 추가 기동 반영
@@ -40,7 +41,7 @@ static void Init_GpioDout(void);
 
 static void InitialPeripherals(void);
 
-// Helper functions for peripheral initialization (Complexity reduction)
+// 주변장치 초기화용 헬퍼 함수 (정적 시험 메트릭: 복잡도 감소 목적)
 static void initSystemAnalogAdc(void);
 static void initSystemPwm(void);
 static void initSystemUserInterface(void);
@@ -105,11 +106,6 @@ static void Initial_GPIO(void)
 */
 static void Init_GpioDin(void)
 {
-    // GPIO 1: 입력 설정 (GND 체크용)
-    GPIO_setPinConfig(GPIO_1_GPIO1);
-    GPIO_setPadConfig(1u, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setDirectionMode(1u, GPIO_DIR_MODE_IN);
-
     // --- 모터 드라이버 피드백 및 홀 센서 ---
     // DRV_nFAULT (GPIO 10)
     GPIO_setPinConfig(GPIO_10_GPIO10);
