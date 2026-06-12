@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Led.c
-    Version          : 00.02
+    Version          : 00.03
     Description      : 시스템 상태 표시 LED 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 12. (내부 온도 센서 관련 주석 정리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 내부 온도 센서 관련 레거시 주석 삭제
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
@@ -58,7 +59,6 @@ void Initial_Led(void)
 @return     void
 @remark
     - 100ms 주기로 호출되며 각 LED의 토글 카운트를 갱신하고 물리 핀 출력을 제어합니다.
-    - 내부 온도 센서 값이 LIMIT_TEMP_ERROR를 초과하면 ERROR LED를 점등합니다.
 */
 void updateLedStatus(void)
 {

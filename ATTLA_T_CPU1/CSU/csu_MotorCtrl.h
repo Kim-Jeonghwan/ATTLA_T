@@ -1,15 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.h
-    Version          : 00.01
+    Version          : 00.03
     Description      : 1x PWM 모드 기반 모터 제어 모듈 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 12. (제어 루프 분주비 매크로 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 제어 루프 분주비 매크로 추가 (이름에 숫자를 배제하고 개념적 명칭 적용)
+ * 2026. 06. 12. - PID 상수, 모터 출력 한도, 변환 스케일 상수 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 11. - 모터 제어 소프트 리미트(위치, 속도, 전류) 상수 및 매크로 추가
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stMotorCtrlState 구조체(xMotorCtrl)로 통합
@@ -34,6 +36,34 @@
 
 // 클램핑 매크로 유틸리티
 #define CLAMP_F32(x, min, max)  (((x) < (min)) ? (min) : (((x) > (max)) ? (max) : (x)))
+
+// --- 모터 제어 연산 스케일 및 듀티 한도 ---
+#define MOTOR_SCALE_POS_DEG    0.001373291f
+#define MOTOR_SCALE_SPEED_RPM  166.6667f
+#define MOTOR_DUTY_MAX         100.0f
+
+// --- 제어 루프 분주비 (Decimation Ratios) ---
+#define DECIMATION_SPEED_CTRL  10U     // 100us -> 속도 제어기용 분주 (1ms 루프)
+#define DECIMATION_POS_CTRL    4U      // 속도 루프 -> 위치 제어기용 분주 (4ms 루프)
+
+// --- PID 제어기 게인 및 주기 파라미터 ---
+// 전류 제어기 (100us)
+#define PID_CURR_KP 2.0f
+#define PID_CURR_KI 0.05f
+#define PID_CURR_KD 0.0f
+#define PID_CURR_DT 0.0001f
+
+// 속도 제어기 (1ms)
+#define PID_SPD_KP  0.5f
+#define PID_SPD_KI  0.01f
+#define PID_SPD_KD  0.0f
+#define PID_SPD_DT  0.001f
+
+// 위치 제어기 (4ms)
+#define PID_POS_KP  1.0f
+#define PID_POS_KI  0.0f
+#define PID_POS_KD  0.0f
+#define PID_POS_DT  0.004f
 
 
 // 목표 구동 모드

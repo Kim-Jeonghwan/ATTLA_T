@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.05
+    Version          : 00.06
     Description      : 시스템 제어 모듈 (동적 인터럽트 스위칭 및 ADC 폴링) 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (이산신호 갱신 및 FRAM 저장 연동)
+    Last Updated     : 2026. 06. 12. (매크로 상수 및 전역 변수 헤더로 이동)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 오프셋 보정 변수 및 ADC 상수 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 12. - 이산신호(DIO) 디바운싱 갱신 및 FRAM 저장 로직(saveData) 연동
  * 2026. 06. 12. - 3단계 동적 인터럽트 전환 적용 (csu_Offset_Isr, Pbit, MainControl)
  * 2026. 06. 11. - CBIT(Bit_RunCBIT)에 스톨, 과속, 엔코더 신규 점검 함수 추가
@@ -27,12 +28,6 @@ volatile stControlState xSysCtrl;
 #pragma CODE_SECTION(csu_Pbit_Isr, ".TI.ramfunc");
 #pragma CODE_SECTION(csu_MainControl_Isr, ".TI.ramfunc");
 
-// 100us 주기 기준, 10000회 누적 시 1초 대기
-static uint16_t offsetCount = 0U;
-static float32_t sumMot = 0.0f;
-static float32_t sumBrk = 0.0f;
-#define SCALE_ADC_3V (3.0f / 4096.0f)
-
 /**
  * @function Control_Init
  * @brief    시스템 제어 모듈 상태 구조체 초기화
@@ -45,6 +40,9 @@ void Control_Init(void)
     Dio_Init();
     xSysCtrl.isOffsetCalibrated = 0U;
     xSysCtrl.isPbitComplete = 0U;
+    xSysCtrl.offsetCount = 0U;
+    xSysCtrl.sumMot = 0.0f;
+    xSysCtrl.sumBrk = 0.0f;
 }
 
 /*
@@ -170,17 +168,17 @@ __interrupt void csu_Offset_Isr(void)
     adcRawData.tsenBd  = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER3);
 
     // 오프셋 누적 (1.5V 기준)
-    if (offsetCount < 10000U)
+    if (xSysCtrl.offsetCount < 10000U)
     {
-        sumMot += (float32_t)adcRawData.isenMot * SCALE_ADC_3V;
-        sumBrk += (float32_t)adcRawData.isenBrk * SCALE_ADC_3V;
-        offsetCount++;
+        xSysCtrl.sumMot += (float32_t)adcRawData.isenMot * SCALE_ADC_3V;
+        xSysCtrl.sumBrk += (float32_t)adcRawData.isenBrk * SCALE_ADC_3V;
+        xSysCtrl.offsetCount++;
     }
     else
     {
         // 1초 도달 시 평균 적용
-        xAdc.isenMotOffset = sumMot / 10000.0f;
-        xAdc.isenBrkOffset = sumBrk / 10000.0f;
+        xAdc.isenMotOffset = xSysCtrl.sumMot / 10000.0f;
+        xAdc.isenBrkOffset = xSysCtrl.sumBrk / 10000.0f;
         xSysCtrl.isOffsetCalibrated = 1U;
 
         // PBIT 인터럽트로 스위칭

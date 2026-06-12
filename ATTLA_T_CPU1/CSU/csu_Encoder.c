@@ -1,15 +1,16 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : csu_Encoder.c
- Version          : 00.05
+ Version          : 00.06
  Description      : AksIM-2 엔코더 어플리케이션 기능 처리 모듈
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+ Last Updated     : 2026. 06. 12. (매크로 상수 헤더로 이동)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 롤오버 및 스케일 매직넘버 상수화하여 헤더(.h)로 분리 (글로벌 룰 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 전역 변수를 stEncoderState 구조체(xEncoder)로 통합하여 네임스페이스 및 상태 관리 개선
  * 2026. 06. 11. - 컴파일러 표준(C89/C90)에 맞게 for 문 변수 선언 위치 변경 및 미사용 변수 경고 해결
@@ -149,12 +150,12 @@ void Encoder_UpdatePosition(void)
             else
             {
                 // 34-bit 롤오버 처리 (0x3FFFFFFFF + 1 = 0x400000000ULL)
-                xEncoder.position = (0x400000000ULL + xEncoder.rawPos) - xEncoder.offset;
+                xEncoder.position = (ENC_ROLLOVER_34BIT + xEncoder.rawPos) - xEncoder.offset;
             }
             
             // 5. 기계각 스케일링 변환
             // 18-bit 싱글턴 해상도 기준 상수 (360 / 262144 = 0.001373291015625)
-            xEncoder.angleDeg = (float32_t)xEncoder.position * 0.001373291015625f;
+            xEncoder.angleDeg = (float32_t)xEncoder.position * ENC_SCALE_18BIT_DEG;
         }
         else
         {

@@ -1,23 +1,22 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Ethernet.c
-    Version          : 00.01
+    Version          : 00.02
     Description      : W6100 이더넷 컨트롤러 제어 및 소켓 통신(Ext. Interrupt)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 12. (통신 포트 매크로 헤더 이동)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 소켓 및 포트 매크로 상수를 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 
 
 #include "hal_Ethernet.h"
-#define SOCK_UDP_COM 0
-#define PORT_UDP_COM 5001
 
 
 /*

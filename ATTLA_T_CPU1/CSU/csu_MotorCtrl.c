@@ -1,15 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.c
-    Version          : 00.05
+    Version          : 00.07
     Description      : 1x PWM 모드 기반 모터 제어 모듈
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (위치 제어기 4ms 주기 분리 - 대역폭 최적화)
+    Last Updated     : 2026. 06. 12. (제어 루프 분주비 매크로 반영)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 10U 및 4U 매직넘버를 DECIMATION_SPEED_CTRL, DECIMATION_POS_CTRL 매크로로 치환
+ * 2026. 06. 12. - PID 파라미터, 모터 한도, 스케일 상수 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 11. - 위치 제한 클램핑 로직 및 속도/전류 PID 한계치(Soft Limit) 적용
  * 2026. 06. 11. - 위치 제어기를 4ms 루프로 추가 분리하여 기구적 대역폭 안정성 확보
  * 2026. 06. 11. - 속도 및 위치 제어기 1ms 루프 분리 (Multi-Rate 캐스케이드 구조 개선)
@@ -53,13 +55,13 @@ void MotorCtrl_Init(void)
     
     // PID 초기화 (Kp, Ki, Kd, dt, max_out, min_out)
     // 전류 제어기는 100us (0.0001s) 루프에서 동작
-    PID_Init(&currPid, 2.0f, 0.05f, 0.0f, 0.0001f, 100.0f, 0.0f);     // Current 출력은 절대 Duty 크기 (0~100)
+    PID_Init(&currPid, PID_CURR_KP, PID_CURR_KI, PID_CURR_KD, PID_CURR_DT, MOTOR_DUTY_MAX, 0.0f);     // Current 출력은 절대 Duty 크기
     
     // 속도 제어기는 1ms (0.001s) 루프에서 동작
-    PID_Init(&speedPid, 0.5f, 0.01f, 0.0f, 0.001f, LIMIT_CURRENT_MAX, LIMIT_CURRENT_MIN);    // Speed 출력은 타겟 전류량 (최대 ±10.0A)
+    PID_Init(&speedPid, PID_SPD_KP, PID_SPD_KI, PID_SPD_KD, PID_SPD_DT, LIMIT_CURRENT_MAX, LIMIT_CURRENT_MIN);    // Speed 출력은 타겟 전류량 (최대 ±10.0A)
     
     // 위치 제어기는 기계적 관성을 고려하여 4ms (0.004s) 루프에서 동작
-    PID_Init(&posPid, 1.0f, 0.0f, 0.0f, 0.004f, LIMIT_SPEED_MAX, LIMIT_SPEED_MIN);           // Position 출력은 Speed 명령
+    PID_Init(&posPid, PID_POS_KP, PID_POS_KI, PID_POS_KD, PID_POS_DT, LIMIT_SPEED_MAX, LIMIT_SPEED_MIN);           // Position 출력은 Speed 명령
     
     // 방향 핀(INHC)은 hal_DspInit.c 의 Init_GpioDout() 에서 이미 초기화 완료됨
 }
@@ -73,22 +75,20 @@ void MotorCtrl_Init(void)
 void MotorCtrl_UpdateFeedback(void)
 {
     // csu_Encoder 에서 읽어온 34비트 엔코더 데이터 사용
-    // 18비트(싱글턴)가 1회전(360도)에 해당하므로, 360 / 2^18 = 0.001373291015625 (정확한 이진 소수점)
-    // 이를 곱하여 모터 축 기준 기계각(기구 단 아님) Degree 계산
-    xMotorCtrl.currentPosition = (float32_t)xEncoder.position * 0.001373291f; 
+    // 기계각 스케일 환산 (상수 매크로 적용)
+    xMotorCtrl.currentPosition = (float32_t)xEncoder.position * MOTOR_SCALE_POS_DEG; 
     
     // 속도 계산 (1ms 분주(Decimation) 방식 적용, 이산 오차 최소화)
     static Uint16 speedCalcCnt = 0U;
     static float32_t prevPos = 0.0f;
     
     speedCalcCnt++;
-    if (speedCalcCnt >= 10U)
+    if (speedCalcCnt >= DECIMATION_SPEED_CTRL)
     {
         float32_t posDiff = xMotorCtrl.currentPosition - prevPos;
         
         // 단순 미분을 통한 RPM 계산 (1ms 주기 기준)
-        // RPM = (Delta Deg / 360) * (1 / 0.001) * 60 = Delta Deg * 166.6667
-        xMotorCtrl.currentSpeedRpm = posDiff * 166.6667f;
+        xMotorCtrl.currentSpeedRpm = posDiff * MOTOR_SCALE_SPEED_RPM;
         prevPos = xMotorCtrl.currentPosition;
         
         speedCalcCnt = 0U;
@@ -107,14 +107,14 @@ void MotorCtrl_SetOutput(float32_t outputDuty)
     {
         // 정방향
         MotorDriver_SetDir(true);
-        if (outputDuty > 100.0f) outputDuty = 100.0f;
+        if (outputDuty > MOTOR_DUTY_MAX) outputDuty = MOTOR_DUTY_MAX;
     }
     else
     {
         // 역방향
         MotorDriver_SetDir(false);
         outputDuty = -outputDuty;
-        if (outputDuty > 100.0f) outputDuty = 100.0f;
+        if (outputDuty > MOTOR_DUTY_MAX) outputDuty = MOTOR_DUTY_MAX;
     }
 
     // 추상화된 HAL 함수 호출로 PWM Duty 적용 및 SW Force 제어 위임
@@ -146,11 +146,11 @@ void MotorCtrl_Run(void)
         static Uint16 loop4msDivider = 0U;
         
         loop1msCnt++;
-        if (loop1msCnt >= 10U)
+        if (loop1msCnt >= DECIMATION_SPEED_CTRL)
         {
             // [4ms 제어 루프] 최외곽 루프: 위치 제어 연산
             loop4msDivider++;
-            if (loop4msDivider >= 4U)
+            if (loop4msDivider >= DECIMATION_POS_CTRL)
             {
                 if (xMotorCtrl.mode == MOTOR_MODE_POS_CTRL)
                 {

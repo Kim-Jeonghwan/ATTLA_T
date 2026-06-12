@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.h
-    Version          : 00.05
+    Version          : 00.06
     Description      : 시스템 제어 모듈 (PBIT, CBIT, 오프셋 조정 등) 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (이산신호 및 FRAM 로깅 연동)
+    Last Updated     : 2026. 06. 12. (매크로 상수 및 전역 변수 헤더로 통합)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 오프셋 보정 변수 및 ADC 상수 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 12. - DIO 디바운싱 필터 및 FRAM 저장 래퍼 연동
  * 2026. 06. 12. - 3단계 동적 인터럽트 ISR 선언 추가 (csu_Offset_Isr, csu_Pbit_Isr, csu_MainControl_Isr)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
@@ -23,9 +24,14 @@
 
 #include "main.h"
 
+#define SCALE_ADC_3V (3.0f / 4096.0f)
+
 typedef struct {
     uint16_t isOffsetCalibrated;
     uint16_t isPbitComplete;
+    uint16_t offsetCount;
+    float32_t sumMot;
+    float32_t sumBrk;
 } stControlState;
 
 extern volatile stControlState xSysCtrl;

@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Bit.c
-    Version          : 00.05
+    Version          : 00.06
     Description      : 1x PWM 구조용 간소화된 BIT 로직 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (디바운싱된 xDio 구조체 값 참조로 변경)
+    Last Updated     : 2026. 06. 12. (매크로 상수들을 헤더 파일로 이동하여 중복 제거)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 매크로 상수들을 헤더 파일로 이동하여 중복 제거
  * 2026. 06. 12. - PM_n24V 및 GateFault 점검 로직을 디바운싱된 xDio 변수 참조로 변경
  * 2026. 06. 11. - 신규 결함 진단(Stall, OverSpeed, Encoder) 함수 구현
  * 2026. 06. 11. - PM_n24V 및 GateFault 점검에 Driverlib(GPIO_readPin) 적용
@@ -25,14 +26,6 @@
 
 // Global variables used in this project
 stBitState xBit;
-
-// 임계치 매크로 (Project Spec 기반)
-#define BIT_LIMIT_OVC_MOT_MAX 10.0f // 최대 연속 전류 9.34A 초과 시 Fault
-#define BIT_LIMIT_OVC_BRK_MAX 1.5f  // 브레이크 최대 동작 전류 1.0A 초과 시 Fault
-#define BIT_LIMIT_OVT_BD_MAX  80.0f // 보드 내부 온도
-#define BIT_LIMIT_OVV_28V_MAX 32.0f // 28V 과전압
-
-#define BIT_CNT_REF_100MS 1000U // 100us * 1000 = 100ms
 
 /**
  * @function Bit_Init

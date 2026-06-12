@@ -61,22 +61,22 @@
 - **회로 구성**: DSP(3.3V) ➡️ NPN TR(MMBT489LT1G) ➡️ TLP293(광절연) ➡️ P-Ch MOSFET(SPD15P10PLGBTMA1) ➡️ 24V 브레이크 구동. 역기전력 방어용 쇼트키 다이오드(V8PAM10HM3/I) 탑재.
 - **모니터링**: 브레이크용 TMCS1126 개별 전류 센서를 통해 동작 및 고장 상태 진단.
 
-### 2.4 모터 구동 및 제어 연산 방식 (`csu_MotorCtrl`)
-- **제어 주기**: 100us (EPWM1 인터럽트 기반 동적 Heartbeat)
-- **제어 모드 (`MotorControlMode_t`)**: `MOTOR_MODE_STOP`, `MOTOR_MODE_SPEED_CTRL`, `MOTOR_MODE_POS_CTRL`
-- **상태 관리 구조체**: `stMotorCtrlState xMotorCtrl` (내부에 목표/현재 위치 및 속도 변수 포함)
-- **위치 피드백 연산 (`xMotorCtrl.currentPosition`)**:
-  - `xEncoder.position` (34비트 오프셋 보정 완료 위치) × `0.001373291f` (360° / 2^18) = 기계각(Degree)
-- **정밀 속도 피드백 연산 (`xMotorCtrl.currentSpeedRpm`)**:
-  - 기존 100us 미분 시 발생하는 이산 노이즈를 억제하기 위해 **1ms 분주(Decimation)** 로직 적용 (`speedCalcCnt` 누적).
-  - 연산식: `posDiff * 166.6667f` (1ms 간격의 각도 변화량 × (1 / 0.001) × 60 ÷ 360)
-- **PID 제어 루프 (3-Stage Cascade) 및 제약 (Soft Limit)**:
-  - **위치 지령 클램핑**: 체계 명령 또는 목표 위치(`targetPosition`)는 0.0f ~ 15840.0f(44바퀴) 범위 내로 강제 제한됨.
-  - **위치 제어기 (`posPid`)**: Kp=1.0, Ki=0.0, Kd=0.0 / dt=0.004s (4ms Multi-Rate) / 출력 제한 ±3500.0 RPM
-  - **속도 제어기 (`speedPid`)**: Kp=0.5, Ki=0.01, Kd=0.0 / dt=0.001s (1ms Multi-Rate) / 출력 제한 ±10.0 A
-  - **전류 제어기 (`currPid`)**: Kp=2.0, Ki=0.05, Kd=0.0 / dt=0.0001s / 출력 제한 0.0 ~ 100.0 % (크기(Magnitude) 기반 제어)
-  - **제어 순서**: 위치 지령 ➡️ `posPid` ➡️ 목표 속도 ➡️ `speedPid` ➡️ 목표 전류량 ➡️ `currPid` ➡️ 최종 목표 Duty 도출.
-- **출력 인가 (`Epwm_SetMotorDuty_1x`)**:
+- **모터 구동 및 제어 연산 방식 (`csu_MotorCtrl`)**:
+  - **제어 주기**: 100us (EPWM1 인터럽트 기반 동적 Heartbeat)
+  - **제어 모드 (`MotorControlMode_t`)**: `MOTOR_MODE_STOP`, `MOTOR_MODE_SPEED_CTRL`, `MOTOR_MODE_POS_CTRL`
+  - **상태 관리 구조체**: `stMotorCtrlState xMotorCtrl` (내부에 목표/현재 위치 및 속도 변수 포함)
+  - **위치 피드백 연산 (`xMotorCtrl.currentPosition`)**:
+    - `xEncoder.position` (34비트 오프셋 보정 완료 위치) × `MOTOR_SCALE_POS_DEG` (0.001373291f, 360/2^18) = 기계각(Degree)
+  - **정밀 속도 피드백 연산 (`xMotorCtrl.currentSpeedRpm`)**:
+    - 기존 100us 미분 시 발생하는 이산 노이즈를 억제하기 위해 **1ms 분주(Decimation)** 로직 적용 (`DECIMATION_SPEED_CTRL`).
+    - 연산식: `posDiff * MOTOR_SCALE_SPEED_RPM` (166.6667f, (1/0.001)*60/360)
+  - **PID 제어 루프 (3-Stage Cascade) 및 제약 (Soft Limit)**:
+    - **위치 지령 클램핑**: 체계 명령 또는 목표 위치(`targetPosition`)는 `LIMIT_POS_MIN` (0.0f) ~ `LIMIT_POS_MAX` (15840.0f, 44바퀴 × 360°) 범위 내로 강제 제한됨.
+    - **위치 제어기 (`posPid`)**: Kp(`PID_POS_KP`: 1.0f), Ki(`PID_POS_KI`: 0.0f) / dt=0.004s (`PID_POS_DT`, 4ms 분주 `DECIMATION_POS_CTRL`: 4U, 4ms / 1ms) / 출력 제한 `LIMIT_SPEED_MAX` (±3500.0 RPM)
+    - **속도 제어기 (`speedPid`)**: Kp(`PID_SPD_KP`: 0.5f), Ki(`PID_SPD_KI`: 0.01f) / dt=0.001s (`PID_SPD_DT`, 1ms 분주 `DECIMATION_SPEED_CTRL`: 10U, 1ms / 100us) / 출력 제한 `LIMIT_CURRENT_MAX` (±10.0 A)
+    - **전류 제어기 (`currPid`)**: Kp(`PID_CURR_KP`: 2.0f), Ki(`PID_CURR_KI`: 0.05f) / dt=0.0001s (`PID_CURR_DT`) / 출력 제한 0.0 ~ `MOTOR_DUTY_MAX` (100.0f %) (크기 기반 제어)
+    - **제어 순서**: 위치 지령 ➡️ `posPid` ➡️ 목표 속도 ➡️ `speedPid` ➡️ 목표 전류량 ➡️ `currPid` ➡️ 최종 목표 Duty 도출.
+  - **출력 인가 (`Epwm_SetMotorDuty_1x`)**:
   - `duty` 값(-100.0% ~ 100.0%)의 부호에 따라 `DRV_DIR` 방향 핀 제어(`MotorDriver_SetDir`).
   - 절대값 Duty는 1x PWM 하위 계층인 `Epwm_SetMotorDuty_1x(outputDuty)`로 전달되어 모터 구동.
 
@@ -92,13 +92,13 @@
   - **분해능**: 18-bit (싱글턴) + 16-bit (멀티턴 카운터) / 오차: ±0.004° ~ ±0.020°
   - **통신 방식**: **단방향 SPI-C 기반 SSI 통신** (BiSS-C 로직 완전 제거). SN65HVD30MDREP 차동 변환기 탑재.
   - **클럭 주파수**: **2.5 MHz** (SPI-C Baud Rate)
-  - **사용 핀**: `SOMI` (GPIO 51), `CLK` (GPIO 52)
+  - **사용 핀**: `SOMI` (GPIO 51, `ENCODER_SOMI_GPIC`), `CLK` (GPIO 52, `ENCODER_CLK_GPIC`)
   - **통신 타이밍 및 파싱 규칙**:
     - **초기 대기**: 하드웨어 초기화 단계에서 100ms 대기 로직 적용.
     - **통신 타임아웃 방어**: BiSS 타임아웃(13.5us) 회피용 SPI TX/RX FIFO 64-bit 수신 블로킹 프리.
     - **Dynamic Parsing**: 데이터 프레임 중 첫 '1' 비트를 능동적으로 Start 비트로 감지.
     - **CRC 규칙**: 다항식 0x43 (36비트 대상) 적용 검증.
-    - **정밀 변환**: 제로셋 FRAM 저장 값 롤오버 뺄셈 및 오프셋 적용. 변환 계수 `0.001373291015625` (360 / 2^18).
+    - **정밀 변환**: 제로셋 FRAM 저장 값 및 롤오버 상수(`ENC_ROLLOVER_34BIT`: 0x400000000ULL, 2^34) 뺄셈 및 오프셋 적용. 변환 계수 `ENC_SCALE_18BIT_DEG` (0.001373291f, 360 / 2^18).
 
 ### 3.2 아날로그 센서 (ADC) 
 - **ADC 아키텍처 및 폴링 동기화**:
@@ -127,13 +127,13 @@
 ## 4. 체계 통신 및 외부 인터페이스 (Comms & I/O)
 
 ### 4.1 체계 통신 (W6100 이더넷)
-- 하드웨어 TCP/IP 스택 기반 칩셋(W6100) 적용 (HX1188NL 절연).
+- 하드웨어 TCP/IP 스택 기반 대용량 칩셋(W6100) 적용 (HX1188NL 절연).
 - **인터페이스 (SPI-A)**: `SIMO`(16), `SOMI`(17), `CLK`(18), `nCS`(19), `INTn`(20), `RSTn`(21)
-- **통신 프로토콜**: UDP, Port 5001, 18바이트 페이로드.
+- **통신 프로토콜**: UDP 소켓(`SOCK_UDP_COM`: 0), 통신 포트(`PORT_UDP_COM` = 5001), 18바이트 페이로드.
 - **인터럽트 수신**: `INTn`(GPIO 20) 핀을 **XINT1 (외부 인터럽트)** 로 수신하여 즉각 응답.
 
 ### 4.2 디버깅 및 장거리 통신
-- **easyDSP**: SCI-A (GPIO 28 `RX`, GPIO 29 `TX`), 115200bps. `PonRST` 신호를 통해 전원/DSP 리셋 동기화.
+- **easyDSP**: SCI-A (`SCI_PC_GPIO_PIN_SCIA_RXD`: GPIO 28, `SCI_PC_GPIO_PIN_SCIA_TXD`: GPIO 29), 115200bps. `PonRST` 신호를 통해 전원/DSP 리셋 동기화.
 - **RS-422 통신**: ISOW7843DWE 절연형 트랜시버 탑재. 장거리 차동 신호 송수신 지원.
 
 ### 4.3 디지털 입출력 (Digital I/O)
@@ -173,6 +173,36 @@
 ### ✅ 단계 3: 메인 제어 인터럽트 (`csu_MainControl_Isr`)
 - 모든 초기화가 끝난 후 시스템이 종료될 때까지 100us 주기로 영구적으로 호출되는 최종 Heartbeat ISR입니다.
 - ADC 데이터를 기반으로 센싱 필터링 ➡️ 위치 추정 ➡️ 주기 점검(CBIT) ➡️ 다단 Cascade PID 연산 ➡️ 모터 최종 듀티 출력(`MotorCtrl_SetOutput`)을 순차적으로 수행합니다.
+
+---
+
+## 6. 글로벌 구조체 변수 파이프라인 (디버깅 및 제어 상태 참조용)
+
+디버그(CCS Expressions/Watch 윈도우 등) 목적으로 참고할 수 있는, ATTLA_T 펌웨어 아키텍처 내 주요 글로벌 구조체 변수들입니다.
+`volatile` 선언이 된 구조체(`xSysCtrl`, `xDio`)는 실시간 상태 변경이 바로 반영되므로 디버그에 유용합니다.
+
+### 6.1 CSU (Control & Service Unit) 계층
+
+| 변수명 | 데이터 타입 | 역할 및 주요 멤버 변수 |
+| :--- | :--- | :--- |
+| **`xAdc`** | `stAdcState` | LPF(저주파 통과 필터) 적용 아날로그 센싱 값 및 영점 오프셋(Offset) 값 저장 |
+| **`xBit`** | `stBitState` | 시스템 내장 테스트(BIT) 결과. 각 모듈의 고장(Fault), 경고(Warning) 플래그 통합 |
+| **`xSysCtrl`** | `volatile stControlState` | 전체 시스템의 제어 상태(오프셋 캘리브레이션 완료 여부, PBIT 완료 여부 등) 플래그 관리 |
+| **`xDio`** | `volatile stDioState` | 디바운싱 필터가 적용된 이산신호(디지털 입출력) 상태 |
+| **`xEncoder`** | `stEncoderState` | 모터/기구부 앱솔루트 엔코더(SSI) 상태. (위치, 360도 환산 각도, 에러 상태 등) |
+| **`xMotorCtrl`** | `stMotorCtrlState` | 모터 제어기의 현재 상태. (운전 모드, 목표/현재 속도(RPM), 목표/현재 위치 등) |
+| **`xMotorDriver`**| `stMotorDriverState` | DRV8343 모터 드라이버 IC의 하드웨어 결함(Fault) 상태 저장 |
+| **`xRcvSciPcMsg1`**| `stRcvSciPcMsg1` | PC 또는 체계로부터 수신된 메시지 버퍼 및 파싱 구조체 |
+| **`xXmtSciPcMsg1`**| `stXmtSciPcMsg1` | PC 또는 체계로 송신할 SCI 메시지 버퍼 구조체 |
+| **`xLed`** | `stLedStatus` | 시스템 상태 표시용 LED(점멸 패턴 등) 제어 상태 |
+
+### 6.2 HAL (Hardware Abstraction Layer) 계층
+
+| 변수명 | 데이터 타입 | 역할 및 주요 멤버 변수 |
+| :--- | :--- | :--- |
+| **`adcRawData`** | `AdcRawData_t` | 인터럽트(ISR)에서 수집한 ADC 하드웨어 변환 결과(Raw Data) 버퍼 |
+| **`xTimer`** | `stTimer` | 하드웨어 타이머(CPUTimer) 기반 이벤트 제어용 카운터/플래그 |
+| **`xQueSCI_PC`** | `stQsci` | SCI-A (easyDSP/PC 통신) 비동기 송수신용 링 버퍼 큐 구조체 |
 
 ---
 

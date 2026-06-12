@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_SciPc.c
-    Version          : 00.00
+    Version          : 00.01
     Description      : PC 인터페이스 통신 (SCI_PC) 프로토콜 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 12. (내부 온도 센서 미사용에 따른 제거)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 내부 온도 센서 미사용에 따른 관련 변수 및 로직 제거
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
@@ -17,9 +18,6 @@
 
 /* ************************** [[   include  ]]  *********************************************************** */
 #include "csu_SciPc.h"
-
-// csu_Adc.c에 선언된 실시간 섭씨 온도 전역 변수 공유 선언 (타입 미스매치 예방을 위해 float32_t로 선언)
-extern float32_t currentTemperatureC;
 
 /* ************************** [[   define   ]]  *********************************************************** */
 #define SCI_PC_SOF		0x7Eu
@@ -90,9 +88,9 @@ void sendSciPcMessage1(void)
     /* 3. Status (1 byte) */
     Buf[pos++] = (uint16_t)(xXmtSciPcMsg1.Status & 0xFFu); // Buf[4]
 
-    /* 4. DspTemp (uint16_t - 2 bytes, Little Endian, x10 스케일 및 반올림 적용) */
-    // 소수점 1자리 전송 규격에 맞게 10배 확대하고 0.5f를 더해 명확히 반올림 연산 처리 수행
-    xXmtSciPcMsg1.DspTemp = (uint16_t)((currentTemperatureC * 10.0f) + 0.5f);
+    /* 4. DspTemp (uint16_t - 2 bytes, Little Endian) */
+    // 내부 온도 센서 제거에 따른 0 전송
+    xXmtSciPcMsg1.DspTemp = 0u;
     on16.u16 = xXmtSciPcMsg1.DspTemp;
     Buf[pos++] = on16.byte.B0; // Low Byte (Buf[5])
     Buf[pos++] = on16.byte.B1; // High Byte (Buf[6])

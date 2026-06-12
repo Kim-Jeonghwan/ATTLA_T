@@ -1,43 +1,58 @@
-# ATTLA_T 시스템 이산신호 입력 및 FRAM 데이터 저장 로직 분석 및 리서치 보고서
+# 코드 구조 리팩토링 (헤더 파일 선언부 분리 및 매직 넘버 상수화) 조사 보고서
 
-## 1. 이산신호(DIO) 입력 처리 로직 분석
+## 1. CSU (Control & Service Unit) 계층
 
-### 1.1 하드웨어 핀맵 및 요구사항
-`Architecture.md`의 4.3 디지털 입출력 명세에 따라, 현재 제어기가 읽어들여야 하는 주요 이산 입력(GPIODIN) 핀은 다음과 같습니다.
-* **리미트 스위치 1**: `nLIMIT1_NO` (GPIO 36), `nLIMIT1_NC` (GPIO 37) - Active Low
-* **리미트 스위치 2**: `nLIMIT2_NO` (GPIO 38), `nLIMIT2_NC` (GPIO 39) - Active Low
-* **시스템 감시**: `PM_n24V` (GPIO 40), `CABLE_LOOP` (GPIO 46), `DRV_nFAULT` (GPIO 10)
+### 1) csu_Control.c / .h
+**현재 상태:**
+- `csu_Control.c` 내부에 오프셋 보정을 위한 `static` 변수(`offsetCount`, `sumMot`, `sumBrk`)가 전역적으로 선언되어 있습니다.
+- ADC 변환 상수인 `#define SCALE_ADC_3V (3.0f / 4096.0f)`가 소스 파일에 선언되어 있습니다.
+**수정 방향:**
+- `offsetCount`, `sumMot`, `sumBrk` 변수들을 `csu_Control.h`의 `stControlState` 구조체 멤버로 편입하여 은닉성과 응집도를 높이거나, `extern` 선언으로 헤더로 분리합니다. (상태 구조체 `xSysCtrl` 내부로 통합하는 방식 추천)
+- `SCALE_ADC_3V` 매크로를 헤더로 이동합니다.
 
-### 1.2 기존 및 타 프로젝트(TDU) 구현 분석
-* **TDU 프로젝트**: `hal_Gpio_Drive.c`의 `Tdu_Din()` 함수에서 핀 입력을 폴링 방식으로 처리하고 있습니다. 이 때, 10kHz(100us) 제어 주기 기준으로 `DIN_CNT_REF_1MS` (10카운트 = 1ms) 동안 동일한 상태가 유지될 때만 유효한 신호로 판단하는 **디바운싱(Debouncing) 소프트웨어 필터**가 적용되어 노이즈를 방지하고 있습니다.
-* **현재 ATTLA 프로젝트**: `csu_Bit.c`에서 `GPIO_readPin(40U)`, `GPIO_readPin(10U)`와 같이 TI Driverlib API를 사용해 핀 상태를 직접 읽어 결함 판정을 수행하고 있습니다. 또한 `csu_Control.c`의 `Control_SystemOperation()` 파이프라인 내부에 `updateDioInput();` 주석이 존재하여 100us 주기로 호출되도록 설계된 상태입니다.
+### 2) csu_Encoder.c / .h
+**현재 상태:**
+- `csu_Encoder.c`의 `Encoder_UpdatePosition` 함수 내부에 34비트 롤오버 상수 `0x400000000ULL`과, 18비트 해상도 변환 상수 `0.001373291015625f`가 하드코딩 되어 있습니다.
+**수정 방향:**
+- 상수들을 `csu_Encoder.h`에 직관적인 이름의 `#define` 매크로로 정의합니다.
+  - 예: `#define ENC_ROLLOVER_34BIT   0x400000000ULL`
+  - 예: `#define ENC_SCALE_18BIT_DEG  0.001373291015625f`
 
-### 1.3 구현 제안 방향 (CSU 계층)
-* **모듈 분리**: 이산신호 관리를 전담하는 모듈을 생성하거나 `csu_Control.c`에 통합합니다. (예: 구조체 `stDioState xDio;` 및 함수 `Dio_UpdateInput()`)
-* **디바운싱 로직 적용**: 리미트 스위치나 체결 감지 등 기계적 접점 신호는 바운싱(Bouncing)이 발생하므로, TDU의 사례를 벤치마킹하여 최소 1ms ~ 10ms 수준의 카운터 기반 필터를 적용해야 안정적입니다.
-* **Driverlib 준수**: C2000Ware 표준인 `GPIO_readPin()` API를 사용하여 핀의 상태를 읽습니다.
+### 3) csu_MotorCtrl.c / .h
+**현재 상태:**
+- `csu_MotorCtrl.c` 내부에 위치 스케일 상수 `0.001373291f`, 속도 스케일 상수 `166.6667f`, 그리고 PWM Duty 출력 한도 `100.0f`가 매직 넘버로 사용되고 있습니다.
+- `MotorCtrl_Init` 내의 PID 제어기 초기화용 Gain 값들(Kp, Ki, Kd)도 하드코딩되어 있습니다.
+**수정 방향:**
+- `csu_MotorCtrl.h`에 `#define`으로 각 PID 상수, Duty 제한치(Limit) 및 스케일 팩터들을 모두 선언하여 파라미터 튜닝을 용이하게 합니다.
+  - 예: `#define MOTOR_DUTY_MAX 100.0f`
+
+## 2. HAL (Hardware Abstraction Layer) 계층
+
+### 1) hal_Adc.c / .h
+**현재 상태:**
+- `hal_Adc.c` 내에 이동 평균 필터 카운트 `#define DEFAULT_MAVE_COUNT 100u` 및 주파수 `#define DEFAULT_PWM_HZ 100000u`가 선언되어 있습니다.
+**수정 방향:**
+- 해당 매크로 선언들을 `hal_Adc.h`로 추출하여 이동합니다.
+
+### 2) hal_Ethernet.c / .h
+**현재 상태:**
+- `hal_Ethernet.c` 내에 UDP 소켓 번호와 포트 번호 `#define SOCK_UDP_COM 0`, `#define PORT_UDP_COM 5001`이 선언되어 있습니다.
+**수정 방향:**
+- 소켓/포트 설정 매크로를 `hal_Ethernet.h`로 이동합니다.
+
+### 3) hal_Sci.c / .h
+**현재 상태:**
+- `hal_Sci.c` 내에 SCI PC 통신용 GPIO 핀 번호와 핀 설정 매크로(`SCI_PC_GPIO_PIN_SCIA_RXD` 등 4개)가 선언되어 있습니다.
+- 송수신용 큐 구조체인 `static stQsci xQueSCI_PC;`가 파일 레벨에 정적으로 선언되어 있습니다.
+**수정 방향:**
+- 통신 포트/핀 관련 매크로들을 `hal_Sci.h`로 이동합니다.
+- (추가 옵션) 큐 구조체 변수의 선언부를 헤더로 이동하여 다른 모듈과의 연동성을 높일 수도 있습니다.
+
+### 4) hal_Spi.c / .h
+**현재 상태:**
+- `hal_Spi.c` 내에 엔코더용 SPI GPIO 핀 번호 `#define ENCODER_SOMI_GPIC 51u`, `#define ENCODER_CLK_GPIC 52u`가 선언되어 있습니다.
+**수정 방향:**
+- 하드웨어 핀 맵핑을 명확히 하기 위해 핀 설정 매크로들을 `hal_Spi.h`로 이동합니다.
 
 ---
-
-## 2. FRAM 데이터 저장 기능(CSU) 분석
-
-### 2.1 FRAM 하드웨어 및 HAL 인터페이스
-* **스펙**: CY15B256Q-SXE (256Kbit SPI FRAM)이며, SPI-D (1MHz)를 통해 통신합니다. Instant Write 기능이 있어 무지연 엑세스가 가능합니다.
-* **HAL 계층 확인**: `hal_Fram.c` 파일에 이미 `Fram_Init()`, `Fram_ReadByte()`, `Fram_WriteByte()`, `Fram_PageWrite()` 등의 저수준 SPI 엑세스 API가 완벽히 구현되어 있습니다.
-
-### 2.2 구현 제안 방향 (CSU 계층)
-* **데이터 관리 구조체**: 저장할 데이터 맵(어드레스 맵)을 관리하는 헤더와 상태 변수를 정의합니다.
-* **`saveData()` 구현**: 100us 메인 인터럽트 주기마다 호출되므로, 매 주기 FRAM에 쓰는 것은 통신 병목을 유발할 수 있습니다. 상태가 변경되거나 일정 주기(예: 1초 혹은 이벤트 발생 시)마다 저장하도록 하는 스케줄러 로직이 필요합니다.
-* **미리 구현 가능한 부분**: 
-  1. `csu_Control.c` 의 `csu_Offset_Isr` 단계에서 1초간 측정한 초기 영점 조정 값(`isenMotOffset`, `isenBrkOffset`)을 FRAM 특정 주소에 자동 백업하는 기능.
-  2. 에러가 발생하여 `xBit.faultFlagSet`이 활성화되었을 때, 고장 이력 로깅을 위해 결함 코드를 FRAM에 즉시 기록하는 기능.
-
----
-
-## 3. 결론 및 향후 계획
-
-사용자 지시에 따라 실제 코드 구현을 위한 사전 리서치를 마쳤습니다. 
-1. **DIO 처리**: `GPIO_readPin()` 기반의 디바운싱 로직이 포함된 `Dio_UpdateInput()`을 구현하여 `stDioState` 구조체에 상태를 최신화하도록 개발할 수 있습니다.
-2. **FRAM 제어**: `Fram_WriteByte()`를 활용하여, 오프셋 초기화 완료 시점이나 결함 발생 시 데이터를 로깅하는 구조적 기반(`saveData()`)을 `csu_Control.c`에 마련해 둘 수 있습니다.
-
-사용자께서 승인해 주시거나 명시적으로 계획/구현 지시를 내려 주시면 즉시 `plan.md` 작성 후 구현을 시작하겠습니다.
+**조사 완료:** 위 내용을 기반으로 각 파일의 `.c` -> `.h` 헤더 분리 및 매직 넘버 리팩토링 구현을 시작할 수 있도록 준비했습니다.

@@ -1,15 +1,16 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : hal_Spi.c
- Version          : 00.02
+ Version          : 00.03
  Description      : SSI 엔코더 및 W6100 통신용 SPI 하드웨어 제어
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+ Last Updated     : 2026. 06. 12. (SPI 핀 매크로 헤더 이동)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 엔코더 SPI 통신용 핀 매크로를 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - SPIC_BASE 엔코더 통신 클럭 주파수 2.5MHz로 변경
  */
@@ -25,11 +26,6 @@
 #include "hal_Spi.h"
 
 /* ************************** [[   define   ]]  *********************************************************** */
-// #define SSI_SIMO_SPIB	63u // SPI SIMOB
-#define ENCODER_SOMI_GPIC	51u // SPI SOMIC
-#define ENCODER_CLK_GPIC	52u // SPI CLKC
-// #define SSI_CS			66u // Chip Select
-
 
 
 /* ************************** [[   global   ]]  *********************************************************** */

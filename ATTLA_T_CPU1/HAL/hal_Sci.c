@@ -1,15 +1,16 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : hal_Sci.c
- Version          : 00.00
+ Version          : 00.01
  Description      : SCI (시리얼 통신) 하드웨어 제어
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+ Last Updated     : 2026. 06. 12. (GPIO 핀 매크로 및 큐 변수 선언 헤더로 이동)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 통신 포트/핀 관련 매크로 및 xQueSCI_PC 선언 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 08. - 주석 템플릿 일괄 적용
  */
@@ -20,15 +21,11 @@
 
 
 /* ************************** [[   define   ]]  *********************************************************** */
-#define SCI_PC_GPIO_PIN_SCIA_RXD	28u             // SCI RX용 GPIO 핀 번호
-#define SCI_PC_GPIO_PIN_SCIA_TXD	29u             // SCI TX용 GPIO 핀 번호
-#define SCI_PC_GPIO_CFG_SCIA_RXD	GPIO_28_SCIA_RX	// SCI RX용 pinConfig
-#define SCI_PC_GPIO_CFG_SCIA_TXD	GPIO_29_SCIA_TX	// SCI TX용 pinConfig
 
 
 
 /* ************************** [[   global   ]]  *********************************************************** */
-static stQsci	xQueSCI_PC;
+stQsci	xQueSCI_PC;
 
 
 /* ************************** [[  static prototype  ]]  *************************************************** */

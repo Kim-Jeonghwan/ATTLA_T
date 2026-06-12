@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Adc.h
-    Version          : 00.01
+    Version          : 00.02
     Description      : ADC 데이터 처리 로직 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 12. (ADC 스케일 팩터 및 필터 상수 헤더로 통합)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - ADC 스케일 팩터 및 필터 상수를 헤더로 통합
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stAdcState 구조체(xAdc)로 통합
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -23,6 +24,29 @@
 #include "main.h"
 
 /* ************************** [[   define   ]]  *********************************************************** */
+
+// ADC 기준 변환 상수 (3.0V Reference)
+#define SCALE_ADC_3V (3.0f / 4096.0f)
+
+// LPF 상수 (전압/전류)
+#define LPF_OLD_CV 0.3f
+#define LPF_REAL_CV 0.7f
+
+// LPF 상수 (온도)
+#define LPF_OLD_TEMP 0.9f
+#define LPF_REAL_TEMP 0.1f
+
+// ADC 센서 오프셋 영점 기본값 매크로
+#define ADC_OFFSET_ISEN_MOT_DEFAULT 1.49702f    // 모터 전류 영점 기본값 (1.5V 근사치)
+#define ADC_OFFSET_ISEN_BRK_DEFAULT 1.49702f    // 브레이크 전류 영점 기본값 (1.5V 근사치)
+
+// ADC 데이터 역산 스케일 팩터 매크로
+#define ADC_SCALE_ISEN_MOT          16.1550888f // 모터 전류 변환 상수
+#define ADC_SCALE_ISEN_BRK          1.6155088f  // 브레이크 전류 변환 상수
+#define ADC_SCALE_VSEN_28V          16.86619f   // 28V 전압 변환 상수
+#define ADC_SCALE_VSEN_5VD          2.0f        // 5V 전압 변환 상수
+#define ADC_SCALE_TSEN_BD_SLOPE     84.033613f  // 온도 센서(MAX6605) 기울기
+#define ADC_SCALE_TSEN_BD_OFFSET    55.0f       // 온도 센서(MAX6605) 오프셋
 
 
 /* ************************** [[   enum or struct   ]]  *************************************************** */
