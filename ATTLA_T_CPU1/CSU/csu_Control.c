@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.03
-    Description      : 시스템 제어 모듈 (PBIT, CBIT, 시스템 운용 파이프라인) 구현
+    Version          : 00.04
+    Description      : 시스템 제어 모듈 (동적 인터럽트 스위칭 및 ADC 폴링) 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (CBIT에 신규 결함 점검 로직 편입)
+    Last Updated     : 2026. 06. 12. (동적 인터럽트 스위칭 적용)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 3단계 동적 인터럽트 전환 적용 (csu_Offset_Isr, Pbit, MainControl)
  * 2026. 06. 11. - CBIT(Bit_RunCBIT)에 스톨, 과속, 엔코더 신규 점검 함수 추가
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stControlState 구조체(xSysCtrl)로 통합
@@ -20,6 +21,10 @@
 
 #include "csu_Control.h"
 volatile stControlState xSysCtrl;
+
+#pragma CODE_SECTION(csu_Offset_Isr, ".TI.ramfunc");
+#pragma CODE_SECTION(csu_Pbit_Isr, ".TI.ramfunc");
+#pragma CODE_SECTION(csu_MainControl_Isr, ".TI.ramfunc");
 
 // 100us 주기 기준, 10000회 누적 시 1초 대기
 static uint16_t offsetCount = 0U;
@@ -40,30 +45,7 @@ void Control_Init(void)
     xSysCtrl.isPbitComplete = 0U;
 }
 
-/*
-@function    void Control_CalibrateCurrentOffset(void)
-@brief      전류 센서 오프셋 영점 조정 (PWM ISR 호출용)
-@param      void
-@return     void
-*/
-void Control_CalibrateCurrentOffset(void)
-{
-    if (offsetCount < 10000U)
-    {
-        sumMot += (float32_t)adcRawData.isenMot * SCALE_ADC_3V;
-        sumBrk += (float32_t)adcRawData.isenBrk * SCALE_ADC_3V;
-        offsetCount++;
-    }
-    else
-    {
-        xAdc.isenMotOffset = sumMot / 10000.0f;
-        xAdc.isenBrkOffset = sumBrk / 10000.0f;
-        
-        // TODO: FRAM에 오프셋 값 저장
-        
-        xSysCtrl.isOffsetCalibrated = 1U;
-    }
-}
+// 기존의 PWM 인터럽트 내에서 처리하던 오프셋 로직은 제거되고 csu_Offset_Isr 로 이동됨
 
 /*
 @function    void Bit_RunPBIT(void)
@@ -102,25 +84,9 @@ void Bit_RunCBIT(void)
     Bit_MotorOverSpeed_Check();
 }
 
-/*
-@function    void Control_SystemOperation(void)
-@brief      100us PWM 인터럽트 기반 시스템 운용 파이프라인
-@param      void
-@return     void
-*/
 void Control_SystemOperation(void)
 {
-    if (xSysCtrl.isOffsetCalibrated == 0U)
-    {
-        Control_CalibrateCurrentOffset();
-        return; // 오프셋 완료 전까지 운용 로직 대기
-    }
-    
-    if (xSysCtrl.isPbitComplete == 0U)
-    {
-        Bit_RunPBIT();
-        return; // PBIT 완료 전까지 운용 로직 대기
-    }
+    // 인터럽트 체인에 의해 오프셋 및 PBIT는 모두 통과된 상태로 진입함
 
     // 1. 아날로그신호 입력 및 연산 CSU
     // CalcAdcData(); // (참고용. ADC 자체 인터럽트로 분리될 경우 호출 안 함)
@@ -142,4 +108,121 @@ void Control_SystemOperation(void)
 
     // 7. 데이터 저장 CSU
     // saveData();
+}
+
+
+// ==============================================================================
+// 동적 인터럽트 스위칭 기반 ISR 체인
+// ==============================================================================
+
+/*
+@function    __interrupt void csu_Offset_Isr(void)
+@brief      최초 1초 대기 및 10,000회 전류 센서 오프셋 측정 인터럽트
+@param      void
+@return     __interrupt void
+*/
+__interrupt void csu_Offset_Isr(void)
+{
+    // ADC 변환 완료 대기 (폴링 블로킹)
+    while(ADC_getInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1) == false)
+    {
+    }
+    ADC_clearInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1);
+
+    // ADC 실시간 결과 취득 및 스케일링
+    adcRawData.isenMot = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER2);
+    adcRawData.isenBrk = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER3);
+    adcRawData.vsen28v = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER4);
+    adcRawData.vsen5vd = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER5);
+    adcRawData.vsenRef = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER1);
+    adcRawData.tsenBd  = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER3);
+
+    // 오프셋 누적 (1.5V 기준)
+    if (offsetCount < 10000U)
+    {
+        sumMot += (float32_t)adcRawData.isenMot * SCALE_ADC_3V;
+        sumBrk += (float32_t)adcRawData.isenBrk * SCALE_ADC_3V;
+        offsetCount++;
+    }
+    else
+    {
+        // 1초 도달 시 평균 적용
+        xAdc.isenMotOffset = sumMot / 10000.0f;
+        xAdc.isenBrkOffset = sumBrk / 10000.0f;
+        xSysCtrl.isOffsetCalibrated = 1U;
+
+        // PBIT 인터럽트로 스위칭
+        EALLOW;
+        PieVectTable.EPWM1_INT = &csu_Pbit_Isr;
+        EDIS;
+    }
+
+    EPWM_clearEventTriggerInterruptFlag(EPWM_TIMER1_BASE);
+    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);
+}
+
+/*
+@function    __interrupt void csu_Pbit_Isr(void)
+@brief      초기 점검 수행 및 메인 제어루프 전환 인터럽트
+@param      void
+@return     __interrupt void
+*/
+__interrupt void csu_Pbit_Isr(void)
+{
+    // ADC 폴링 대기
+    while(ADC_getInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1) == false)
+    {
+    }
+    ADC_clearInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1);
+
+    adcRawData.isenMot = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER2);
+    adcRawData.isenBrk = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER3);
+    adcRawData.vsen28v = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER4);
+    adcRawData.vsen5vd = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER5);
+    adcRawData.vsenRef = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER1);
+    adcRawData.tsenBd  = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER3);
+
+    CalcAdcData();
+    Bit_RunPBIT();
+
+    // 1회 확인 시 바로 메인 제어로 스위칭 (대기시간 없음)
+    if (xSysCtrl.isPbitComplete == 1U)
+    {
+        EALLOW;
+        PieVectTable.EPWM1_INT = &csu_MainControl_Isr;
+        EDIS;
+    }
+
+    EPWM_clearEventTriggerInterruptFlag(EPWM_TIMER1_BASE);
+    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);
+}
+
+/*
+@function    __interrupt void csu_MainControl_Isr(void)
+@brief      시스템 메인 파이프라인 인터럽트
+@param      void
+@return     __interrupt void
+*/
+__interrupt void csu_MainControl_Isr(void)
+{
+    // ADC 폴링 대기
+    while(ADC_getInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1) == false)
+    {
+    }
+    ADC_clearInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1);
+
+    adcRawData.isenMot = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER2);
+    adcRawData.isenBrk = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER3);
+    adcRawData.vsen28v = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER4);
+    adcRawData.vsen5vd = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER5);
+    adcRawData.vsenRef = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER1);
+    adcRawData.tsenBd  = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER3);
+
+    CalcAdcData();
+
+    // 100us 시스템 운용 파이프라인 실행
+    Control_SystemOperation();
+
+    EPWM_clearEventTriggerInterruptFlag(EPWM_TIMER1_BASE);
+    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);
 }

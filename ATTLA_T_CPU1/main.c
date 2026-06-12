@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : main.c
-    Version          : 00.02
+    Version          : 00.03
     Description      : 메인 백그라운드 루프 및 주기적 태스크 실행
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 12. (CM 및 IPC 관련 주석 제거)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - CM 및 IPC 관련 주석 제거
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 전역 변수를 상태 구조체(xSysCtrl 등)로 통합 적용
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -50,25 +51,18 @@ static void cycle_1000ms(void);
 @param		void
 @return		void
 @remark	
-	- 시스템 초기화 및 CM 코어와의 동기화를 수행한 후, 주기에 맞춰 태스크를 실행합니다.
+	- 시스템 초기화를 수행한 후, 주기에 맞춰 태스크 실행을 시작합니다.
 */
 void main(void)
 {
 	System_Initialization();
 
-	// 100us 시스템 운용 파이프라인 인터럽트는 InitialAdc() 내부에서 INT_ADCA1 활성화를 통해 이미 시작됨.
-
-	// 전류센서 Offset 조정 대기
-	// 100us 타이머 내부에서 오프셋 조정이 완료될 때까지 대기
-	while(xSysCtrl.isOffsetCalibrated == 0U)
-	{
-	}
-
-	// 초기점검(PBIT) 대기
-	// 100us 타이머 내부에서 PBIT가 완료될 때까지 대기
-	while(xSysCtrl.isPbitComplete == 0U)
-	{
-	}
+	// 동적 인터럽트 스위칭의 시작점 (Offset -> PBIT -> Main 순차 진행)
+	// EPWM1(100us) 타이머 인터럽트에 최초 오프셋 조정 ISR을 매핑하고 활성화합니다.
+	EALLOW;
+	Interrupt_register(INT_EPWM1, &csu_Offset_Isr);
+	EDIS;
+	Interrupt_enable(INT_EPWM1);
 
 	// 이더넷 (W6100) 초기화 및 통신 인터럽트 활성화
 	Ethernet_Init();

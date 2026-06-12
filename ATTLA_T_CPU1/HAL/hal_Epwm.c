@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Epwm.c
-    Version          : 00.02
+    Version          : 00.03
     Description      : EPWM 제어 및 초기화 로직 (GPIO0 EPWM1A 모터 PWM 통합)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 12. (EPWM1 인터럽트 발생 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - EPWM1 인터럽트 발생 설정(INT_EPWM1) 추가 (ADC 폴링 및 시퀀스 스위칭용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 모터 1x PWM Duty 제어용 Epwm_SetMotorDuty_1x() 구현
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -69,6 +70,11 @@ void Initial_EpwmTimer(void)
     EPWM_enableADCTrigger(EPWM_TIMER1_BASE, EPWM_SOC_A);
     EPWM_setADCTriggerSource(EPWM_TIMER1_BASE, EPWM_SOC_A, EPWM_SOC_TBCTR_ZERO);
     EPWM_setADCTriggerEventPrescale(EPWM_TIMER1_BASE, EPWM_SOC_A, 1U); /* 매 1회 마다 SOCA */
+
+    /* 시스템 제어 시퀀스용 EPWM1 인터럽트 활성화 (Zero Event 시 발생) */
+    EPWM_setInterruptSource(EPWM_TIMER1_BASE, EPWM_INT_TBCTR_ZERO);
+    EPWM_enableInterrupt(EPWM_TIMER1_BASE);
+    EPWM_setInterruptEventCount(EPWM_TIMER1_BASE, 1U);
 
     // 클럭 동기화 (ePWM 활성화)
     EALLOW;

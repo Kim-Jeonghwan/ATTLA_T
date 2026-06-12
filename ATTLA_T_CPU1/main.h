@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : main.h
-    Version          : 00.01
+    Version          : 00.02
     Description      : 코어 시스템 통합 헤더 파일
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 12. (CM 및 IPC 관련 매크로 제거)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - CM 및 IPC 관련 매크로 제거
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
@@ -30,9 +31,6 @@
 #include "driverlib.h"
 #include "device.h"
 #include "memcfg.h"
-#ifndef MEMCFG_GSRAMMASTER_CM
-#define MEMCFG_GSRAMMASTER_CM    2
-#endif
 
 /* Bit-field 헤더 포함 */
 // Uint16, Uint32 타입 및 비트필드 레지스터 구조체(AdcaRegs, GpioDataRegs 등) 제공

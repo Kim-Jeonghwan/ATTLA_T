@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Adc.h
-    Version          : 00.01
+    Version          : 00.04
     Description      : ADC 및 내부 온도 센서 하드웨어 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 12. (AdcaIsr 선언 제거)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - AdcaIsr 선언 제거
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 09. - RAW 데이터 구조체 추가
  */
@@ -68,11 +69,6 @@ void InitialAdc(void);
  */
 void InitAdcModules(void);
 
-/**
- * @brief      ADCINA1 인터럽트 서비스 루틴 (ISR)
- * @param      void
- * @return     void
- */
-__interrupt void AdcaIsr(void);
+// (AdcaIsr removed)
 
 #endif	// #ifndef HAL_ADC_H

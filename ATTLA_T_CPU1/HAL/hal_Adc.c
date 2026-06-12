@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Adc.c
-    Version          : 00.03
-    Description      : ADC 및 내부 온도 센서 하드웨어 제어
+    Version          : 00.04
+    Description      : ADC 하드웨어 제어 (폴링 방식으로 인터럽트 활성화 제거)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 12. (ADC 인터럽트 비활성화 및 AdcaIsr 제거)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - ADC 인터럽트 비활성화 및 AdcaIsr 제거 (EPWM1 폴링으로 전환)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
@@ -43,9 +44,7 @@ void InitialAdc(void)
 {
     InitAdcModules(); // ADC 모듈 하드웨어 초기화
 
-    // ADC 인터럽트 등록 및 활성화 (원래 주기 동작 복원)
-    Interrupt_register(INT_ADCA1, &AdcaIsr);
-    Interrupt_enable(INT_ADCA1);
+    // 기존 ADCA1 인터럽트 활성화 코드는 삭제됨 (EPWM1 인터럽트 내에서 폴링 방식으로 대기)
 }
 
 /*
@@ -75,7 +74,7 @@ void InitAdcModules(void)
 
     // ADCA의 마지막 변환 완료 시점(SOC5)에서 인터럽트 INT1 발생
     ADC_setInterruptSource(ADCA_BASE, ADC_INT_NUMBER1, ADC_SOC_NUMBER5);
-    ADC_enableInterrupt(ADCA_BASE, ADC_INT_NUMBER1);
+    ADC_disableInterrupt(ADCA_BASE, ADC_INT_NUMBER1); // PIE로의 인터럽트 발생 차단 (폴링용 플래그만 세팅됨)
     ADC_clearInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1);
     EDIS;
 
@@ -95,36 +94,4 @@ void InitAdcModules(void)
     EDIS;
 }
 
-// (Removed EPWM8 and EPWM9 specific setups as they are now unified under EPWM1 10kHz timer)
-
-/*
-@function    __interrupt void AdcaIsr(void)
-@brief      ADCINA1 인터럽트 서비스 루틴 (백그라운드 실시간 초고속 데이터 취득)
-@param      void
-@return     __interrupt void
-*/
-__interrupt void AdcaIsr(void)
-{
-    // 실시간 ADC RAW 데이터 취득
-    adcRawData.isenMot = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER2);
-    adcRawData.isenBrk = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER3);
-    adcRawData.vsen28v = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER4);
-    adcRawData.vsen5vd = ADC_readResult(ADCARESULT_BASE, ADC_SOC_NUMBER5);
-    adcRawData.vsenRef = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER1);
-    adcRawData.tsenBd  = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER3);
-
-    // 실시간 ADC 데이터 스케일링 및 필터링 호출
-    CalcAdcData();
-
-    // 시스템 제어 및 운용 로직 일괄 수행 (100us 주기)
-    Control_SystemOperation();
-
-    // 인터럽트 오버플로우(Interrupt Overflow) 감지 시 강제 해제하여 ADC 락업 방어 (CWE-658 방어 규격 준수)
-    if (ADC_getInterruptOverflowStatus(ADCA_BASE, ADC_INT_NUMBER1))
-    {
-        ADC_clearInterruptOverflowStatus(ADCA_BASE, ADC_INT_NUMBER1);
-    }
-
-    ADC_clearInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1);
-    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP1);
-}
+// AdcaIsr 제거됨 (csu_Control.c 의 EPWM1 ISR 내 폴링으로 대체)
