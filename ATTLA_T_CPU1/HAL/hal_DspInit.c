@@ -1,15 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_DspInit.c
-    Version          : 00.06
+    Version          : 00.08
     Description      : DSP 초기화 및 GPIO/인터럽트 기본 설정
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (내부 온도 센서 관련 주석 정리)
+    Last Updated     : 2026. 06. 15. (W6100 SPI 핀 설정을 hal_Spi.c로 이관)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 15. - W6100 SPI-A 통신 핀 및 CS 설정(GPIO 16~19)을 hal_Spi.c의 InitSpia()로 이관
+ * 2026. 06. 12. - DSP_BRAKE 핀을 Active High(전원 인가 시 브레이크 잠금 해제)로 정정 및 주석 수정
  * 2026. 06. 12. - 내부 온도 센서 미사용에 따른 관련 주석(ePWM9) 삭제
  * 2026. 06. 12. - GPIO 1 입력 설정(GND 체크용) 제거
  * 2026. 06. 12. - CM 및 IPC 관련 주석 제거
@@ -19,7 +21,7 @@
  * 2026. 06. 02. - 실험 A: GPIO108을 일반 GPIO 입력/풀업으로 원복하여 PHY 자체 스트랩 설정 보호
  * 2026. 06. 02. - 정석 Active-Low 리셋 시퀀스 복구 및 GPIO119 강력한 푸시풀 출력(STD) 모드 융합 적용
  * 2026. 06. 11. - DSP_Initialization 함수명을 System_Initialization으로 변경
- * 2026. 06. 11. - DSP_BRAKE 핀 제어 로직 회로도 스펙(Active Low) 일치화
+ * 2026. 06. 11. - DSP_BRAKE 핀 제어 로직 회로도 스펙(Active High 오기재 수정 전) 일치화
  * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
  */
 
@@ -223,7 +225,7 @@ static void Init_GpioDout(void)
     GPIO_setPinConfig(GPIO_35_GPIO35);
     GPIO_setPadConfig(35U, GPIO_PIN_TYPE_STD);
     GPIO_setDirectionMode(35U, GPIO_DIR_MODE_OUT);
-    GPIO_writePin(35U, 1U); // Active Low 이므로 기본 High (기계적 잠금 상태 유지)
+    GPIO_writePin(35U, 0U); // Active High(전원 인가 시 잠금 해제). 따라서 기본 Low 출력으로 전원을 차단하여 기계적 잠금 상태(Fail-Safe) 유지
 }
 
 /*
@@ -306,33 +308,13 @@ static void initSystemCommunications(void)
 @param      void
 @return     static void
 @remark
-    - W6100 연결 핀:
-      SIMO: GPIO16, SOMI: GPIO17, CLK: GPIO18
-      nCS:  GPIO19 (수동 제어를 위해 일반 GPIO 출력)
+    - W6100 연결 핀 중 SPI 핀(16~19)은 hal_Spi.c의 InitSpia()에서 초기화합니다.
+    - 본 함수는 제어 핀(INTn, RSTn)만 초기화합니다.
       INTn: GPIO20 (입력, 풀업)
       RSTn: GPIO21 (출력, High 유지, Active-Low)
 */
 static void initW6100GpioPins(void)
 {
-    /* --- SPI A 핀 (16, 17, 18) --- */
-    GPIO_setPinConfig(GPIO_16_SPIA_SIMO);
-    GPIO_setPadConfig(16U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setQualificationMode(16U, GPIO_QUAL_ASYNC);
-
-    GPIO_setPinConfig(GPIO_17_SPIA_SOMI);
-    GPIO_setPadConfig(17U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setQualificationMode(17U, GPIO_QUAL_ASYNC);
-
-    GPIO_setPinConfig(GPIO_18_SPIA_CLK);
-    GPIO_setPadConfig(18U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setQualificationMode(18U, GPIO_QUAL_ASYNC);
-
-    /* --- nCS (GPIO19) 수동 제어 --- */
-    GPIO_setPinConfig(GPIO_19_GPIO19);
-    GPIO_setDirectionMode(19U, GPIO_DIR_MODE_OUT);
-    GPIO_setPadConfig(19U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_writePin(19U, 1U); // CS High (비활성)
-
     /* --- INTn (GPIO20) --- */
     GPIO_setPinConfig(GPIO_20_GPIO20);
     GPIO_setDirectionMode(20U, GPIO_DIR_MODE_IN);

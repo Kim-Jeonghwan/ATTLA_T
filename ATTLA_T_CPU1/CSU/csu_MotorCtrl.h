@@ -1,15 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.h
-    Version          : 00.03
+    Version          : 00.05
     Description      : 1x PWM 모드 기반 모터 제어 모듈 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (제어 루프 분주비 매크로 추가)
+    Last Updated     : 2026. 06. 12. (전류 제어 한계치를 모터 연속 정격 전류 9.34A로 하향 조정)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 전류 제어 한계치를 모터 정격과 동일한 9.34A로 하향 조정 (Fault 임계값 10A와 차별화)
+ * 2026. 06. 12. - 최대 동작 속도 제한(Soft Limit)을 정격과 동일한 3240 RPM으로 수정
  * 2026. 06. 12. - 제어 루프 분주비 매크로 추가 (이름에 숫자를 배제하고 개념적 명칭 적용)
  * 2026. 06. 12. - PID 상수, 모터 출력 한도, 변환 스케일 상수 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 11. - 모터 제어 소프트 리미트(위치, 속도, 전류) 상수 및 매크로 추가
@@ -28,11 +30,11 @@
 #define LIMIT_POS_MIN       0.0f        // 기구부 최소 각도 (0도)
 #define LIMIT_POS_MAX       15840.0f    // 기구부 최대 각도 (44바퀴 * 360도)
 
-#define LIMIT_SPEED_MAX     3500.0f     // 최대 동작 속도 (RPM)
-#define LIMIT_SPEED_MIN     -3500.0f    // 최소 동작 속도 (RPM)
+#define LIMIT_SPEED_MAX     3240.0f     // 최대 동작 속도 (RPM)
+#define LIMIT_SPEED_MIN     -3240.0f    // 최소 동작 속도 (RPM)
 
-#define LIMIT_CURRENT_MAX   10.0f       // 최대 동작 전류 (A)
-#define LIMIT_CURRENT_MIN   -10.0f      // 최소 동작 전류 (A)
+#define LIMIT_CURRENT_MAX   9.34f       // 최대 동작 전류 (A)
+#define LIMIT_CURRENT_MIN   -9.34f      // 최소 동작 전류 (A)
 
 // 클램핑 매크로 유틸리티
 #define CLAMP_F32(x, min, max)  (((x) < (min)) ? (min) : (((x) > (max)) ? (max) : (x)))

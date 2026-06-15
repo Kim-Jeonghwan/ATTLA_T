@@ -40,7 +40,7 @@
 - **기구 구동부**: 기어비 44:1 (모터 44회전 = 기구 1행정)
 - **제어 목표**: 
   - 위치 제어 범위 (Soft Limit): 0.0° ~ 15840.0° (멀티턴 44바퀴 한계)
-  - 속도 제한: ±3500 RPM (제어기 한계치 및 과속 오류 기준 통일)
+  - 속도 제한: ±3240 RPM (제어기 한계치 및 과속 오류 기준 통일)
   - 위치 오차 ±1° 이내, 동작 제한 속도 1.5초 이내 (24V 인가 기준, 18V 인가 시 초과 허용).
 
 ### 2.2 모터 드라이버 (DRV8343)
@@ -57,7 +57,7 @@
 
 ### 2.3 브레이크 (Brake) 제어 회로
 - **동작 전류**: 최대 1.0 A
-- **제어 핀**: `DSP_BRAKE` (GPIO 35, Active Low)
+- **제어 핀**: `DSP_BRAKE` (GPIO 35, Active High - 전원 인가 시 브레이크 잠금 해제, 차단 시 잠금 유지)
 - **회로 구성**: DSP(3.3V) ➡️ NPN TR(MMBT489LT1G) ➡️ TLP293(광절연) ➡️ P-Ch MOSFET(SPD15P10PLGBTMA1) ➡️ 24V 브레이크 구동. 역기전력 방어용 쇼트키 다이오드(V8PAM10HM3/I) 탑재.
 - **모니터링**: 브레이크용 TMCS1126 개별 전류 센서를 통해 동작 및 고장 상태 진단.
 
@@ -72,8 +72,8 @@
     - 연산식: `posDiff * MOTOR_SCALE_SPEED_RPM` (166.6667f, (1/0.001)*60/360)
   - **PID 제어 루프 (3-Stage Cascade) 및 제약 (Soft Limit)**:
     - **위치 지령 클램핑**: 체계 명령 또는 목표 위치(`targetPosition`)는 `LIMIT_POS_MIN` (0.0f) ~ `LIMIT_POS_MAX` (15840.0f, 44바퀴 × 360°) 범위 내로 강제 제한됨.
-    - **위치 제어기 (`posPid`)**: Kp(`PID_POS_KP`: 1.0f), Ki(`PID_POS_KI`: 0.0f) / dt=0.004s (`PID_POS_DT`, 4ms 분주 `DECIMATION_POS_CTRL`: 4U, 4ms / 1ms) / 출력 제한 `LIMIT_SPEED_MAX` (±3500.0 RPM)
-    - **속도 제어기 (`speedPid`)**: Kp(`PID_SPD_KP`: 0.5f), Ki(`PID_SPD_KI`: 0.01f) / dt=0.001s (`PID_SPD_DT`, 1ms 분주 `DECIMATION_SPEED_CTRL`: 10U, 1ms / 100us) / 출력 제한 `LIMIT_CURRENT_MAX` (±10.0 A)
+    - **위치 제어기 (`posPid`)**: Kp(`PID_POS_KP`: 1.0f), Ki(`PID_POS_KI`: 0.0f) / dt=0.004s (`PID_POS_DT`, 4ms 분주 `DECIMATION_POS_CTRL`: 4U, 4ms / 1ms) / 출력 제한 `LIMIT_SPEED_MAX` (±3240.0 RPM)
+    - **속도 제어기 (`speedPid`)**: Kp(`PID_SPD_KP`: 0.5f), Ki(`PID_SPD_KI`: 0.01f) / dt=0.001s (`PID_SPD_DT`, 1ms 분주 `DECIMATION_SPEED_CTRL`: 10U, 1ms / 100us) / 출력 제한 `LIMIT_CURRENT_MAX` (±9.34 A)
     - **전류 제어기 (`currPid`)**: Kp(`PID_CURR_KP`: 2.0f), Ki(`PID_CURR_KI`: 0.05f) / dt=0.0001s (`PID_CURR_DT`) / 출력 제한 0.0 ~ `MOTOR_DUTY_MAX` (100.0f %) (크기 기반 제어)
     - **제어 순서**: 위치 지령 ➡️ `posPid` ➡️ 목표 속도 ➡️ `speedPid` ➡️ 목표 전류량 ➡️ `currPid` ➡️ 최종 목표 Duty 도출.
   - **출력 인가 (`Epwm_SetMotorDuty_1x`)**:
@@ -155,6 +155,16 @@
 - **인터페이스 (SPI-D)**: `SIMO`(91), `SOMI`(92), `CLK`(93), `CS`(94) / 1MHz 속도.
 - **특징**: 데이터 로깅 및 오프셋 저장용. Instant Write 특성 활용 무지연 엑세스.
 - **데이터 로깅 연동 (`csu_Control`)**: 초기 1초 오프셋 보정이 완료된 직후(`csu_Offset_Isr`), 산출된 모터 및 브레이크 전류 오프셋을 FRAM 주소(0x0000 ~ 0x0003)에 자동 백업합니다.
+
+### 4.5 내부 SPI 통신 규격 (Internal SPI Protocols)
+프로젝트 내의 모든 내부 SPI 통신망은 `hal_Spi.c` 모듈 한 곳에서 통합 관리되며, 각 타겟 칩셋의 데이터시트 및 대역폭 요구사항에 맞춰 다음과 같이 개별 프로토콜(POL, PHA)과 보레이트가 최적화되어 있습니다. (TI C2000 기준)
+
+| 통신 모듈 | 채널 | 모드 및 속도 | 동작 방식 및 근거 |
+| :--- | :--- | :--- | :--- |
+| **W6100 (이더넷)** | **SPI-A** | `POL0PHA0`<br>20 MHz | 클럭 Idle Low, 상승 에지 수신 (SPI Mode 0). 대용량 네트워크 패킷의 고속 처리를 위해 20MHz로 설정. WIZnet의 하드웨어 스펙 중 가장 범용적인 Mode 0 채택. |
+| **DRV8343 (모터)** | **SPI-B** | `POL0PHA1`<br>1 MHz | 클럭 Idle Low, 하강 에지 출력 / 상승 에지 수신. 레지스터 설정용이므로 안정성 위주의 1MHz 통신. DRV8343 권장 SPI 타이밍 규격(하강 에지 출력) 충족. |
+| **SSI 엔코더** | **SPI-C** | `POL1PHA0`<br>2.5 MHz | 클럭 Idle High, 첫 하강 에지에서 데이터 출력 시작 / 상승 에지 수신. 절대각 SSI 프로토콜의 표준 통신 스펙 규격을 정밀하게 따름. |
+| **FRAM (메모리)** | **SPI-D** | `POL1PHA0`<br>1 MHz | 클럭 Idle High, 상승 에지 수신 (SPI Mode 3). FRAM 칩 규격을 충족하며, 파라미터 백업 등 소량 데이터 저장을 위해 노이즈 내성을 극대화한 1MHz로 설정. |
 
 ---
 

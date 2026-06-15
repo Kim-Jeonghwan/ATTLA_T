@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Bit.h
-    Version          : 00.06
+    Version          : 00.07
     Description      : 1x PWM 구조용 간소화된 BIT 로직 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (매크로 상수명 추상화: BIT_CNT_FILTER_REF)
+    Last Updated     : 2026. 06. 12. (과속 판단 기준 3240 RPM으로 하향 조정)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 과속 판단 기준을 모터 정격과 동일한 3240 RPM으로 하향 조정
  * 2026. 06. 12. - 매크로 상수명 추상화: BIT_CNT_FILTER_REF 반영
  * 2026. 06. 12. - csu_Bit.c 내부의 매크로 상수를 통합
  * 2026. 06. 11. - BIT 임계값 매크로 집중화 및 신규 결함 구조체/함수 추가
@@ -35,8 +36,8 @@
 #define BIT_LIMIT_STALL_RPM_LIMIT   10.0f    // 스톨 판단 속도 상한치 (10.0 RPM)
 #define BIT_LIMIT_STALL_TIME_CNT    10000U   // 스톨 반응 시간 (TDU 기준 1.0초, 100us * 10000)
 
-#define BIT_LIMIT_SPEED_MOT_MAX     3500.0f  // 모터 과속 제한 (3500 RPM)
-#define BIT_LIMIT_SPEED_MOT_MIN     -3500.0f
+#define BIT_LIMIT_SPEED_MOT_MAX     3240.0f  // 모터 과속 제한 (3240 RPM)
+#define BIT_LIMIT_SPEED_MOT_MIN     -3240.0f
 
 #define BIT_LIMIT_OVS_TIME_CNT      1000U    // 과속 감지 지연시간 (100ms, 100us * 1000)
 #define BIT_LIMIT_OVV_BRK_TIME_CNT  1000U    // 브레이크 전압 감지 지연시간 (100ms, 100us * 1000)
@@ -104,7 +105,7 @@ void Bit_GateFault_Check(void);
 void Bit_MotorStall_Check(void);
 
 /**
- * @brief      모터의 과속 상태 감지 (절대 속도 3500 RPM 초과가 100ms 지속)
+ * @brief      모터의 과속 상태 감지 (절대 속도 3240 RPM 초과가 100ms 지속)
  * @param      void
  * @return     void
  */

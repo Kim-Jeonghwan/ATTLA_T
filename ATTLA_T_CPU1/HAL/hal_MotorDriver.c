@@ -1,15 +1,16 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : hal_MotorDriver.c
- Version          : 00.00
+ Version          : 00.01
  Description      : DRV8343 모터 드라이버 하드웨어 초기화 및 SPI 통신
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+ Last Updated     : 2026. 06. 15. (SPI 초기화 로직 hal_Spi.c로 분리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 15. - SPI 초기화 코드를 hal_Spi.c (InitSpib)로 분리 및 이관
  * 2026. 06. 11. - DRV_ENABLE GPIO 2 제어 로직 추가 (unresolved symbol 에러 해결)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 모터 방향 제어용 MotorDriver_SetDir() 함수 추가
@@ -28,55 +29,18 @@
 void MotorDriver_Init_Hardware(void)
 {
     //-----------------------------------------------------------------------
-    // 1. GPIO 핀 설정 (SPI-B 및 EN_GATE)
+    // 1. GPIO 핀 설정 (EN_GATE)
     //-----------------------------------------------------------------------
     // GPIO 2: DRV_ENABLE (Active High 출력)
     GPIO_setDirectionMode(DRV8343_EN_GATE_PIN, GPIO_DIR_MODE_OUT);
     GPIO_setPadConfig(DRV8343_EN_GATE_PIN, GPIO_PIN_TYPE_STD);
     GPIO_setMasterCore(DRV8343_EN_GATE_PIN, GPIO_CORE_CPU1);
 
-    // GPIO 58: SPIB_CLK
-    GPIO_setPinConfig(GPIO_58_SPIB_CLK);
-    GPIO_setDirectionMode(HAL_MOTORDRIVER_SPI_CLK_PIN, GPIO_DIR_MODE_OUT);
-    GPIO_setPadConfig(HAL_MOTORDRIVER_SPI_CLK_PIN, GPIO_PIN_TYPE_STD);
-
-    // GPIO 59: SPIB_STE (Chip Select)
-    GPIO_setPinConfig(GPIO_59_SPIB_STEN);
-    GPIO_setDirectionMode(HAL_MOTORDRIVER_SPI_STE_PIN, GPIO_DIR_MODE_OUT);
-    GPIO_setPadConfig(HAL_MOTORDRIVER_SPI_STE_PIN, GPIO_PIN_TYPE_STD);
-
-    // GPIO 60: SPIB_SIMO
-    GPIO_setPinConfig(GPIO_60_SPIB_SIMO);
-    GPIO_setDirectionMode(HAL_MOTORDRIVER_SPI_SIMO_PIN, GPIO_DIR_MODE_OUT);
-    GPIO_setPadConfig(HAL_MOTORDRIVER_SPI_SIMO_PIN, GPIO_PIN_TYPE_STD);
-
-    // GPIO 61: SPIB_SOMI
-    GPIO_setPinConfig(GPIO_61_SPIB_SOMI);
-    GPIO_setDirectionMode(HAL_MOTORDRIVER_SPI_SOMI_PIN, GPIO_DIR_MODE_IN);
-    GPIO_setPadConfig(HAL_MOTORDRIVER_SPI_SOMI_PIN, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setQualificationMode(HAL_MOTORDRIVER_SPI_SOMI_PIN, GPIO_QUAL_ASYNC);
-
-    //-----------------------------------------------------------------------
-    // 2. SPI-B 모듈 초기화 (DRV8343 통신 규격)
-    //-----------------------------------------------------------------------
-    SPI_disableModule(SPIB_BASE);
-
-    // DRV8343은 일반적으로 Data on Falling Edge, Setup on Rising Edge (CPOL=0, CPHA=1)
-    // 또는 CPOL=0, CPHA=0을 지원합니다. (데이터시트 확인 필요, 통상 1MHz 16-bit 사용)
-    SPI_setConfig(SPIB_BASE, DEVICE_LSPCLK_FREQ, SPI_PROT_POL0PHA1,
-                  SPI_MODE_MASTER, 1000000, 16);
-    
-    // DRV8343은 CS Low일 때 활성화되므로 기본 STE 설정을 따름
-    SPI_enableFIFO(SPIB_BASE);
-    SPI_clearInterruptStatus(SPIB_BASE, SPI_INT_RXFF | SPI_INT_TXFF);
-    
-    SPI_enableModule(SPIB_BASE);
-
     // DRV8343 wake up 대기
     DEVICE_DELAY_US(2000U);
 
     //-----------------------------------------------------------------------
-    // 3. DRV8343 1x PWM 모드 설정 (Control 2 Register)
+    // 2. DRV8343 1x PWM 모드 설정 (Control 2 Register)
     //-----------------------------------------------------------------------
     uint16_t ctrl2 = MotorDriver_ReadReg(DRV8343_REG_CONTROL_2);
     

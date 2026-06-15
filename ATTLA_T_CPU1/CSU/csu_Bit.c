@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Bit.c
-    Version          : 00.07
+    Version          : 00.08
     Description      : 1x PWM 구조용 간소화된 BIT 로직 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (매크로 상수명 추상화: BIT_CNT_FILTER_REF 반영)
+    Last Updated     : 2026. 06. 12. (과속 판단 기준 3240 RPM으로 하향 조정)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 12. - 과속 판단 기준을 3240 RPM으로 하향 조정
  * 2026. 06. 12. - 매크로 상수명 추상화: BIT_CNT_FILTER_REF 반영
  * 2026. 06. 12. - 매크로 상수들을 헤더 파일로 이동하여 중복 제거
  * 2026. 06. 12. - PM_n24V 및 GateFault 점검 로직을 디바운싱된 xDio 변수 참조로 변경
@@ -208,7 +209,7 @@ void Bit_MotorStall_Check(void)
 
 /**
  * @function Bit_MotorOverSpeed_Check
- * @brief    모터의 과속 상태 감지 (절대 속도 3500 RPM 초과가 100ms 지속)
+ * @brief    모터의 과속 상태 감지 (절대 속도 3240 RPM 초과가 100ms 지속)
  * @param    void
  * @return   void
  */

@@ -1,58 +1,57 @@
-# 코드 구조 리팩토링 (헤더 파일 선언부 분리 및 매직 넘버 상수화) 조사 보고서
+# 모터 드라이버(DRV8343) SPI 통신 및 초기화 설정 리서치 보고서
 
-## 1. CSU (Control & Service Unit) 계층
+본 문서에서는 ATTLA 프로젝트의 CSU 및 HAL 계층 코드를 분석하여, 모터 드라이버(DRV8343)와의 SPI 통신을 위한 초기화 설정과 통신 메시지(Read/Write 프레임)가 구현된 위치와 상세 내용을 정리합니다.
 
-### 1) csu_Control.c / .h
-**현재 상태:**
-- `csu_Control.c` 내부에 오프셋 보정을 위한 `static` 변수(`offsetCount`, `sumMot`, `sumBrk`)가 전역적으로 선언되어 있습니다.
-- ADC 변환 상수인 `#define SCALE_ADC_3V (3.0f / 4096.0f)`가 소스 파일에 선언되어 있습니다.
-**수정 방향:**
-- `offsetCount`, `sumMot`, `sumBrk` 변수들을 `csu_Control.h`의 `stControlState` 구조체 멤버로 편입하여 은닉성과 응집도를 높이거나, `extern` 선언으로 헤더로 분리합니다. (상태 구조체 `xSysCtrl` 내부로 통합하는 방식 추천)
-- `SCALE_ADC_3V` 매크로를 헤더로 이동합니다.
+## 1. SPI 통신 초기화 설정 (Initialization Settings)
 
-### 2) csu_Encoder.c / .h
-**현재 상태:**
-- `csu_Encoder.c`의 `Encoder_UpdatePosition` 함수 내부에 34비트 롤오버 상수 `0x400000000ULL`과, 18비트 해상도 변환 상수 `0.001373291015625f`가 하드코딩 되어 있습니다.
-**수정 방향:**
-- 상수들을 `csu_Encoder.h`에 직관적인 이름의 `#define` 매크로로 정의합니다.
-  - 예: `#define ENC_ROLLOVER_34BIT   0x400000000ULL`
-  - 예: `#define ENC_SCALE_18BIT_DEG  0.001373291015625f`
+모터 드라이버(DRV8343)의 하드웨어적인 SPI 초기화 및 핀 설정은 **HAL 계층**에 구현되어 있으며, 이를 호출하여 상태를 초기화하는 로직은 **CSU 계층**에 구현되어 있습니다.
 
-### 3) csu_MotorCtrl.c / .h
-**현재 상태:**
-- `csu_MotorCtrl.c` 내부에 위치 스케일 상수 `0.001373291f`, 속도 스케일 상수 `166.6667f`, 그리고 PWM Duty 출력 한도 `100.0f`가 매직 넘버로 사용되고 있습니다.
-- `MotorCtrl_Init` 내의 PID 제어기 초기화용 Gain 값들(Kp, Ki, Kd)도 하드코딩되어 있습니다.
-**수정 방향:**
-- `csu_MotorCtrl.h`에 `#define`으로 각 PID 상수, Duty 제한치(Limit) 및 스케일 팩터들을 모두 선언하여 파라미터 튜닝을 용이하게 합니다.
-  - 예: `#define MOTOR_DUTY_MAX 100.0f`
+### [HAL 계층] 하드웨어 초기화 (SPI-B)
+* **파일 위치**: `ATTLA_T_CPU1/HAL/hal_MotorDriver.c`
+* **함수명**: `MotorDriver_Init_Hardware(void)`
+* **주요 설정 내용**:
+  * **SPI 모듈**: **SPI-B** (`SPIB_BASE`) 사용
+  * **통신 핀 할당**: 
+    * GPIO 58: SPIB_CLK
+    * GPIO 59: SPIB_STE (Chip Select)
+    * GPIO 60: SPIB_SIMO (MOSI)
+    * GPIO 61: SPIB_SOMI (MISO)
+  * **SPI 통신 규격 (`SPI_setConfig`)**:
+    * 1MHz 클럭 속도 (`1000000`)
+    * 16비트 워드 크기 (`16`)
+    * Master 모드 (`SPI_MODE_MASTER`)
+    * Mode 1 통신 (`SPI_PROT_POL0PHA1` - Data on Falling Edge, Setup on Rising Edge)
+  * **추가 하드웨어 제어**:
+    * `DRV8343_REG_CONTROL_2` 레지스터를 조작하여 1x PWM 모드로 설정 (`DRV8343_CTRL2_PWM_MODE_1X`).
+    * DRV_ENABLE (GPIO 2) 핀 설정.
 
-## 2. HAL (Hardware Abstraction Layer) 계층
-
-### 1) hal_Adc.c / .h
-**현재 상태:**
-- `hal_Adc.c` 내에 이동 평균 필터 카운트 `#define DEFAULT_MAVE_COUNT 100u` 및 주파수 `#define DEFAULT_PWM_HZ 100000u`가 선언되어 있습니다.
-**수정 방향:**
-- 해당 매크로 선언들을 `hal_Adc.h`로 추출하여 이동합니다.
-
-### 2) hal_Ethernet.c / .h
-**현재 상태:**
-- `hal_Ethernet.c` 내에 UDP 소켓 번호와 포트 번호 `#define SOCK_UDP_COM 0`, `#define PORT_UDP_COM 5001`이 선언되어 있습니다.
-**수정 방향:**
-- 소켓/포트 설정 매크로를 `hal_Ethernet.h`로 이동합니다.
-
-### 3) hal_Sci.c / .h
-**현재 상태:**
-- `hal_Sci.c` 내에 SCI PC 통신용 GPIO 핀 번호와 핀 설정 매크로(`SCI_PC_GPIO_PIN_SCIA_RXD` 등 4개)가 선언되어 있습니다.
-- 송수신용 큐 구조체인 `static stQsci xQueSCI_PC;`가 파일 레벨에 정적으로 선언되어 있습니다.
-**수정 방향:**
-- 통신 포트/핀 관련 매크로들을 `hal_Sci.h`로 이동합니다.
-- (추가 옵션) 큐 구조체 변수의 선언부를 헤더로 이동하여 다른 모듈과의 연동성을 높일 수도 있습니다.
-
-### 4) hal_Spi.c / .h
-**현재 상태:**
-- `hal_Spi.c` 내에 엔코더용 SPI GPIO 핀 번호 `#define ENCODER_SOMI_GPIC 51u`, `#define ENCODER_CLK_GPIC 52u`가 선언되어 있습니다.
-**수정 방향:**
-- 하드웨어 핀 맵핑을 명확히 하기 위해 핀 설정 매크로들을 `hal_Spi.h`로 이동합니다.
+### [CSU 계층] 어플리케이션 초기화 호출
+* **파일 위치**: `ATTLA_T_CPU1/CSU/csu_MotorDriver.c`
+* **함수명**: `MotorDriver_Init(void)`
+* **주요 역할**: 
+  * `MotorDriver_Enable(false)`로 핀 상태 초기화
+  * `MotorDriver_Init_Hardware()` (HAL 함수) 호출을 통한 SPI 셋업
+  * `MotorDriver_ClearFaults()` 호출로 에러 상태 해제
 
 ---
-**조사 완료:** 위 내용을 기반으로 각 파일의 `.c` -> `.h` 헤더 분리 및 매직 넘버 리팩토링 구현을 시작할 수 있도록 준비했습니다.
+
+## 2. 통신 메시지 구조 (Communication Messages)
+
+DRV8343 레지스터를 읽고 쓰기 위한 SPI 메시지 통신 프로토콜 구성(16비트 프레임 포맷)은 **HAL 계층**에서 래핑 함수로 제공하며, 실제 메시지를 활용하는 로직은 **CSU 계층**에서 수행합니다.
+
+### [HAL 계층] 레지스터 Read/Write 통신 프로토콜 
+* **파일 위치**: `ATTLA_T_CPU1/HAL/hal_MotorDriver.c`
+* **Read 프레임 구성 (`MotorDriver_ReadReg`)**:
+  * **포맷**: `Bit 15 = 1 (Read)`, `Bits 14:11 = 주소(Addr)`, `Bits 10:0 = Don't care`
+  * **코드 구현**: `uint16_t txWord = (1U << 15) | ((addr & 0x0F) << 11);`
+  * 수신된 16비트 데이터 중 하위 11비트(`rxWord & 0x07FF`)만 유효 데이터로 추출하여 반환합니다.
+* **Write 프레임 구성 (`MotorDriver_WriteReg`)**:
+  * **포맷**: `Bit 15 = 0 (Write)`, `Bits 14:11 = 주소(Addr)`, `Bits 10:0 = 데이터(Data)`
+  * **코드 구현**: `uint16_t txWord = ((addr & 0x0F) << 11) | (data & 0x07FF);`
+
+### [CSU 계층] 메시지 사용 예시
+* **파일 위치**: `ATTLA_T_CPU1/CSU/csu_MotorDriver.c`
+* **결함 해제 메시지 (`MotorDriver_ClearFaults`)**:
+  * `DRV8343_REG_CONTROL_1` 레지스터를 읽고, Bit 0(CLR_FLT)을 1로 세트하여 다시 쓰는 메시지를 전송합니다.
+* **상태 업데이트 메시지 (`MotorDriver_UpdateStatus`)**:
+  * `DRV8343_REG_FAULT_STATUS_1` 레지스터 읽기 메시지를 전송하여 반환된 값으로 구조체(`xMotorDriver.faultStatus`)를 갱신합니다.

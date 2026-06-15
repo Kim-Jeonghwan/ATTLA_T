@@ -1,15 +1,17 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : hal_Spi.h
- Version          : 00.03
+ Version          : 00.05
  Description      : SPI 하드웨어 제어 헤더
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 12. (SPI 핀 매크로 헤더 이동)
+ Last Updated     : 2026. 06. 15. (W6100 SPI-A 핀 매크로 이관 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 15. - hal_DspInit.c에 있던 W6100 SPI-A 통신 핀 설정 이관
+ * 2026. 06. 15. - SPI 설정 매직넘버 상수화 및 핀 네이밍 규칙 통일
  * 2026. 06. 12. - 엔코더 SPI 통신용 핀 매크로를 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 09. - 함수명에서 hal_ 접두어 제거
@@ -24,9 +26,35 @@
 
 
 /* ************************** [[   define   ]]  *********************************************************** */
-#define FRAM_CS_GPIO        94u // SPID CS
-#define ENCODER_SOMI_GPIC   51u // SPI SOMIC
-#define ENCODER_CLK_GPIC    52u // SPI CLKC
+// [ SPI-A : W6100 ]
+#define SPIA_W6100_BAUDRATE         20000000u   // 20MHz
+#define SPIA_W6100_DATA_WIDTH       8u
+#define SPIA_W6100_SIMO_PIN         16u
+#define SPIA_W6100_SOMI_PIN         17u
+#define SPIA_W6100_CLK_PIN          18u
+#define SPIA_W6100_CS_PIN           19u
+
+// [ SPI-B : Motor Driver ]
+#define SPIB_MOTOR_BAUDRATE         1000000u    // 1MHz
+#define SPIB_MOTOR_DATA_WIDTH       16u
+#define SPIB_MOTOR_CLK_PIN          58u
+#define SPIB_MOTOR_STE_PIN          59u
+#define SPIB_MOTOR_SIMO_PIN         60u
+#define SPIB_MOTOR_SOMI_PIN         61u
+
+// [ SPI-C : SSI Encoder ]
+#define SPIC_SSI_BAUDRATE           2500000u    // 2.5MHz
+#define SPIC_SSI_DATA_WIDTH         16u
+#define SPIC_SSI_SOMI_PIN           51u
+#define SPIC_SSI_CLK_PIN            52u
+
+// [ SPI-D : FRAM ]
+#define SPID_FRAM_BAUDRATE          1000000u    // 1MHz
+#define SPID_FRAM_DATA_WIDTH        8u
+#define SPID_FRAM_SIMO_PIN          91u
+#define SPID_FRAM_SOMI_PIN          92u
+#define SPID_FRAM_CLK_PIN           93u
+#define SPID_FRAM_CS_PIN            94u
 /* ************************** [[   enum or struct   ]]  *************************************************** */
 
 
