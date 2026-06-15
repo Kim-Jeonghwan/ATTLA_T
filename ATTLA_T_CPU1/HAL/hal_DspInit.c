@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_DspInit.c
-    Version          : 00.08
+    Version          : 00.09
     Description      : DSP 초기화 및 GPIO/인터럽트 기본 설정
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 15. (W6100 SPI 핀 설정을 hal_Spi.c로 이관)
+    Last Updated     : 2026. 06. 15. (LED 핀 초기화 통합)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 15. - 기존 hal_Led.c 파일 삭제 및 LED 핀 초기화 코드를 Init_GpioDout에 통합 관리
  * 2026. 06. 15. - W6100 SPI-A 통신 핀 및 CS 설정(GPIO 16~19)을 hal_Spi.c의 InitSpia()로 이관
  * 2026. 06. 12. - DSP_BRAKE 핀을 Active High(전원 인가 시 브레이크 잠금 해제)로 정정 및 주석 수정
  * 2026. 06. 12. - 내부 온도 센서 미사용에 따른 관련 주석(ePWM9) 삭제
@@ -186,8 +187,6 @@ static void Init_GpioDin(void)
 */
 static void Init_GpioDout(void)
 {
-    Led_InitGpio();
-
     // --- 모터 드라이버 제어 출력 (DRV8343) ---
     // DRV_ENABLE (GPIO 2 / EPWM2A)
     GPIO_setPinConfig(GPIO_2_GPIO2);
@@ -214,6 +213,12 @@ static void Init_GpioDout(void)
     GPIO_setPadConfig(31U, GPIO_PIN_TYPE_STD);
     GPIO_setDirectionMode(31U, GPIO_DIR_MODE_OUT);
     GPIO_writePin(31U, 1U); // Active Low 이므로 기본 High (OFF)
+
+    // **메인 컨트롤 ISR 동작 확인용 임시 LED (GPIO 34 할당)**
+    GPIO_setPinConfig(GPIO_34_GPIO34);
+    GPIO_setPadConfig(34U, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(34U, GPIO_DIR_MODE_OUT);
+    GPIO_writePin(34U, 1U);
 
     // LED_nFAULT (GPIO 32 할당)
     GPIO_setPinConfig(GPIO_32_GPIO32);
@@ -297,7 +302,7 @@ static void initSystemUserInterface(void)
 static void initSystemCommunications(void)
 {
     Initial_SPI();
-    Initial_SCI();
+    // Initial_SCI(); // SCI 미사용으로 인한 주석 처리
     Initial_TIMER();
     Initial_EpwmTimer();  /* EPWM1 기반 타이머 활성화 */
 }

@@ -23,7 +23,7 @@
 
 
 /* ************************** [[   global   ]]  *********************************************************** */
-stTimer xTimer;
+volatile stTimer xTimer;
 
 
 /* ************************** [[  static prototype  ]]  *************************************************** */
@@ -119,7 +119,7 @@ static void initCPUTimers(void)
     //
     // 인터럽트 카운터 및 구조체 리셋
     //
-	(void)memset(&xTimer, 0u, sizeof(xTimer));		//  타이머 변수 초기화
+	(void)memset((void *)&xTimer, 0u, sizeof(xTimer));		//  타이머 변수 초기화
 }
 
 /*
@@ -153,8 +153,8 @@ static void configCPUTimer(uint32_t cpuTimer, float32_t freq, float32_t period)
     //
     CPUTimer_stopTimer(cpuTimer);
     CPUTimer_reloadTimerCounter(cpuTimer);
-    CPUTimer_setEmulationMode(cpuTimer,
-                              CPUTIMER_EMULATIONMODE_STOPAFTERNEXTDECREMENT);
+    // [BUG FIX] 디버거 연결 상태에서 타이머 록업 방지를 위해 FREE_RUN 모드 적용
+    CPUTimer_setEmulationMode(cpuTimer, CPUTIMER_EMULATIONMODE_RUNFREE);
     CPUTimer_enableInterrupt(cpuTimer);
 }
 

@@ -68,10 +68,15 @@ void main(void)
 	Ethernet_Init();
 	Interrupt_enable(INT_XINT1);
 
+    // [CRITICAL BUG FIX]: 전역 인터럽트(INTM) 및 실시간 디버깅(DBGM) 활성화
+    // 이 두 줄이 없으면 C28x 코어는 PIE 인터럽트를 무시하므로 어떠한 ISR(타이머, EPWM 등)도 발생하지 않습니다.
+    EINT;
+    ERTM;
+
 	// 백그라운드 유휴 루프 (Background Loop)
 	while(1u)
 	{
-		sendScia_SCI_PC(); // 디버깅용 비동기 SCI 송신 처리
+		// sendScia_SCI_PC(); // SCI 미사용 요청으로 주석 처리
 
 		while(xTimer.Cycle_1ms >= 1u)
 		{
@@ -128,7 +133,7 @@ static void cycle_1ms(void)
 static void cycle_10ms(void)
 {
     // 통신 메시지 송신 등 덜 중요한 백그라운드 태스크
-    sendSciPcMessage1();
+    // sendSciPcMessage1(); // SCI 미사용 요청으로 주석 처리
 }
 
 

@@ -1,15 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Epwm.c
-    Version          : 00.03
-    Description      : EPWM 제어 및 초기화 로직 (GPIO0 EPWM1A 모터 PWM 통합)
+    Version          : 00.02
+    Description      : PWM 제어 (디버거 연결 시 Free Run 대응 및 클럭 분주 개선)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (EPWM1 인터럽트 발생 추가)
+    Last Updated     : 2026. 06. 15. (EPWM 클럭 분주비 개선)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 15. - SysCtl_setEPWMClockDivider(1) 추가로 200MHz TBCLK 정상 확보
+ * 2026. 06. 15. - 디버거 연결 상태에서 록업 방지를 위해 FREE_RUN 모드 적용
  * 2026. 06. 12. - EPWM1 인터럽트 발생 설정(INT_EPWM1) 추가 (ADC 폴링 및 시퀀스 스위칭용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 모터 1x PWM Duty 제어용 Epwm_SetMotorDuty_1x() 구현
@@ -48,15 +50,21 @@ void Initial_EpwmTimer(void)
     /* EPWM1 클럭 활성화 */
     SysCtl_enablePeripheral(SYSCTL_PERIPH_CLK_EPWM1);
 
+    /* EPWM 클럭 분주비를 1로 설정 (EPWMCLK = SYSCLK = 200MHz) */
+    SysCtl_setEPWMClockDivider(SYSCTL_EPWMCLK_DIV_1);
+
     /* EPWM1 리셋 후 초기화 */
     EPWM_setTimeBaseCounterMode(EPWM_TIMER1_BASE, EPWM_COUNTER_MODE_UP_DOWN);
     EPWM_setTimeBasePeriod(EPWM_TIMER1_BASE, (uint16_t)EPWM_TIMER1_PERIOD);
     EPWM_setTimeBaseCounter(EPWM_TIMER1_BASE, 0U);
 
-    /* 프리스케일러 설정: CLKDIV=1, HSPCLKDIV=1 → TBCLK = SYSCLK = 200MHz */
+    /* 프리스케일러 설정: CLKDIV=1, HSPCLKDIV=1 → TBCLK = EPWMCLK = 200MHz */
     EPWM_setClockPrescaler(EPWM_TIMER1_BASE,
                            EPWM_TIMER1_CLK_DIV,
                            EPWM_TIMER1_HCLK_DIV);
+
+    // [BUG FIX] CCS 디버거 사용 시 메인 진입이나 Breakpoint 등에서 멈췄을 때 EPWM 카운터가 완전히 죽어버리는 현상을 방지합니다.
+    EPWM_setEmulationMode(EPWM_TIMER1_BASE, EPWM_EMULATION_FREE_RUN);
 
     // 액션 한정기 설정 (Symmetric Active High PWM)
     // Up-count CMPA 도달 시 Low, Down-count CMPA 도달 시 High

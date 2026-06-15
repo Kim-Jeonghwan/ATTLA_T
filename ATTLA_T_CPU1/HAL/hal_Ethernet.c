@@ -1,15 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Ethernet.c
-    Version          : 00.02
-    Description      : W6100 이더넷 컨트롤러 제어 및 소켓 통신(Ext. Interrupt)
+    Version          : 00.03
+    Description      : 이더넷(W6100) 하드웨어 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (통신 포트 매크로 헤더 이동)
+    Last Updated     : 2026. 06. 15. (SPIA 전용 콜백 함수명 반영)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 15. - W6100용 SPI 통신 콜백 함수 이름을 spia_ 접두어를 포함한 이름으로 수정 반영
+ * 2026. 06. 15. - Initial_W6100 반환값 처리 추가로 하드웨어 미연결 시 소켓 개방 스킵(무한루프 방지) 구현
  * 2026. 06. 12. - 소켓 및 포트 매크로 상수를 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -20,26 +22,25 @@
 
 
 /*
-@function    void Initial_W6100(void)
+@function    int8_t Initial_W6100(void)
 @brief      W6100 하드웨어 초기화 및 IP/MAC 설정
 @param      void
-@return     void
+@return     int8_t (성공 0, 실패 -1)
 */
-void Initial_W6100(void)
+int8_t Initial_W6100(void)
 {
     // 1. SPI Callbacks Registration (SPI-A 모듈 함수 연결)
-    reg_wizchip_cs_cbfunc(cs_sel, cs_desel);
-    reg_wizchip_spi_cbfunc(spi_read_byte, spi_write_byte, 0, 0);
+    reg_wizchip_cs_cbfunc(spia_cs_sel, spia_cs_desel);
+    reg_wizchip_spi_cbfunc(spia_read_byte, spia_write_byte, 0, 0);
 
     // 2. W6100 메모리 초기화 (TX/RX 버퍼 8개의 소켓에 각각 2KB씩 할당)
     uint8_t txsize[8] = {2, 2, 2, 2, 2, 2, 2, 2};
     uint8_t rxsize[8] = {2, 2, 2, 2, 2, 2, 2, 2};
     
-    // 반환값이 0 미만이면 초기화 실패를 의미합니다.
+    // 반환값이 0 미만이면 칩 연결 불량이거나 초기화 실패를 의미합니다.
     if (wizchip_init(txsize, rxsize) < 0) 
     {
-        // 초기화 실패 시 시스템 에러 처리 로직을 추후 여기에 추가할 수 있습니다.
-        return;
+        return -1; // 하드웨어 없음, 실패 반환
     }
 
     // 3. MAC 주소 및 고정 IP 설정 (IPv4)
@@ -55,6 +56,19 @@ void Initial_W6100(void)
 
     // IPv6 및 기타 필드 0 초기화를 위해 ctlnetwork 사용 가능
     wizchip_setnetinfo(&netinfo);
+
+    // 하드웨어 통신 정상 여부 검증 (설정값 읽기 테스트)
+    wiz_NetInfo check_info;
+    wizchip_getnetinfo(&check_info);
+    
+    // 방금 설정한 IP 주소의 첫 번째 바이트(192)가 정상적으로 읽히지 않는다면
+    // 하드웨어가 없거나 SPI 통신이 불량인 상태이므로 실패 반환
+    if (check_info.ip[0] != 192)
+    {
+        return -1;
+    }
+
+    return 0; // 초기화 성공
 }
 
 /*
@@ -65,8 +79,13 @@ void Initial_W6100(void)
 */
 void Ethernet_Init(void)
 {
-    // 1. W6100 하드웨어 설정 적용
-    Initial_W6100();
+    // 1. W6100 하드웨어 설정 적용 및 연결 상태 확인
+    if (Initial_W6100() < 0)
+    {
+        // 하드웨어가 연결되어 있지 않으면 이후의 소켓 개방 루틴을 무시하고 빠져나갑니다.
+        // 이를 통해 WIZnet 드라이버 내부의 무한 루프 블로킹을 근본적으로 방지합니다.
+        return; 
+    }
     
     // 2. UDP 소켓 개방
     socket(SOCK_UDP_COM, Sn_MR_UDP, PORT_UDP_COM, 0x00);

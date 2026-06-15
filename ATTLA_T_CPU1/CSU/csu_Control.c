@@ -1,17 +1,19 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.07
+    Version          : 00.08
     Description      : 시스템 제어 모듈 (동적 인터럽트 스위칭 및 ADC 폴링) 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (매크로 상수명 추상화: ADC_SCALE_REF_VOLT 반영)
+    Last Updated     : 2026. 06. 15. (ADC 폴링 타임아웃 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 15. - ADC 인터럽트 폴링 무한루프 방지용 타임아웃 적용 (하드웨어 미연결 보드 대응)
  * 2026. 06. 12. - 매크로 상수명 추상화: ADC_SCALE_REF_VOLT 반영
  * 2026. 06. 12. - 오프셋 보정 변수 및 ADC 상수 헤더(.h)로 이동 (글로벌 룰 적용)
+ * 2026. 06. 15. - ADC 인터럽트 폴링 무한루프 방지용 타임아웃 적용 (하드웨어 미연결 보드 대응)
  * 2026. 06. 12. - 이산신호(DIO) 디바운싱 갱신 및 FRAM 저장 로직(saveData) 연동
  * 2026. 06. 12. - 3단계 동적 인터럽트 전환 적용 (csu_Offset_Isr, Pbit, MainControl)
  * 2026. 06. 11. - CBIT(Bit_RunCBIT)에 스톨, 과속, 엔코더 신규 점검 함수 추가
@@ -154,8 +156,9 @@ void Control_SystemOperation(void)
 */
 __interrupt void csu_Offset_Isr(void)
 {
-    // ADC 변환 완료 대기 (폴링 블로킹)
-    while(ADC_getInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1) == false)
+    // ADC 변환 완료 대기 (폴링 블로킹 타임아웃 적용)
+    uint16_t adcTimeout = 100U;
+    while((ADC_getInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1) == false) && (--adcTimeout > 0U))
     {
     }
     ADC_clearInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1);
@@ -203,8 +206,9 @@ __interrupt void csu_Offset_Isr(void)
 */
 __interrupt void csu_Pbit_Isr(void)
 {
-    // ADC 폴링 대기
-    while(ADC_getInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1) == false)
+    // ADC 폴링 대기 (타임아웃 적용)
+    uint16_t adcTimeout = 100U;
+    while((ADC_getInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1) == false) && (--adcTimeout > 0U))
     {
     }
     ADC_clearInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1);
@@ -239,8 +243,9 @@ __interrupt void csu_Pbit_Isr(void)
 */
 __interrupt void csu_MainControl_Isr(void)
 {
-    // ADC 폴링 대기
-    while(ADC_getInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1) == false)
+    // ADC 폴링 대기 (타임아웃 적용 - 메인루프 기아 방지를 위해 100U로 대폭 축소)
+    uint16_t adcTimeout = 100U;
+    while((ADC_getInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1) == false) && (--adcTimeout > 0U))
     {
     }
     ADC_clearInterruptStatus(ADCA_BASE, ADC_INT_NUMBER1);
@@ -255,7 +260,35 @@ __interrupt void csu_MainControl_Isr(void)
     CalcAdcData();
 
     // 100us 시스템 운용 파이프라인 실행
-    Control_SystemOperation();
+    // Control_SystemOperation() 내부 로직 전개 (SPI 통신 블로킹 의심 부분을 제외하고 개별 호출)
+    // 1. 아날로그신호 입력 및 연산 CSU
+    // CalcAdcData(); 
+    
+    // 2. 이산신호 입력 CSU
+    Dio_UpdateInput();
+
+    // 3. 위치(각도) 정보 획득 및 처리 CSU (!! 메인 루프 기아 원인 1순위: SPI 무한 블로킹 의심으로 임시 주석 처리 !!)
+    // Encoder_UpdatePosition();
+
+    // 5. 주기점검(CBIT) CSU
+    Bit_RunCBIT();
+
+    // 6. 모터 구동제어 CSU
+    MotorCtrl_Run();
+
+    // 7. 데이터 저장 CSU
+    Control_SaveDataToFram();
+
+
+    // --- 사용자 요청: 메인컨트롤 ISR 동작 확인용 GPIO 34번 토글 (1초 주기: 5000번 호출 시 상태 반전) ---
+    static uint16_t isrAliveCounter = 0;
+    isrAliveCounter++;
+    if (isrAliveCounter >= 5000U)
+    {
+        isrAliveCounter = 0;
+        GPIO_togglePin(34U);
+    }
+    // ---------------------------------------------------------------------------------
 
     EPWM_clearEventTriggerInterruptFlag(EPWM_TIMER1_BASE);
     Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);

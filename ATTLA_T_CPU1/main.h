@@ -2,14 +2,15 @@
     Nexcom Co., Ltd.
     Filename         : main.h
     Version          : 00.03
-    Description      : 코어 시스템 통합 헤더 파일
+    Description      : 전역 헤더 관리 파일
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (csu_Dio.h 인클루드 추가)
+    Last Updated     : 2026. 06. 15. (hal_Led.h 참조 삭제)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 15. - 리팩토링에 따라 삭제된 hal_Led.h 인클루드 제거
  * 2026. 06. 12. - csu_Dio.h 인클루드 추가
  * 2026. 06. 12. - CM 및 IPC 관련 매크로 제거
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
@@ -52,7 +53,6 @@
 #include "hal_Encoder.h"
 #include "hal_Epwm.h"    /* EPWM1 기반 2ms 타이머 */
 #include "hal_Fram.h"
-#include "hal_Led.h"
 #include "hal_MotorDriver.h"
 #include "hal_Ramfuncs.h"
 #include "hal_Sci.h"

@@ -1,15 +1,18 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Led.h
-    Version          : 00.01
+    Version          : 00.04
     Description      : 시스템 상태 표시 LED 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 06. 15. (비트필드 제거 및 uint16_t 자료형 변경)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 15. - stLed 구조체의 비트필드(총 24비트로 C2000 16비트 경계 초과 버그 유발) 제거 및 일반 자료형 변경
+ * 2026. 06. 15. - PinMux 설정(GPIO_30_GPIO30)도 GPIO_LED_nG_PIN_CONFIG 매크로로 래핑하여 하드웨어 의존성 분리
+ * 2026. 06. 15. - enum 정의 시 하드코딩된 30u 대신 매크로 상수(GPIO_LED_nG)를 활용하도록 수정
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
@@ -24,14 +27,13 @@
 
 
 /* ************************** [[   define   ]]  *********************************************************** */
-#define LED_OFF		true
-#define LED_ON		false
+#define LED_OFF     1u
+#define LED_ON      0u
 
-#define LED_NONE	false
-#define LED_TOGGLE	true
+#define LED_NONE    0u
+#define LED_TOGGLE  1u
 
 /* nG 상태 표시용 LED(GPIO 30)*/
-#define GPIO_LED_nG     30u
 
 
 /* ************************** [[   enum or struct   ]]  **************************************************** */
@@ -41,7 +43,7 @@
  */
 typedef enum
 {
-	eLED_nG			            = 30u,
+	eLED_nG			            = 31u,
 
 } eLed;
 
@@ -50,12 +52,11 @@ typedef enum
  */
 typedef struct
 {
-    uint16_t Index:8u;    // GPIO Index (eLed 타입 저장)
-    uint16_t Time:8u;     // Toggle 주기 설정
-    uint16_t Temp:8u;     // 카운트 다운용 임시 변수
-    bool     State:1u;    // 현재 점등 상태 (false: On, true: Off)
-    bool     Toggle:1u;   // 토글 모드 활성 (false: None, true: Toggle)
-    uint16_t Reserved:14u;
+    uint16_t Index;       // GPIO Index (eLed 타입 저장)
+    uint16_t Time;        // Toggle 주기 설정
+    uint16_t Temp;        // 카운트 다운용 임시 변수
+    uint16_t State;       // 현재 점등 상태 (LED_ON: 0, LED_OFF: 1)
+    uint16_t Toggle;      // 토글 모드 활성 (LED_NONE: 0, LED_TOGGLE: 1)
 } stLed;
 
 /**
@@ -97,7 +98,7 @@ void updateLedStatus(void);
  * @param      State : LED_ON(1) 또는 LED_OFF(0)
  * @return     void
  */
-void setLedStatus(stLed *pLed, bool State);
+void setLedStatus(stLed *pLed, uint16_t State);
 
 /**
  * @brief      LED 토글 모드 활성화 및 주기 설정
@@ -106,7 +107,7 @@ void setLedStatus(stLed *pLed, bool State);
  * @param      Time : 토글 유지 카운트 (100ms 단위)
  * @return     void
  */
-void setLedModeToggle(stLed *pLed, bool State, uint16_t Time);
+void setLedModeToggle(stLed *pLed, uint16_t State, uint16_t Time);
 
 #endif	// #ifndef CSU_LED_H
 

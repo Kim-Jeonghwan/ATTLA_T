@@ -17,7 +17,6 @@
 "./HAL/hal_Epwm.obj"
 "./HAL/hal_Ethernet.obj"
 "./HAL/hal_Fram.obj"
-"./HAL/hal_Led.obj"
 "./HAL/hal_MotorDriver.obj"
 "./HAL/hal_Ramfuncs.obj"
 "./HAL/hal_Sci.obj"

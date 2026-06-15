@@ -1,15 +1,18 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Led.c
-    Version          : 00.03
+    Version          : 00.06
     Description      : 시스템 상태 표시 LED 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (내부 온도 센서 관련 주석 정리)
+    Last Updated     : 2026. 06. 15. (불필요한 HAL 래퍼 함수 제거 및 최적화)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 15. - 성능 및 가독성을 위해 불필요한 Led_TogglePin, Led_WritePin 래퍼 제거 후 SDK의 GPIO_ API 직접 호출
+ * 2026. 06. 15. - 34번 핀과 점멸 주기 일치화 (100ms 상태 머신 기준 1.1초 -> 0.5초 토글)
+ * 2026. 06. 15. - stLed 구조체 변경에 따른 파라미터 자료형(bool -> uint16_t) 수정
  * 2026. 06. 12. - 내부 온도 센서 관련 레거시 주석 삭제
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -49,7 +52,7 @@ void Initial_Led(void)
 {
     // nG LED (GPIO30) 설정
     xLed.lednG.Index  = eLED_nG;
-    setLedModeToggle(&xLed.lednG, LED_TOGGLE, 10u); // 1초 주기 토글
+    setLedModeToggle(&xLed.lednG, LED_TOGGLE, 4u); // 500ms 주기 토글 (0.5s On / 0.5s Off)
 }
 
 /*
@@ -76,7 +79,7 @@ void updateLedStatus(void)
         {
             if(pLed[i]->Temp == 0u)
             {
-                Led_TogglePin(pLed[i]->Index);
+                GPIO_togglePin(pLed[i]->Index);
                 pLed[i]->Temp = pLed[i]->Time;
             }
             else
@@ -87,7 +90,7 @@ void updateLedStatus(void)
         else
         {
             // State 값에 따라 물리 핀 출력
-            Led_WritePin(pLed[i]->Index, pLed[i]->State);
+            GPIO_writePin(pLed[i]->Index, (uint32_t)pLed[i]->State);
         }
     }
 }
@@ -100,7 +103,7 @@ void updateLedStatus(void)
 @param      State: LED_ON(1) 또는 LED_OFF(0)
 @return     void
 */
-void setLedStatus(stLed *pLed, bool State)
+void setLedStatus(stLed *pLed, uint16_t State)
 {
     if(pLed != NULL)
     {
@@ -108,7 +111,7 @@ void setLedStatus(stLed *pLed, bool State)
         {
             pLed->State = State;
             pLed->Toggle = LED_NONE; 
-            Led_WritePin(pLed->Index, State);
+            GPIO_writePin(pLed->Index, (uint32_t)State);
         }
     }
 }
@@ -122,7 +125,7 @@ void setLedStatus(stLed *pLed, bool State)
 @param      Time: 토글 유지 카운트 (100ms 단위)
 @return     void
 */
-void setLedModeToggle(stLed *pLed, bool State, uint16_t Time)
+void setLedModeToggle(stLed *pLed, uint16_t State, uint16_t Time)
 {
     if(pLed != NULL)
     {

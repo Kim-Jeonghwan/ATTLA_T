@@ -80,10 +80,17 @@ uint64_t Encoder_ReadSpiData(void)
     SPI_writeDataBlockingFIFO(SPIC_BASE, 0xFFFF);
     SPI_writeDataBlockingFIFO(SPIC_BASE, 0xFFFF);
     
-    // RX FIFO에 4개의 데이터(총 64비트)가 모두 찰 때까지 대기
-    while(SPI_getRxFIFOStatus(SPIC_BASE) < SPI_FIFO_RX4)
+    // RX FIFO에 4개의 데이터(총 64비트)가 모두 찰 때까지 대기 (타임아웃 적용)
+    uint16_t timeout = 1000U;
+    while((SPI_getRxFIFOStatus(SPIC_BASE) < SPI_FIFO_RX4) && (--timeout > 0U))
     {
         // Blocking wait
+    }
+    
+    // 타임아웃 발생 시 0 반환 (통신 에러 처리)
+    if(timeout == 0U)
+    {
+        return 0ULL;
     }
     
     // 4개의 16비트 워드 일괄 수신

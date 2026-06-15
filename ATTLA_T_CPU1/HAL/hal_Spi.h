@@ -1,15 +1,17 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : hal_Spi.h
- Version          : 00.05
+ Version          : 00.06
  Description      : SPI 하드웨어 제어 헤더
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 15. (W6100 SPI-A 핀 매크로 이관 추가)
+ Last Updated     : 2026. 06. 15. (SPI-A 통신 속도 10MHz로 변경)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 15. - cs_sel, spi_read_byte 등 W6100 전용 래퍼 함수에 spia_ 접두어 추가
+ * 2026. 06. 15. - LSPCLK 초과 에러 해결을 위해 W6100 SPI-A 통신 속도 10MHz로 하향 조정
  * 2026. 06. 15. - hal_DspInit.c에 있던 W6100 SPI-A 통신 핀 설정 이관
  * 2026. 06. 15. - SPI 설정 매직넘버 상수화 및 핀 네이밍 규칙 통일
  * 2026. 06. 12. - 엔코더 SPI 통신용 핀 매크로를 헤더(.h)로 이동 (글로벌 룰 적용)
@@ -27,7 +29,7 @@
 
 /* ************************** [[   define   ]]  *********************************************************** */
 // [ SPI-A : W6100 ]
-#define SPIA_W6100_BAUDRATE         20000000u   // 20MHz
+#define SPIA_W6100_BAUDRATE         10000000u   // 10MHz
 #define SPIA_W6100_DATA_WIDTH       8u
 #define SPIA_W6100_SIMO_PIN         16u
 #define SPIA_W6100_SOMI_PIN         17u
@@ -99,28 +101,28 @@ uint16_t Spid_Transmit(uint16_t data);
  * @param      void
  * @return     uint8_t (수신된 데이터)
  */
-uint8_t spi_read_byte(void);
+uint8_t spia_read_byte(void);
 
 /**
  * @brief      W6100 외부 SPI 데이터 1바이트 쓰기 콜백
  * @param      wb: 전송할 8비트 데이터
  * @return     void
  */
-void spi_write_byte(uint8_t wb);
+void spia_write_byte(uint8_t wb);
 
 /**
  * @brief      W6100 칩 선택 (Chip Select Low) 외부 SPI 콜백
  * @param      void
  * @return     void
  */
-void cs_sel(void);
+void spia_cs_sel(void);
 
 /**
  * @brief      W6100 칩 해제 (Chip Select High) 외부 SPI 콜백
  * @param      void
  * @return     void
  */
-void cs_desel(void);
+void spia_cs_desel(void);
 
 #endif	// #ifndef HAL_SPI_H
 

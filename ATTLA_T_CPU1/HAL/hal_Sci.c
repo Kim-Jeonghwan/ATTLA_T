@@ -284,22 +284,22 @@ void xmtScia_SCI_PC(uint16_t data[], uint16_t len)
 */
 void sendScia_SCI_PC(void)
 {
-    uint16_t i = 0u;
-    uint16_t len = 0u;
     uint16_t popData = 0u;
-    uint16_t sendData[20u] = {0u};		// 10 에서 20으로 변경
+    uint16_t fifoStatus;
+    uint16_t emptySpace;
 
-    for(i = 0u; i < 20u; i++)
-    {
-        if(dequeueSci(&xQueSCI_PC, &popData) == 1u)
-        {
-            sendData[len ++] = popData;
-        }
-    }
+    // 현재 TX FIFO에 있는 데이터 개수를 확인 (0 ~ 16)
+    fifoStatus = SCI_getTxFIFOStatus(SCIA_BASE);
+    
+    // TX FIFO의 최대 크기는 16이므로 빈 공간 계산
+    emptySpace = 16u - fifoStatus;
 
-    if(len > 0u)
+    // 빈 공간이 있고, 큐에 데이터가 있다면 꺼내서 전송
+    while((emptySpace > 0u) && (dequeueSci(&xQueSCI_PC, &popData) == 1u))
     {
-        SCI_writeCharArray(SCIA_BASE, sendData, len);
+        // SCI_writeCharNonBlocking 대신 하드웨어 레지스터로 직접 삽입하여 Non-blocking 구현
+        HWREGH(SCIA_BASE + SCI_O_TXBUF) = popData;
+        emptySpace--;
     }
 }
 

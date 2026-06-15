@@ -14,7 +14,6 @@ C_SRCS += \
 ../HAL/hal_Epwm.c \
 ../HAL/hal_Ethernet.c \
 ../HAL/hal_Fram.c \
-../HAL/hal_Led.c \
 ../HAL/hal_MotorDriver.c \
 ../HAL/hal_Ramfuncs.c \
 ../HAL/hal_Sci.c \
@@ -33,7 +32,6 @@ C_DEPS += \
 ./HAL/hal_Epwm.d \
 ./HAL/hal_Ethernet.d \
 ./HAL/hal_Fram.d \
-./HAL/hal_Led.d \
 ./HAL/hal_MotorDriver.d \
 ./HAL/hal_Ramfuncs.d \
 ./HAL/hal_Sci.d \
@@ -52,7 +50,6 @@ OBJS += \
 ./HAL/hal_Epwm.obj \
 ./HAL/hal_Ethernet.obj \
 ./HAL/hal_Fram.obj \
-./HAL/hal_Led.obj \
 ./HAL/hal_MotorDriver.obj \
 ./HAL/hal_Ramfuncs.obj \
 ./HAL/hal_Sci.obj \
@@ -71,7 +68,6 @@ OBJS__QUOTED += \
 "HAL\hal_Epwm.obj" \
 "HAL\hal_Ethernet.obj" \
 "HAL\hal_Fram.obj" \
-"HAL\hal_Led.obj" \
 "HAL\hal_MotorDriver.obj" \
 "HAL\hal_Ramfuncs.obj" \
 "HAL\hal_Sci.obj" \
@@ -90,7 +86,6 @@ C_DEPS__QUOTED += \
 "HAL\hal_Epwm.d" \
 "HAL\hal_Ethernet.d" \
 "HAL\hal_Fram.d" \
-"HAL\hal_Led.d" \
 "HAL\hal_MotorDriver.d" \
 "HAL\hal_Ramfuncs.d" \
 "HAL\hal_Sci.d" \
@@ -109,7 +104,6 @@ C_SRCS__QUOTED += \
 "../HAL/hal_Epwm.c" \
 "../HAL/hal_Ethernet.c" \
 "../HAL/hal_Fram.c" \
-"../HAL/hal_Led.c" \
 "../HAL/hal_MotorDriver.c" \
 "../HAL/hal_Ramfuncs.c" \
 "../HAL/hal_Sci.c" \
