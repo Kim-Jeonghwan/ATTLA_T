@@ -1,24 +1,23 @@
 /**********************************************************************
-    Nexcom Co., Ltd.
-    Filename         : wizchip_conf.h
-    Version          : 00.01
-    Description      : WIZnet W6100 칩 설정 및 공통 헤더
-    Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 09. (Application.h 인클루드 주석 처리)
+ Nexcom Co., Ltd.
+ Filename         : wizchip_conf.h
+ Version          : 00.01
+ Description      : WIZnet 이더넷 라이브러리 파일
+ Programmer       : Kim Jeonghwan
+ Last Updated     : 2026. 06. 15. (정적시험용 코드 다이어트: 미사용 기능 삭제)
 **********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 15. - 정적시험 통과를 위한 타기종 및 미사용 TCP/IPv6 기능 전면 삭제
+ */
 
 //*****************************************************************************
 //! \file wizchip_conf.h
 //! \brief WIZCHIP Config Header File.
 //! \version 1.0.0
 //! \date 2013/10/21
-//! \par  Revision history
-//!       <2015/02/05> Notice
-//!        The version history is not updated after this point.
-//!        Download the latest version directly from GitHub. Please visit the
-//!        our GitHub repository for ioLibrary.
-//!        >> https://github.com/Wiznet/ioLibrary_Driver
-//!       <2013/10/21> 1st Release
 //! \author MidnightCow
 //! \copyright
 //!
@@ -148,116 +147,6 @@ extern "C" {
 */
 #define _PHY_IO_MODE_ _PHY_IO_MODE_MII_ //_PHY_IO_MODE_MII_
 
-#if (_WIZCHIP_ == W5100)
-#define _WIZCHIP_ID_ "W5100\0"
-/**
-    @brief Define interface mode.
-    @todo you should select interface mode as chip. Select one of @ref
-   \_WIZCHIP_IO_MODE_SPI_ , @ref \_WIZCHIP_IO_MODE_BUS_DIR_ or @ref
-   \_WIZCHIP_IO_MODE_BUS_INDIR_
-*/
-// 	#define _WIZCHIP_IO_MODE_           _WIZCHIP_IO_MODE_BUS_DIR_
-//	#define _WIZCHIP_IO_MODE_           _WIZCHIP_IO_MODE_BUS_INDIR_
-#define _WIZCHIP_IO_MODE_ _WIZCHIP_IO_MODE_SPI_
-
-// A20150601 : Define the unit of IO DATA.
-typedef uint8_t iodata_t;
-// A20150401 : Indclude W5100.h file
-#include "W5100/w5100.h"
-
-#elif (_WIZCHIP_ == W5100S)
-#define _WIZCHIP_ID_ "W5100S\0"
-/**
-    @brief Define interface mode.
-    @todo you should select interface mode as chip. Select one of @ref
-   \_WIZCHIP_IO_MODE_SPI_ , @ref \_WIZCHIP_IO_MODE_BUS_DIR_ or @ref
-   \_WIZCHIP_IO_MODE_BUS_INDIR_
-*/
-#if 0
-#define _WIZCHIP_IO_MODE_ _WIZCHIP_IO_MODE_BUS_INDIR_
-#elif 0
-#define _WIZCHIP_IO_MODE_ _WIZCHIP_IO_MODE_SPI_5500_
-#else
-#define _WIZCHIP_IO_MODE_ _WIZCHIP_IO_MODE_SPI_
-#endif
-
-// A20150601 : Define the unit of IO DATA.
-typedef uint8_t iodata_t;
-// A20150401 : Indclude W5100.h file
-#include "W5100S/w5100s.h"
-#elif (_WIZCHIP_ == W5200)
-#define _WIZCHIP_ID_ "W5200\0"
-/**
-    @brief Define interface mode.
-    @todo you should select interface mode as chip. Select one of @ref
-   \_WIZCHIP_IO_MODE_SPI_ or @ref \	_WIZCHIP_IO_MODE_BUS_INDIR_
-*/
-#ifndef _WIZCHIP_IO_MODE_
-// #define _WIZCHIP_IO_MODE_           _WIZCHIP_IO_MODE_BUS_INDIR_
-#define _WIZCHIP_IO_MODE_ _WIZCHIP_IO_MODE_SPI_
-#endif
-// A20150601 : Define the unit of IO DATA.
-typedef uint8_t iodata_t;
-#include "W5200/w5200.h"
-#elif (_WIZCHIP_ == W5500)
-#define _WIZCHIP_ID_ "W5500\0"
-
-/**
-    @brief Define interface mode. \n
-    @todo Should select interface mode as chip.
-          - @ref \_WIZCHIP_IO_MODE_SPI_ \n
-            -@ref \_WIZCHIP_IO_MODE_SPI_VDM_ : Valid only in @ref \_WIZCHIP_ ==
-   W5500 \n
-            -@ref \_WIZCHIP_IO_MODE_SPI_FDM_ : Valid only in @ref \_WIZCHIP_ ==
-   W5500 \n
-          - @ref \_WIZCHIP_IO_MODE_BUS_ \n
-            - @ref \_WIZCHIP_IO_MODE_BUS_DIR_ \n
-            - @ref \_WIZCHIP_IO_MODE_BUS_INDIR_ \n
-          - Others will be defined in future. \n\n
-          ex> <code> #define \_WIZCHIP_IO_MODE_ \_WIZCHIP_IO_MODE_SPI_VDM_
-   </code>
-
-*/
-#ifndef _WIZCHIP_IO_MODE_
-// #define _WIZCHIP_IO_MODE_           _WIZCHIP_IO_MODE_SPI_FDM_
-#define _WIZCHIP_IO_MODE_ _WIZCHIP_IO_MODE_SPI_
-#endif
-// A20150601 : Define the unit of IO DATA.
-typedef uint8_t iodata_t;
-#include "W5500/w5500.h"
-#elif (_WIZCHIP_ == W5300)
-#define _WIZCHIP_ID_ "W5300\0"
-/**
-    @brief Define interface mode.
-    @todo you should select interface mode as chip. Select one of @ref
-   \_WIZCHIP_IO_MODE_SPI_ , @ref \_WIZCHIP_IO_MODE_BUS_DIR_ or @ref
-   \_WIZCHIP_IO_MODE_BUS_INDIR_
-*/
-#ifndef _WIZCHIP_IO_MODE_
-#define _WIZCHIP_IO_MODE_ _WIZCHIP_IO_MODE_BUS_DIR_
-// #define _WIZCHIP_IO_MODE_           _WIZCHIP_IO_MODE_BUS_INDIR_
-#endif
-
-// A20150601 : Define the unit and bus width of IO DATA.
-/**
-    @brief Select the data width 8 or 16 bits.
-    @todo you should select the bus width. Select one of 8 or 16.
-*/
-#ifndef _WIZCHIP_IO_BUS_WIDTH_
-#define _WIZCHIP_IO_BUS_WIDTH_ 16 // 8
-#endif
-#if _WIZCHIP_IO_BUS_WIDTH_ == 8
-typedef uint8_t iodata_t;
-#elif _WIZCHIP_IO_BUS_WIDTH_ == 16
-typedef uint16_t iodata_t;
-#else
-#error "Unknown _WIZCHIP_IO_BUS_WIDTH_. It should be 8 or 16."
-#endif
-//
-#include "W5300/w5300.h"
-
-#elif (_WIZCHIP_ == W6100)
-
 #define _WIZCHIP_ID_ "W6100\0"
 
 /**
@@ -282,39 +171,6 @@ typedef int16_t datasize_t; ///< sent or received data size
 #include "w6100.h"
 
 // teddy 240122
-#elif (_WIZCHIP_ == W6300)
-
-#define _WIZCHIP_ID_ "W6300\0"
-
-/**
-    @brief Define @ref _WIZCHIP_ interface mode.
-    @todo You should select interface mode of @ref _WIZCHIP_.\n\n
-        Select one of @ref _WIZCHIP_IO_MODE_SPI_QSPI_, @ref
-   _WIZCHIP_IO_MODE_SPI_VDM_,@ref _WIZCHIP_IO_MODE_BUS_INDIR_
-    @sa WIZCHIP_READ(), WIZCHIP_WRITE(), WIZCHIP_READ_BUF(), WIZCHIP_WRITE_BUF()
-*/
-
-#define QSPI_SINGLE_MODE (0x00 << 6) // 0b0000 0000 // 0x00
-#define QSPI_DUAL_MODE (0x01 << 6)   // 0b0100 0000 // 0x40
-#define QSPI_QUAD_MODE (0x02 << 6)   // 0b1000 0000 // 0x80
-
-#ifndef _WIZCHIP_QSPI_MODE_
-#define _WIZCHIP_QSPI_MODE_ QSPI_SINGLE_MODE
-#endif
-
-// #define _WIZCHIP_IO_MODE_         _WIZCHIP_IO_MODE_BUS_INDIR_
-#define _WIZCHIP_IO_MODE_                                                      \
-  ((_WIZCHIP_IO_MODE_SPI_ & 0xff00) | (_WIZCHIP_QSPI_MODE_ & 0x00ff))
-
-typedef uint8_t iodata_t;   ///< IO access unit. bus width
-typedef int16_t datasize_t; ///< sent or received data size
-// #include "../Application/Application.h"
-#include "./W6300/w6300.h"
-
-#else
-#error                                                                         \
-    "Unknown defined _WIZCHIP_. You should define one of 5100, 5200, 5300, 5500, 6100 and 6300!!!"
-#endif
 
 #ifndef _WIZCHIP_IO_MODE_
 #error "Undefined _WIZCHIP_IO_MODE_. You should define it !!!"
@@ -330,28 +186,10 @@ typedef int16_t datasize_t; ///< sent or received data size
 #if _WIZCHIP_IO_MODE_ & _WIZCHIP_IO_MODE_BUS_
 #if 1
 // 20231108 taylor
-#if (_WIZCHIP_ == W6300)
-#define _WIZCHIP_IO_BASE_ 0x60000000 // for W6100-EVB
-#elif (_WIZCHIP_ == W6100)
 #define _WIZCHIP_IO_BASE_ 0x60000000 // for W5100S-EV
-#elif (_WIZCHIP_ == W5100S)
-#define _WIZCHIP_IO_BASE_ 0x60000000 // for W5100S-EVB
-#elif (_WIZCHIP_ == W5300)
-#define _WIZCHIP_IO_BASE_                                                      \
-  0x68000000 // for W5300 by javakys 20210408
-             // @66c27e960a813f7ea6e8b1ce083d12b3e7e86fc0
-#else
-#define _WIZCHIP_IO_BASE_ 0x00000000
-#endif
 
 #else
-#if (_WIZCHIP_ == W6100)
 #define _WIZCHIP_IO_BASE_ 0x60000000 // for W6100 BUS
-#else
-//	#define _WIZCHIP_IO_BASE_				0x60000000
-//// for 5100S IND
-#define _WIZCHIP_IO_BASE_ 0x68000000 // for W5300
-#endif
 #endif
 #elif _WIZCHIP_IO_MODE_ & _WIZCHIP_IO_MODE_SPI_
 // #define _WIZCHIP_IO_BASE_				0x00000000	// for
@@ -367,7 +205,6 @@ typedef int16_t datasize_t; ///< sent or received data size
 #endif
 #endif
 
-// M20150401 : Typing Error
 // #if _WIZCHIP_IO_MODE_ & _WIZCHIP_IO_MODE_BUS
 #if _WIZCHIP_IO_MODE_ & _WIZCHIP_IO_MODE_BUS_
 #ifndef _WIZCHIP_IO_BASE_
@@ -375,11 +212,7 @@ typedef int16_t datasize_t; ///< sent or received data size
 #endif
 #endif
 
-#if _WIZCHIP_ >= W5200
 #define _WIZCHIP_SOCK_NUM_ 8 ///< The count of independant socket of @b WIZCHIP
-#else
-#define _WIZCHIP_SOCK_NUM_ 4 ///< The count of independant socket of @b WIZCHIP
-#endif
 
 /********************************************************
     WIZCHIP BASIC IF functions for SPI, SDIO, I2C , ETC.
@@ -414,7 +247,6 @@ typedef struct __WIZCHIP {
     /**
         For BUS interface IO
     */
-    // M20156501 : Modify the function name for integrating with W5300
     // struct
     //{
     //    uint8_t  (*_read_byte)  (uint32_t AddrSel);
@@ -525,18 +357,11 @@ typedef enum {
   CN_SET_TIMEOUT, ///< Set network timeout as retry count and time.
   CN_GET_TIMEOUT, ///< Get network timeout as retry count and time.
                   // teddy 240122
-#if ((_WIZCHIP_ == W6100) || (_WIZCHIP_ == W6300))
-  CN_SET_PREFER, ///< Set the preferred source IPv6 address of @ref _SLCR_.\n
-                 ///< Refer to @ref IPV6_ADDR_AUTO, @ref IPV6_ADDR_LLA, @ref
-                 ///< IPV6_ADDR_GUA
-  CN_GET_PREFER, ///< Get the preferred source IPv6 address of @ref _SLCR_.\n
-                 ///< Refer to @ref IPV6_ADDR_AUTO, @ref IPV6_ADDR_LLA, @ref
-                 ///< IPV6_ADDR_GUA
-#endif
+  CN_SET_PREFER,
+  CN_GET_PREFER,
 } ctlnetwork_type;
 
 // teddy 240122
-#if ((_WIZCHIP_ == W6100) || (_WIZCHIP_ == W6300))
 /**
     @ingroup DATA_TYPE
     @brief  Network Service Control Type enumeration
@@ -547,7 +372,7 @@ typedef enum {
 typedef enum {
   CNS_ARP,  ///< ARP process with @ref wiz_IPAddress
   CNS_PING, ///< PING process with @ref wiz_IPAddress
-  CNS_DAD,  ///< Duplicated IPv6 Address Detection
+  CNS_DAD,
   /**
       @brief Stateless Address Auto-configuration(SLAAC) with @ref wiz_Prefix.
       @details @ref CNS_SLAAC sends first RS message to all-router and then
@@ -572,7 +397,6 @@ typedef enum {
   */
   CNS_GET_PREFIX
 } ctlnetservice_type;
-#endif
 
 #if (_WIZCHIP_ == W5100 || _WIZCHIP_ == W5100S || _WIZCHIP_ == W5200 ||        \
      _WIZCHIP_ == W5300 || _WIZCHIP_ == W5500)
@@ -583,19 +407,11 @@ typedef enum {
     It can be used with OR operation.
 */
 typedef enum {
-#if _WIZCHIP_ == W5500
-  IK_WOL =
-      (1 << 4), ///< Wake On Lan by receiving the magic packet. Valid in W500.
-#elif _WIZCHIP_ == W5300
-  IK_FMTU = (1 << 4), ///< Received a ICMP message (Fragment MTU)
-#endif
 
   IK_PPPOE_TERMINATED = (1 << 5), ///< PPPoE Disconnected
 
-#if _WIZCHIP_ != W5200
   IK_DEST_UNREACH =
-      (1 << 6), ///< Destination IP & Port Unreachable, No use in W5200
-#endif
+      (1 << 6),
 
   IK_IP_CONFLICT = (1 << 7), ///< IP conflict occurred
 
@@ -603,18 +419,12 @@ typedef enum {
   IK_SOCK_1 = (1 << 9),  ///< Socket 1 interrupt
   IK_SOCK_2 = (1 << 10), ///< Socket 2 interrupt
   IK_SOCK_3 = (1 << 11), ///< Socket 3 interrupt
-#if _WIZCHIP_ > W5100S
   IK_SOCK_4 = (1 << 12), ///< Socket 4 interrupt, No use in 5100
   IK_SOCK_5 = (1 << 13), ///< Socket 5 interrupt, No use in 5100
   IK_SOCK_6 = (1 << 14), ///< Socket 6 interrupt, No use in 5100
   IK_SOCK_7 = (1 << 15), ///< Socket 7 interrupt, No use in 5100
-#endif
 
-#if _WIZCHIP_ > W5100S
   IK_SOCK_ALL = (0xFF << 8) ///< All Socket interrupt
-#else
-  IK_SOCK_ALL = (0x0F << 8) ///< All Socket interrupt
-#endif
 } intr_kind;
 // teddy 240122
 #elif ((_WIZCHIP_ == W6100) || (_WIZCHIP_ == W6300))
@@ -673,7 +483,6 @@ typedef enum {
 #endif
 
 // teddy 240122
-#if ((_WIZCHIP_ == W6100) || (_WIZCHIP_ == W6300))
 #define SYS_CHIP_LOCK                                                          \
   (1 << 2) ///< CHIP LOCK. \n Refer to @ref CW_SYS_LOCK, @ref CW_SYS_UNLOCK, and
            ///< @ref CW_GET_SYSLOCK.
@@ -700,15 +509,14 @@ typedef enum {
 #define PHY_MODE_TE 2
 
 #define IPV6_ADDR_AUTO                                                         \
-  0x00 ///< IPv6 Address Type : Auto.\n Refer to @ref CN_SET_PREFER, @ref
+  0x00
        ///< CN_GET_PREFER.
 #define IPV6_ADDR_LLA                                                          \
-  0x02 ///< IPv6 Address Type : LLA. \n Refer to @ref CN_SET_PREFER, @ref
+  0x02
        ///< CN_GET_PREFER, @ref CNS_DAD.
 #define IPV6_ADDR_GUA                                                          \
-  0x03 ///< IPv6 Address Type : GUA. \n Refer to @ref CN_SET_PREFER, @ref
+  0x03
        ///< CN_GET_PREFER, @ref CNS_DAD.
-#endif
 
 #define PHY_CONFBY_HW 0   ///< Configured PHY operation mode by HW pin
 #define PHY_CONFBY_SW 1   ///< Configured PHY operation mode by SW register
@@ -773,10 +581,6 @@ typedef struct wiz_NetInfo_t {
     Network mode
 */
 typedef enum {
-#if _WIZCHIP_ == W5500
-  NM_FORCEARP = (1 << 1), ///< Force to APP send whenever udp data is sent.
-                          ///< Valid only in W5500
-#endif
   NM_WAKEONLAN = (1 << 5), ///< Wake On Lan
   NM_PINGBLOCK = (1 << 4), ///< Block ping-request
   NM_PPPOE = (1 << 3),     ///< PPPoE mode
@@ -804,14 +608,14 @@ typedef struct wiz_NetTimeout_t {
 typedef enum {
   NETINFO_NONE = 0x00,      ///< No use DHCP
   NETINFO_STATIC_V4 = 0x01, ///< Static IPv4 configuration by manually.
-  NETINFO_STATIC_V6 = 0x02, ///< Static IPv6 configuration by manually.
+  NETINFO_STATIC_V6 = 0x02,
   NETINFO_STATIC_ALL =
-      0x03,                ///< Static IPv4 and IPv6 configuration by manually.
-  NETINFO_SLAAC_V6 = 0x04, ///< Stateless Adders Auto Configuration for IPv6
+      0x03,
+  NETINFO_SLAAC_V6 = 0x04,
   NETINFO_DHCP_V4 = 0x10,  ///< Dynamic IPv4 configuration from a DHCP sever
-  NETINFO_DHCP_V6 = 0x20,  ///< Dynamic IPv6 configuration from a DHCP sever
+  NETINFO_DHCP_V6 = 0x20,
   NETINFO_DHCP_ALL =
-      0x30 ///< Dynamic IPv4 and IPv6 configuration from a DHCP sever
+      0x30
 } ipconf_mode;
 
 /**
@@ -835,10 +639,10 @@ typedef struct wiz_NetInfo_t {
   uint8_t gw[4];      ///< Gateway IPv4 Address
   uint8_t lla[16];    ///< Source Link Local Address
   uint8_t gua[16];    ///< Source Global Unicast Address
-  uint8_t sn6[16];    ///< IPv6 Prefix
-  uint8_t gw6[16];    ///< Gateway IPv6 Address
+  uint8_t sn6[16];
+  uint8_t gw6[16];
   uint8_t dns[4];     ///< DNS server IPv4 Address
-  uint8_t dns6[16];   ///< DNS server IPv6 Address
+  uint8_t dns6[16];
   ipconf_mode ipmode; ///< IP Configuration Mode
   dhcp_mode dhcp;     ///< 1 - Static, 2 - DHCP
 } wiz_NetInfo;
@@ -853,7 +657,7 @@ typedef struct wiz_NetInfo_t {
 typedef enum {
   // NETMR Bit Values
   NM_IPB_V4 = (1 << 0), ///< IPv4 Packet Block
-  NM_IPB_V6 = (1 << 1), ///< IPv6 Packet Block
+  NM_IPB_V6 = (1 << 1),
   NM_WOL = (1 << 2),    ///< Wake On Lan(WOL) Mode
   NM_PB6_MULTI =
       (1 << 4), ///< PING6 request from multicasting group address Block
@@ -875,9 +679,9 @@ typedef enum {
 
   // NET4MR Bit Values
   NM_PB6_ALL = (1UL << 24),      ///< All PING6 request Block
-  NM_TRSTB_V6 = (1UL << 25),     ///< TCP RST packet for IPv6 Send Block
-  NM_PARP_V6 = (1UL << 26),      ///< ARP request for IPv6 before PINGv4 Replay
-  NM_UNRB_V6 = (1UL << 27),      ///< Unreachable Destination for IPv6 Block
+  NM_TRSTB_V6 = (1UL << 25),
+  NM_PARP_V6 = (1UL << 26),
+  NM_UNRB_V6 = (1UL << 27),
   NM_NET6_MASK = (0x0FUL << 24), ///< @ref _NET6MR_ Mask value
 
   NM_MASK_ALL = (0x0F0F0937) ///< @ref netmode_type all mask value
@@ -909,9 +713,9 @@ typedef struct wiz_NetTimeout_t {
    IK_SOCKL_PING6
 */
 typedef struct wiz_IPAddress_t {
-  uint8_t ip[16]; ///< Destination IP Address. \n IPv4 index : 0 to 3, IPv6
+  uint8_t ip[16];
                   ///< index : 0 to 15
-  uint8_t len;    ///< Destination IP Address Length.\n IPv4 : 4, IPv6 : 16.
+  uint8_t len;
 } wiz_IPAddress;
 
 /**
@@ -994,7 +798,6 @@ void reg_wizchip_cs_cbfunc(void (*cs_sel)(void), void (*cs_desel)(void));
    function or register your functions.
     @note If you do not describe or register, null function is called.
 */
-// M20150601 : For integrating with W5300
 // void reg_wizchip_bus_cbfunc(uint8_t (*bus_rb)(uint32_t addr), void
 // (*bus_wb)(uint32_t addr, uint8_t wb));
 void reg_wizchip_bus_cbfunc(iodata_t (*bus_rb)(uint32_t addr),
@@ -1008,14 +811,9 @@ void reg_wizchip_bus_cbfunc(iodata_t (*bus_rb)(uint32_t addr),
    function or register your functions.
     @note If you do not describe or register, null function is called.
 */
-#if _WIZCHIP_ == W6100
 void reg_wizchip_spi_cbfunc(uint8_t (*spi_rb)(void), void (*spi_wb)(uint8_t wb),
                             void (*spi_rbuf)(uint8_t *buf, datasize_t len),
                             void (*spi_wbuf)(uint8_t *buf, datasize_t len));
-#else
-void reg_wizchip_spi_cbfunc(uint8_t (*spi_rb)(void),
-                            void (*spi_wb)(uint8_t wb));
-#endif
 
 /**
     @brief Registers call back function for SPI interface.
@@ -1067,7 +865,6 @@ int8_t ctlwizchip(ctlwizchip_type cwtype, void *arg);
 int8_t ctlnetwork(ctlnetwork_type cntype, void *arg);
 
 // teddy 240122
-#if ((_WIZCHIP_ == W6100) || (_WIZCHIP_ == W6300))
 /**
     @ingroup extra_functions
     @brief Controls to network service.
@@ -1077,8 +874,6 @@ int8_t ctlnetwork(ctlnetwork_type cntype, void *arg);
     @return -1 : Fail because of invalid @ref ctlnetwork_type or unsupported
    @ref ctlnetwork_type \n 0 : Success
 */
-int8_t ctlnetservice(ctlnetservice_type cnstype, void *arg);
-#endif
 
 /*
     The following functions are implemented for internal use.
@@ -1136,42 +931,11 @@ void wizchip_setinterruptmask(intr_kind intr);
 intr_kind wizchip_getinterruptmask(void);
 
 // todo
-#if _WIZCHIP_ > W5100
 int8_t wizphy_getphylink(
-    void); ///< get the link status of phy in WIZCHIP. No use in W5100
+    void);
 int8_t wizphy_getphypmode(
-    void); ///< get the power mode of PHY in WIZCHIP. No use in W5100
-#endif
+    void);
 
-#if _WIZCHIP_ == W5100S || _WIZCHIP_ == W5500
-void wizphy_reset(void); ///< Reset phy. Vailid only in W5500
-/**
-    @ingroup extra_functions
-    @brief Set the phy information for WIZCHIP without power mode
-    @param phyconf : @ref wiz_PhyConf
-*/
-void wizphy_setphyconf(wiz_PhyConf *phyconf);
-/**
-    @ingroup extra_functions
-    @brief Get phy configuration information.
-    @param phyconf : @ref wiz_PhyConf
-*/
-void wizphy_getphyconf(wiz_PhyConf *phyconf);
-/**
-    @ingroup extra_functions
-    @brief Get phy status.
-    @param phyconf : @ref wiz_PhyConf
-*/
-void wizphy_getphystat(wiz_PhyConf *phyconf);
-/**
-    @ingroup extra_functions
-    @brief set the power mode of phy inside WIZCHIP. Refer to @ref PHYCFGR in
-   W5500, @ref PHYSTATUS in W5200
-    @param pmode Settig value of power down mode.
-*/
-int8_t wizphy_setphypmode(uint8_t pmode);
-// teddy 240122
-#elif ((_WIZCHIP_ == W6100) || (_WIZCHIP_ == W6300))
 /**
     @ingroup extra_functions
     @brief Reset the integrated PHY.
@@ -1183,7 +947,7 @@ int8_t wizphy_setphypmode(uint8_t pmode);
     @sa ctlwizchip(), CW_RESET_PHY
     @sa _PHY_IO_MODE_
 */
-void wizphy_reset(void); ///< Reset phy. Vailid only in W5500
+void wizphy_reset(void);
 
 /**
     @ingroup extra_functions
@@ -1396,7 +1160,6 @@ int8_t wizchip_unsolicited(void);
     @sa ctlnetservice(), CNS_GET_PREFIX
 */
 int8_t wizchip_getprefix(wiz_Prefix *prefix);
-#endif
 
 #if (_WIZCHIP_ == W5100 || _WIZCHIP_ == W5100S || _WIZCHIP_ == W5200 ||        \
      _WIZCHIP_ == W5300 || _WIZCHIP_ == W5500)

@@ -1,3 +1,17 @@
+/**********************************************************************
+ Nexcom Co., Ltd.
+ Filename         : socket.h
+ Version          : 00.01
+ Description      : WIZnet 이더넷 라이브러리 파일
+ Programmer       : Kim Jeonghwan
+ Last Updated     : 2026. 06. 15. (정적시험용 코드 다이어트: 미사용 기능 삭제)
+**********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 15. - 정적시험 통과를 위한 타기종 및 미사용 TCP/IPv6 기능 전면 삭제
+ */
 //*****************************************************************************
 //
 //! \file socket.h
@@ -5,15 +19,6 @@
 //! \details SOCKET APIs like as berkeley socket api.
 //! \version 1.0.2
 //! \date 2013/10/21
-//! \par  Revision history
-//!       <2015/02/05> Notice
-//!        The version history is not updated after this point.
-//!        Download the latest version directly from GitHub. Please visit the our GitHub repository for ioLibrary.
-//!        >> https://github.com/Wiznet/ioLibrary_Driver
-//!       <2014/05/01> V1.0.2. Refer to M20140501
-//!         1. Modify the comment : SO_REMAINED -> PACK_REMAINED
-//!         2. Add the comment as zero byte udp data reception in getsockopt().
-//!       <2013/10/21> 1st Release
 //! \author MidnightCow
 //! \copyright
 //!
@@ -113,54 +118,6 @@ extern "C" {
 
 #define SOCKFATAL_PACKLEN     (SOCK_FATAL - 1)     ///< Invalid packet length. Fatal Error.
 
-#if (_WIZCHIP_ == W5100 || _WIZCHIP_ == W5100S || _WIZCHIP_ == W5200 || _WIZCHIP_ == W5300 || _WIZCHIP_ == W5500)
-/*
-    SOCKET FLAG
-*/
-#define SF_ETHER_OWN           (Sn_MR_MFEN)        ///< In @ref Sn_MR_MACRAW, Receive only the packet as broadcast, multicast and own packet
-#define SF_IGMP_VER2           (Sn_MR_MC)          ///< In @ref Sn_MR_UDP with \ref SF_MULTI_ENABLE, Select IGMP version 2.   
-#define SF_TCP_NODELAY         (Sn_MR_ND)          ///< In @ref Sn_MR_TCP, Use to nodelayed ack.
-#define SF_MULTI_ENABLE        (Sn_MR_MULTI)       ///< In @ref Sn_MR_UDP, Enable multicast mode.
-
-#define Sn_MR2_DHAM          (1<<1)
-#define SF_DHA_MANUAL        (Sn_MR2_DHAM)
-#define Sn_MR2_FARP          (1<<0)
-#define SF_FORCE_ARP         (Sn_MR2_FARP)
-
-
-#if _WIZCHIP_ == 5500
-#define SF_BROAD_BLOCK         (Sn_MR_BCASTB)   ///< In @ref Sn_MR_UDP or @ref Sn_MR_MACRAW, Block broadcast packet. Valid only in W5500
-#define SF_MULTI_BLOCK         (Sn_MR_MMB)      ///< In @ref Sn_MR_MACRAW, Block multicast packet. Valid only in W5500
-#define SF_IPv6_BLOCK          (Sn_MR_MIP6B)    ///< In @ref Sn_MR_MACRAW, Block IPv6 packet. Valid only in W5500
-#define SF_UNI_BLOCK           (Sn_MR_UCASTB)   ///< In @ref Sn_MR_UDP with \ref SF_MULTI_ENABLE. Valid only in W5500
-#endif
-
-//A201505 : For W5300
-#if _WIZCHIP_ == 5300
-#define SF_TCP_ALIGN		     0x02			   ///< Valid only \ref Sn_MR_TCP and W5300, refer to \ref Sn_MR_ALIGN
-#endif
-
-#define SF_IO_NONBLOCK           0x01              ///< Socket nonblock io mode. It used parameter in \ref socket().
-
-/*
-    UDP & MACRAW Packet Infomation
-*/
-#define PACK_FIRST               0x80              ///< In Non-TCP packet, It indicates to start receiving a packet. (When W5300, This flag can be applied)
-#define PACK_REMAINED            0x01              ///< In Non-TCP packet, It indicates to remain a packet to be received. (When W5300, This flag can be applied)
-#define PACK_COMPLETED           0x00              ///< In Non-TCP packet, It indicates to complete to receive a packet. (When W5300, This flag can be applied)
-//A20150601 : For Integrating with W5300
-#define PACK_FIFOBYTE            0x02              ///< Valid only W5300, It indicate to have read already the Sn_RX_FIFOR.
-//
-//teddy 240122
-
-#define PACK_IPv6            (1<<7)                ///< It indicates the destination IP address of the received packet is IPv6 or IPv4.
-#define PACK_IPV6_ALLNODE    (PACK_IPv6 | (1<<6))  ///< It indicates the destination IP address of the received packet is allnode multicast(broadcast) address or not.
-#define PACK_IPV6_MULTI      (PACK_IPv6 | (1<<5))  ///< It indicates the destination IP address of the received packet is multicast address or not.
-#define PACK_IPV6_LLA        (PACK_IPv6 | (1<<4))  ///< It indicates the destination IP address of the received packet is lla or gua.
-#define PACK_NONE            (0x00)                ///< It indicates no information of a packet
-
-#elif ((_WIZCHIP_ == 6100) || (_WIZCHIP_ == 6300))
-
 /*
     - @ref Sn_MR_MULTI : Support UDP Multicasting
     - @ref Sn_MR_MF    : Support MAC Filter Enable
@@ -242,7 +199,6 @@ extern "C" {
 /////////////////////////////
 #define SOCK_IO_BLOCK         0  ///< Socket Block IO Mode in @ref setsockopt().
 #define SOCK_IO_NONBLOCK      1  ///< Socket Non-block IO Mode in @ref setsockopt().
-#endif
 
 /**
     @ingroup WIZnet_socket_APIs
@@ -286,7 +242,6 @@ int8_t  close(uint8_t sn);
            @b Fail    :\n @ref SOCKERR_SOCKINIT   - Socket is not initialized \n
                           @ref SOCKERR_SOCKCLOSED - Socket closed unexpectedly.
 */
-int8_t  listen(uint8_t sn);
 
 //teddy 240122
 /**
@@ -311,8 +266,8 @@ int8_t  listen(uint8_t sn);
          In block io mode, it does not return until connection is completed. \n
          In Non-block io mode(@ref SF_IO_NONBLOCK), it returns @ref SOCK_BUSY immediately.
 */
-static int8_t connect_IO_6(uint8_t sn, uint8_t * addr, uint16_t port, uint8_t addrlen);
-//int8_t connect(uint8_t sn, uint8_t * addr, uint16_t port, uint8_t addrlen);
+
+//
 
 /**
     @ingroup WIZnet_socket_APIs
@@ -329,7 +284,6 @@ static int8_t connect_IO_6(uint8_t sn, uint8_t * addr, uint16_t port, uint8_t ad
                           @ref SOCKERR_TIMEOUT  - Timeout occurred \n
                           @ref SOCK_BUSY        - Socket is busy.
 */
-int8_t  disconnect(uint8_t sn);
 
 /**
     @ingroup WIZnet_socket_APIs
@@ -349,7 +303,6 @@ int8_t  disconnect(uint8_t sn);
                             @ref SOCKERR_DATALEN    - zero data length \n
                             @ref SOCK_BUSY          - Socket is busy.
 */
-int32_t send(uint8_t sn, uint8_t * buf, uint16_t len);
 
 /**
     @ingroup WIZnet_socket_APIs
@@ -371,7 +324,6 @@ int32_t send(uint8_t sn, uint8_t * buf, uint16_t len);
                        @ref SOCKERR_DATALEN    - zero data length \n
                        @ref SOCK_BUSY          - Socket is busy.
 */
-int32_t recv(uint8_t sn, uint8_t * buf, uint16_t len);
 
 /**
     @ingroup WIZnet_socket_APIs
@@ -438,7 +390,6 @@ static int32_t sendto_IO_6(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * ad
 //int32_t recvfrom(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t *port, uint8_t *addrlen);
 static int32_t recvfrom_IO_6(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t *port, uint8_t *addrlen);
 
-
 /////////////////////////////
 // SOCKET CONTROL & OPTION //
 /////////////////////////////
@@ -460,7 +411,6 @@ typedef enum {
     SIK_RECEIVED      = (1 << 2),    ///< data received
     SIK_TIMEOUT       = (1 << 3),    ///< timeout occurred
     SIK_SENT          = (1 << 4),    ///< send ok
-    //M20150410 : Remove the comma of last member
     //SIK_ALL           = 0x1F,        ///< all interrupt
     SIK_ALL           = 0x1F         ///< all interrupt
 } sockint_kind;
@@ -478,16 +428,12 @@ typedef enum {
     CS_GET_INTERRUPT,       ///< get the socket interrupt. refer to @ref sockint_kind
 
     //teddy 240122
-    //#if _WIZCHIP_ == W6100 || _WIZCHIP_ == W6300
-    CS_SET_PREFER,          ///< set the preferred source IPv6 address of transmission packet.\n Refer to @ref SRCV6_PREFER_AUTO, @ref SRCV6_PREFER_LLA and @ref SRCV6_PREFER_GUA.
-    CS_GET_PREFER,          ///< get the preferred source IPv6 address of transmission packet.\n Refer to @ref SRCV6_PREFER_AUTO, @ref SRCV6_PREFER_LLA and @ref SRCV6_PREFER_GUA.
+    CS_SET_PREFER,
+    CS_GET_PREFER,
     //#endif
-#if _WIZCHIP_ >= 5100
-    CS_SET_INTMASK,         ///< set the interrupt mask of socket with @ref sockint_kind, Not supported in W5100
-    CS_GET_INTMASK          ///< get the masked interrupt of socket. refer to @ref sockint_kind, Not supported in W5100
-#endif
+    CS_SET_INTMASK,
+    CS_GET_INTMASK
 } ctlsock_type;
-
 
 /**
     @ingroup DATA_TYPE
@@ -500,18 +446,15 @@ typedef enum {
     SO_MSS,              ///< Set MSS. @ref Sn_MSSR ( @ref setSn_MSSR(), @ref getSn_MSSR() )
     SO_DESTIP,           ///< Set the destination IP address. @ref Sn_DIPR ( @ref setSn_DIPR(), @ref getSn_DIPR() )
     SO_DESTPORT,         ///< Set the destination Port number. @ref Sn_DPORT ( @ref setSn_DPORT(), @ref getSn_DPORT() )
-#if _WIZCHIP_ != 5100
-    SO_KEEPALIVESEND,    ///< Valid only in setsockopt. Manually send keep-alive packet in TCP mode, Not supported in W5100
+    SO_KEEPALIVESEND,
 #if !( (_WIZCHIP_ == 5100) || (_WIZCHIP_ == 5200) )
-    SO_KEEPALIVEAUTO, ///< Set/Get keep-alive auto transmission timer in TCP mode, Not supported in W5100, W5200
-#endif
+    SO_KEEPALIVEAUTO,
 #endif
     SO_SENDBUF,          ///< Valid only in getsockopt. Get the free data size of Socekt TX buffer. @ref Sn_TX_FSR, @ref getSn_TX_FSR()
     SO_RECVBUF,          ///< Valid only in getsockopt. Get the received data size in socket RX buffer. @ref Sn_RX_RSR, @ref getSn_RX_RSR()
     SO_STATUS,           ///< Valid only in getsockopt. Get the socket status. @ref Sn_SR, @ref getSn_SR()
 
     //teddy 240122
-    //#if _WIZCHIP_ == W6100 || _WIZCHIP_ == W6300
     SO_EXTSTATUS,        ///< Valid only in @ref getsockopt(). Get the extended TCP SOCKETn status. @ref getSn_ESR()
     SO_MODE,
     //#endif
@@ -601,7 +544,6 @@ int8_t  setsockopt(uint8_t sn, sockopt_type sotype, void* arg);
 int8_t  getsockopt(uint8_t sn, sockopt_type sotype, void* arg);
 
 //teddy 240122
-#if _WIZCHIP_ == W6100 || _WIZCHIP_ == W6300
 /**
     @ingroup WIZnet_socket_APIs
     @brief Peeks a sub-message in SOCKETn RX buffer
@@ -619,9 +561,6 @@ int8_t  getsockopt(uint8_t sn, sockopt_type sotype, void* arg);
      It is just return the length of incoming message before the found sub-message. It does not receive the message.\n
      So, after calling peeksockmsg, @ref _Sn_RX_RD_ is not changed.
 */
-int16_t peeksockmsg(uint8_t sn, uint8_t* submsg, uint16_t subsize);
-
-#endif
 
 // void setAddrlen_W6x00( uint8_t num) ;
 // uint8_t checkAddrlen_W6x00() ;
@@ -629,23 +568,17 @@ int16_t peeksockmsg(uint8_t sn, uint8_t* submsg, uint16_t subsize);
 // void inline_setAddrlen_W6x00( uint8_t num);
 // uint8_t inline_CheckAddrlen_W6x00( void );
 
-
 #if 1 // by_Lihan
 
 /**
      @ingroup WIZnet_socket_APIs
      @brief  by_Lihan_W5x00
 */
-int8_t connect_W5x00(uint8_t sn, uint8_t * addr, uint16_t port);
+
 /**
      @ingroup WIZnet_socket_APIs
      @brief  by_Lihan_Wx00
 */
-int8_t connect_W6x00(uint8_t sn, uint8_t * addr, uint16_t port, uint8_t addrlen);
-
-
-
-
 
 #define GET_MACRO_connect(_1, _2, _3, _4, NAME, ...) NAME
 #define CHOOSE_TESTCODE_MACRO(...) GET_MACRO_connect(__VA_ARGS__, connect_4, connect_3)
@@ -654,8 +587,8 @@ int8_t connect_W6x00(uint8_t sn, uint8_t * addr, uint16_t port, uint8_t addrlen)
     // by_LIhan for overroading
     // NOTE_LIHAN: Some sections of this code are not yet fully defined.
      @note
-        In case of get 3 arguments - int8_t connect_W5x00(uint8_t sn, uint8_t * addr, uint16_t port  );\n
-        In case of get 4 arguments - int8_t connect_W6x00(uint8_t sn, uint8_t * addr, uint16_t port, uint8_t addrlen );
+        In case of get 3 arguments - \n
+        In case of get 4 arguments - 
 */
 
 #define connect(...) CHOOSE_TESTCODE_MACRO(__VA_ARGS__)(__VA_ARGS__)
@@ -666,27 +599,23 @@ int8_t connect_W6x00(uint8_t sn, uint8_t * addr, uint16_t port, uint8_t addrlen)
 //   In case of get 4 arguments
 #define connect_4(sn , addr , port, addrlen ) connect_W6x00(sn , addr , port,addrlen)
 
-
-
-
 /**
      @ingroup WIZnet_socket_APIs
      @brief  by_Lihan
 */
-int32_t sendto_W5x00(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t port);
+
 /**
      @ingroup WIZnet_socket_APIs
      @brief  by_Lihan
 */
 int32_t sendto_W6x00(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t port, uint8_t addrlen);
 
-
 #define GET_MACRO_sendto(_1, _2, _3, _4, _5 , _6, NAME, ...) NAME
 #define CHOOSE_sendto_MACRO(...) GET_MACRO_sendto(__VA_ARGS__, sendto_6, sendto_5)
 
 // by_LIhan for overroading
 // NOTE_LIHAN: Some sections of this code are not yet fully defined.
-//   In case of get 3 arguments - int8_t sendto_W5x00(uint8_t sn, uint8_t * addr, uint16_t port  );
+//   In case of get 3 arguments - 
 //   In case of get 4 arguments - int8_t sendto_W6x00(uint8_t sn, uint8_t * addr, uint16_t port,uint8_t addrlen );
 #define sendto(...) CHOOSE_sendto_MACRO(__VA_ARGS__)(__VA_ARGS__)
 
@@ -700,19 +629,18 @@ int32_t sendto_W6x00(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, ui
      @ingroup WIZnet_socket_APIs
      @brief  byLihan_W5x00
 */
-int32_t recvfrom_W5x00(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t *port);
+
 /**
      @ingroup WIZnet_socket_APIs
      @brief  byLihan_Wx00
 */
 int32_t recvfrom_W6x00(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t *port,  uint8_t *addrlen);
 
-
 #define GET_MACRO_recvfrom(_1, _2, _3, _4, _5, _6 ,NAME, ...) NAME
 #define CHOOSE_recvfrom_MACRO(...) GET_MACRO_recvfrom(__VA_ARGS__, recvfrom_6, recvfrom_5)
 
 // by_LIhanfor overroading
-// In case of get 3 arguments - int8_t recvfrom_W5x00(uint8_t sn, uint8_t * addr, uint16_t port  );
+// In case of get 3 arguments - 
 // In case of get 4 arguments - int8_t recvfrom_W6x00(uint8_t sn, uint8_t * addr, uint16_t port,uint8_t addrlen );
 #define recvfrom(...) CHOOSE_recvfrom_MACRO(__VA_ARGS__)(__VA_ARGS__)
 
@@ -722,15 +650,11 @@ int32_t recvfrom_W6x00(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, 
 //   In case of get 4 arguments
 #define recvfrom_6(sn,   buf,  len,  addr,  port, addrlen  ) recvfrom_W6x00(sn,   buf,  len,  addr,  port, addrlen )
 
-
 #endif
-
-
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif   // _SOCKET_H_
-
 

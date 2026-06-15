@@ -1,3 +1,17 @@
+/**********************************************************************
+ Nexcom Co., Ltd.
+ Filename         : w6100.c
+ Version          : 00.01
+ Description      : WIZnet 이더넷 라이브러리 파일
+ Programmer       : Kim Jeonghwan
+ Last Updated     : 2026. 06. 15. (정적시험용 코드 다이어트: 미사용 기능 삭제)
+**********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 15. - 정적시험 통과를 위한 타기종 및 미사용 TCP/IPv6 기능 전면 삭제
+ */
 //*****************************************************************************
 #pragma diag_suppress 69 // integer conversion resulted in a change of sign
 //
@@ -5,8 +19,6 @@
 //! \brief W6100 HAL Implements file.
 //! \version 1.0.0
 //! \date 2019/01/01
-//! \par  Revision history
-//!       <2019/01/01> 1st Release
 //! \author MidnightCow
 //! \copyright
 //!
@@ -34,8 +46,6 @@
 
 #include "w6100.h"
 
-
-
 #define _WIZCHIP_SPI_VDM_OP_    0x00
 #define _WIZCHIP_SPI_FDM_LEN1_  0x01
 #define _WIZCHIP_SPI_FDM_LEN2_  0x02
@@ -45,9 +55,7 @@
 // http://forum.wiznet.io
 //
 
-#if _WIZCHIP_ == 6100
 ////////////////////////////////////////////////////////////////////////////////////////
-
 
 #define _W6100_SPI_OP_          _WIZCHIP_SPI_VDM_OP_
 
@@ -270,4 +278,3 @@ uint16_t wiz_mdio_read(uint8_t phyregaddr) {
 /// @endcond
 
 ////////////////////////////////////////////////////////////////////////////////////////
-#endif

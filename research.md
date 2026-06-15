@@ -1,57 +1,38 @@
-# 모터 드라이버(DRV8343) SPI 통신 및 초기화 설정 리서치 보고서
+# WIZnet 이더넷 라이브러리 구조 및 불필요 코드 조사 보고서
 
-본 문서에서는 ATTLA 프로젝트의 CSU 및 HAL 계층 코드를 분석하여, 모터 드라이버(DRV8343)와의 SPI 통신을 위한 초기화 설정과 통신 메시지(Read/Write 프레임)가 구현된 위치와 상세 내용을 정리합니다.
+## 1. 개요
+현재 `hal_Ethernet.c`의 이더넷 통신 구현을 분석한 결과, `socket.c`, `w6100.c`, `wizchip_conf.c` 파일들은 모두 현재 동작을 위해 **필수적으로 사용**되고 있습니다.
+각 파일이 수행하는 핵심 역할은 다음과 같습니다.
 
-## 1. SPI 통신 초기화 설정 (Initialization Settings)
+### 파일별 역할 및 필수성
+* **`wizchip_conf.c` / `wizchip_conf.h` (필수)**
+  * **역할:** WIZnet 칩의 초기 설정과 MCU와의 인터페이스(SPI 콜백 등록, MAC/IP 주소 설정, 송수신 버퍼 크기 할당)를 수행하는 핵심 프레임워크 파일입니다.
+  * **사용처:** `hal_Ethernet.c` 내 `Initial_W6100()` 함수에서 사용하는 `reg_wizchip_cs_cbfunc()`, `reg_wizchip_spi_cbfunc()`, `wizchip_init()`, `wizchip_setnetinfo()`, `wizchip_getnetinfo()` 등이 이 파일에 정의되어 있습니다.
+* **`w6100.c` / `w6100.h` (필수)**
+  * **역할:** W6100 칩에 특화된 하드웨어 레지스터 접근 계층입니다. SPI를 통해 실제 칩의 레지스터를 읽고 쓰는 기본 I/O 함수들을 포함합니다.
+  * **사용처:** `Ethernet_Process()`에서 소켓 상태를 확인하고 인터럽트 플래그를 제어하기 위한 `getSn_SR()`, `getSn_RX_RSR()`, `setSn_IR()` 함수 등이 속해 있습니다.
+* **`socket.c` / `socket.h` (필수)**
+  * **역할:** W6100의 하드웨어 TCP/IP 스택을 소프트웨어에서 쉽게 제어할 수 있도록 버클리 소켓(Berkeley Socket) 형태의 API를 제공하는 파일입니다.
+  * **사용처:** UDP 개방 및 데이터 송수신을 위해 `socket()`, `recvfrom()`, `sendto()`, `close()` 함수가 사용됩니다.
 
-모터 드라이버(DRV8343)의 하드웨어적인 SPI 초기화 및 핀 설정은 **HAL 계층**에 구현되어 있으며, 이를 호출하여 상태를 초기화하는 로직은 **CSU 계층**에 구현되어 있습니다.
+## 2. 정적시험(Static Analysis)을 위한 불필요 부분(Dead Code) 삭제 대상
 
-### [HAL 계층] 하드웨어 초기화 (SPI-B)
-* **파일 위치**: `ATTLA_T_CPU1/HAL/hal_MotorDriver.c`
-* **함수명**: `MotorDriver_Init_Hardware(void)`
-* **주요 설정 내용**:
-  * **SPI 모듈**: **SPI-B** (`SPIB_BASE`) 사용
-  * **통신 핀 할당**: 
-    * GPIO 58: SPIB_CLK
-    * GPIO 59: SPIB_STE (Chip Select)
-    * GPIO 60: SPIB_SIMO (MOSI)
-    * GPIO 61: SPIB_SOMI (MISO)
-  * **SPI 통신 규격 (`SPI_setConfig`)**:
-    * 1MHz 클럭 속도 (`1000000`)
-    * 16비트 워드 크기 (`16`)
-    * Master 모드 (`SPI_MODE_MASTER`)
-    * Mode 1 통신 (`SPI_PROT_POL0PHA1` - Data on Falling Edge, Setup on Rising Edge)
-  * **추가 하드웨어 제어**:
-    * `DRV8343_REG_CONTROL_2` 레지스터를 조작하여 1x PWM 모드로 설정 (`DRV8343_CTRL2_PWM_MODE_1X`).
-    * DRV_ENABLE (GPIO 2) 핀 설정.
+정적시험(복잡도 최소화 및 미사용 코드 제거) 기준을 만족시키기 위해서는 파일 전체를 삭제할 수는 없으나, **파일 내부의 방대한 미사용 코드와 다른 칩셋 호환성 코드들을 대거 삭제**해야 합니다. 구체적인 제거 대상은 다음과 같습니다.
 
-### [CSU 계층] 어플리케이션 초기화 호출
-* **파일 위치**: `ATTLA_T_CPU1/CSU/csu_MotorDriver.c`
-* **함수명**: `MotorDriver_Init(void)`
-* **주요 역할**: 
-  * `MotorDriver_Enable(false)`로 핀 상태 초기화
-  * `MotorDriver_Init_Hardware()` (HAL 함수) 호출을 통한 SPI 셋업
-  * `MotorDriver_ClearFaults()` 호출로 에러 상태 해제
+### A. 타 기종(W5500, W5100 등) 호환 코드 삭제
+* `wizchip_conf.h` 및 `socket.c` 등에는 `_WIZCHIP_` 매크로 값에 따른 방대한 `#if` / `#elif` 분기문이 존재합니다.
+* 현재 프로젝트는 **W6100**만 사용(`_WIZCHIP_ == 6100`)하므로, `W5100`, `W5200`, `W5300`, `W5500`, `W6300` 등 타 기종 전용 함수 호출, 헤더 인클루드, 자료형 정의는 모두 삭제 대상입니다. (예: `connect_W5x00`, `sendto_W5x00` 등)
 
----
+### B. 미사용 프로토콜 (TCP) 함수 삭제
+* 현재 이더넷 통신은 **UDP 전용**(`SOCK_UDP_COM`)으로만 사용 중입니다.
+* `socket.c` 내에 존재하는 **TCP 전용 함수**들은 전혀 호출되지 않으므로 모두 주석 처리 또는 삭제가 가능합니다.
+  * **삭제 가능 TCP API:** `listen()`, `connect()`, `send()`, `recv()`, `disconnect()`
 
-## 2. 통신 메시지 구조 (Communication Messages)
+### C. 부가 기능 및 기타 미사용 통신 모드
+* **MACRAW 전용 코드:** 이더넷 프레임을 직접 조작하는 로직이 없다면 삭제.
+* **DHCP / DNS / IPv6 관련 부가기능:** 정적 IPv4(`NETINFO_STATIC_V4`)를 고정해서 사용 중이므로, 동적 IP 할당(DHCP)이나 도메인 분석(DNS), 그리고 IPv6 전용 상태 함수 및 처리 로직은 정적 시험의 "사용되지 않는 코드" 항목에 걸릴 확률이 큽니다.
+* `wizchip_conf.c` 내부의 불필요한 네트워크 제어 명령(예: `ctlnetservice()`, `CNS_PING` 등)도 사용하지 않으면 제거를 권장합니다.
 
-DRV8343 레지스터를 읽고 쓰기 위한 SPI 메시지 통신 프로토콜 구성(16비트 프레임 포맷)은 **HAL 계층**에서 래핑 함수로 제공하며, 실제 메시지를 활용하는 로직은 **CSU 계층**에서 수행합니다.
-
-### [HAL 계층] 레지스터 Read/Write 통신 프로토콜 
-* **파일 위치**: `ATTLA_T_CPU1/HAL/hal_MotorDriver.c`
-* **Read 프레임 구성 (`MotorDriver_ReadReg`)**:
-  * **포맷**: `Bit 15 = 1 (Read)`, `Bits 14:11 = 주소(Addr)`, `Bits 10:0 = Don't care`
-  * **코드 구현**: `uint16_t txWord = (1U << 15) | ((addr & 0x0F) << 11);`
-  * 수신된 16비트 데이터 중 하위 11비트(`rxWord & 0x07FF`)만 유효 데이터로 추출하여 반환합니다.
-* **Write 프레임 구성 (`MotorDriver_WriteReg`)**:
-  * **포맷**: `Bit 15 = 0 (Write)`, `Bits 14:11 = 주소(Addr)`, `Bits 10:0 = 데이터(Data)`
-  * **코드 구현**: `uint16_t txWord = ((addr & 0x0F) << 11) | (data & 0x07FF);`
-
-### [CSU 계층] 메시지 사용 예시
-* **파일 위치**: `ATTLA_T_CPU1/CSU/csu_MotorDriver.c`
-* **결함 해제 메시지 (`MotorDriver_ClearFaults`)**:
-  * `DRV8343_REG_CONTROL_1` 레지스터를 읽고, Bit 0(CLR_FLT)을 1로 세트하여 다시 쓰는 메시지를 전송합니다.
-* **상태 업데이트 메시지 (`MotorDriver_UpdateStatus`)**:
-  * `DRV8343_REG_FAULT_STATUS_1` 레지스터 읽기 메시지를 전송하여 반환된 값으로 구조체(`xMotorDriver.faultStatus`)를 갱신합니다.
+## 3. 결론 및 향후 진행 방안
+* **결론:** `socket`, `w6100`, `wizchip_conf` 세 가지 파일은 W6100을 제어하기 위한 필수 계층 구조를 이루므로 파일 자체를 제외할 수는 없습니다.
+* **진행 방안:** 사용자가 `plan.md`를 통한 구체적인 리팩토링(최적화) 진행을 요청할 경우, 세 파일 내부에 있는 **1) W6100 외의 기종 지원 코드**, **2) TCP 및 기타 미사용 통신 API**를 모두 제거하여 파일 사이즈와 순환 복잡도(Cyclomatic Complexity)를 낮추는 방향으로 코드를 수정할 수 있습니다.

@@ -1,10 +1,22 @@
+/**********************************************************************
+ Nexcom Co., Ltd.
+ Filename         : w6100.h
+ Version          : 00.01
+ Description      : WIZnet 이더넷 라이브러리 파일
+ Programmer       : Kim Jeonghwan
+ Last Updated     : 2026. 06. 15. (정적시험용 코드 다이어트: 미사용 기능 삭제)
+**********************************************************************/
+
+/*
+ * Modification History
+ * --------------------
+ * 2026. 06. 15. - 정적시험 통과를 위한 타기종 및 미사용 TCP/IPv6 기능 전면 삭제
+ */
 //* ****************************************************************************
 //! \file w6100.h
 //! \brief W6100 HAL Header File.
 //! \version 1.0.0
 //! \date 2019/01/01
-//! \par  Revision history
-//!             <2019/01/01> 1st Release
 //! \author MidnightCow
 //! \copyright
 //!
@@ -30,20 +42,17 @@
 //!
 //*****************************************************************************
 
-
 #ifndef      _W6100_H_
 #define      _W6100_H_
 
 #include <stdint.h>
 #include "wizchip_conf.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /// @cond DOXY_APPLY_CODE
-#if      (_WIZCHIP_ == W6100)
 /// @endcond
 
 #define _W6100_SPI_READ_                  (0x00 << 2)        ///< SPI interface Read operation in Control Phase
@@ -65,7 +74,6 @@ extern "C" {
 #elif (_WIZCHIP_IO_MODE_ & _WIZCHIP_IO_MODE_SPI_)
 #define _W6100_IO_BASE_       0x00000000
 #endif
-
 
 //-----------       defgroup --------------------------------
 
@@ -188,7 +196,6 @@ extern "C" {
       <tr><td> PHY Configuration            </td><td>: _PHYSR_, _PHYCR0_, _PHYCR1_, _PHYRAR_, _PHYDIR_, _PHYDOR_, _PHYACR_, _PHYDIVR_  </td></tr>
     </table>
 */
-
 
 /**
     @defgroup Socket_register_group_W6100 Socket register
@@ -724,7 +731,6 @@ extern "C" {
 #define _SLDIPR_             (_W6100_IO_BASE_ + (0x418C << 8) + WIZCHIP_CREG_BLOCK)
 #define _SLDIP4R_            (_SLDIPR_)            ///< Refer to @ref _SLDIPR_.
 
-
 /**
     @brief SOCKET-less Peer Hardware Address Register address [RO][00:00:00:00:00:00]
     @details @ref _SLDHAR_ gets the destination hardware address acquired by of @ref SLCR_ARP4, SLCR_ARP6, SLCR_PING4, and SLCR_PING6.
@@ -1058,8 +1064,6 @@ extern "C" {
 */
 #define _Sn_IRCLR_(N)        (_W6100_IO_BASE_ + (0x0028 << 8) + WIZCHIP_SREG_BLOCK(N))
 
-
-
 /**
     @brief SOCKETn Status Register Address [RO][0x00]
     @details @ref _Sn_SR_ indicates the status of SOCKETn.\n
@@ -1250,7 +1254,6 @@ extern "C" {
 */
 #define _Sn_MR2_(N)          (_W6100_IO_BASE_ + (0x0144 << 8) + WIZCHIP_SREG_BLOCK(N))
 
-
 /**
     @brief SOCKETn Retransmission Time Register Address [R=W][0x0000]
     @details @ref _Sn_RTR_ sets the timeout value of packet to be retransmitted by @ref _SLCR_.\n
@@ -1327,7 +1330,6 @@ extern "C" {
     @sa getSn_TX_RD(), getSn_TX_WR(), setSn_TX_WR(), getSn_TX_FSR(), getSn_CR(), setSn_CR(), getSn_IR(), setSn_IRCLR(), getSn_MR(), setSn_MR()
 */
 #define _Sn_TX_RD_(N)        (_W6100_IO_BASE_ + (0x0208 << 8) + WIZCHIP_SREG_BLOCK(N))
-
 
 /**
     @brief SOCKETn TX Memory Write Pointer Register Address [RW][0x0000]
@@ -1466,7 +1468,6 @@ extern "C" {
 */
 #define SYSR_SPI             (1 << 0)
 
-
 /* System Config Register Bit Definition */
 /**
     @brief RST bit of @ref _SYCR0_
@@ -1522,7 +1523,6 @@ extern "C" {
 */
 #define SYCR1_CLKSEL_100M    0
 
-
 /* Interrupt Register Bit Definition */
 /**
     @brief WOL bit of @ref _IR_
@@ -1564,7 +1564,6 @@ extern "C" {
 */
 #define IR_PTERM             (1<<0)
 
-
 /* SOCKET Interrupt Register Bit Definition */
 /**
     @brief N-th INT bit of @@ref _SIR_
@@ -1573,7 +1572,6 @@ extern "C" {
     @sa getSIR(), setSn_IRCLR(), getSIMR()
 */
 #define SIR_INT(N)           (1<<N)
-
 
 /* SOCKET-less Interrupt Register Bit Definition */
 /**
@@ -1671,7 +1669,6 @@ extern "C" {
 */
 #define SLIR_RA              (1<<0)
 
-
 /* SOCKET-less & SOCKETn  Prefer Source IPv6 Address Register Bit Definition */
 /**
     @brief Select the source IPv6 address of the packet sent by @ref _SLCR_ or @ref _Sn_CR_ to AUTO
@@ -1701,7 +1698,6 @@ extern "C" {
        getSLDIP6R(), setSLDIP6R(), getSn_DIP6R(), setSn_DIP6R(), getLLAR(), setLLAR(), getGUAR(), setGUAR()
 */
 #define PSR_GUA              (0x03)
-
 
 /* SOCKET-less Command Register Bit Definition */
 /**
@@ -1793,8 +1789,6 @@ extern "C" {
     @sa getSLCR(), setSLCR(), getSLIR(), setSLIRCR(), getSLPFR(), setSLPFR()
 */
 #define SLCR_UNA             (1<<0)
-
-
 
 /* PHY Status Register Bit Definition */
 /**
@@ -1993,7 +1987,6 @@ extern "C" {
 */
 #define PHYDIVR_128          (0xFF)
 
-
 /* PHY Command Register Bit Definition */
 /**
     @brief PHY Operation Mode - Auto Negotiation
@@ -2050,7 +2043,6 @@ extern "C" {
 */
 #define PHYCR0_10H           (0x07)
 
-
 /**
     @brief PHY function - Power Down
     @details @ref PHYCR1_PWDN enters the Ethernet PHY in power down mode. \n
@@ -2086,8 +2078,6 @@ extern "C" {
 */
 #define PHYCR1_RST           (1<<0)
 
-
-
 /* IPv4 Network Mode Register Bit Definition */
 /**
     @brief UDP Unreachable Packet Block
@@ -2121,7 +2111,6 @@ extern "C" {
     @sa getNET4MR(), setNET4MR(), getNET6MR(), setNET6MR()
 */
 #define NETxMR_PB            (1<<0)
-
 
 /* Network Mode Register Bit Definition */
 /**
@@ -2163,7 +2152,6 @@ extern "C" {
     @sa getNETMR(), setNETMR()
 */
 #define NETMR_IP4B           (1<<0)
-
 
 /**
     @brief Destination Hardware Address Select
@@ -2246,7 +2234,6 @@ extern "C" {
     @sa getICMP6BLKR(), setICMP6BLKR()
 */
 #define ICMP6BLKR_NS         (1<<0)
-
 
 /* Sn_MR values */
 /**
@@ -2690,7 +2677,6 @@ extern "C" {
 */
 #define Sn_CR_RECV           (0x40)
 
-
 /* Sn_IR values */
 /**
     @brief SEND OK Interrupt
@@ -3072,7 +3058,6 @@ extern "C" {
 */
 #define Sn_MR2_FARP          (1<<0)
 
-
 /*----------------------------For PHY Control-------------------------------*/
 
 /**
@@ -3133,7 +3118,6 @@ extern "C" {
     @sa getPHYRAR(), setPHYRAR(), wiz_mdio_read(), wiz_mdio_write()
 */
 #define PHYRAR_BMSR          (0x01)
-
 
 /********************/
 /* BMCR & BMSR Bit definitions  */
@@ -3332,7 +3316,6 @@ extern "C" {
 */
 #define BMSR_EXT_CAPA        (1<<0)
 
-
 /**
     @brief Enter a critical section
     @details It is provided to protect your shared code and hardware resources against interference. \n
@@ -3347,7 +3330,6 @@ extern "C" {
 */
 #define WIZCHIP_CRITICAL_ENTER()       WIZCHIP.CRIS._enter()
 
-
 /**
     @brief Enter a critical section
     @details It exits the protected code and hardware resources against interference. \n
@@ -3361,8 +3343,6 @@ extern "C" {
     @sa WIZCHIP_CRITICAL_EXIT(), reg_wizchip_cris_cbfunc()
 */
 #define WIZCHIP_CRITICAL_EXIT()        WIZCHIP.CRIS._exit()
-
-
 
 ////////////////////////
 // Basic I/O Function //
@@ -3409,8 +3389,6 @@ void WIZCHIP_READ_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len);
     @sa WIZCHIP_READ_BUF(), reg_wizchip_bus_cbfunc(), reg_wizchip_spi_cbfunc(), WIZCHIP_WRITE()
 */
 void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len);
-
-
 
 /////////////////////////////////
 // Common Register IO function //
@@ -3799,7 +3777,6 @@ void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len);
     @}
 */
 
-
 ////////////////////////////////////
 // SOCKETn  register I/O function //
 ////////////////////////////////////
@@ -3855,7 +3832,6 @@ void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len);
 #define getSn_TOS(sn)   getSn_TOSR(sn)    ///< For compatible ioLibrar
 #define setSn_TOS(sn,tos)  setSn_TOSR(sn,tos)   ///< For compatible ioLibrar
 
-
 #define setSn_TTLR(sn,ttlr) \
         WIZCHIP_WRITE(_Sn_TTLR_(sn),(ttlr))
 #define setSn_TTL(sn,ttl)     setSn_TTLR(sn,ttl)   ///< For compatible ioLibrary
@@ -3863,7 +3839,6 @@ void WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len);
 #define getSn_TTLR(sn) \
         WIZCHIP_READ(_Sn_TTLR_(sn))
 #define getSn_TTL(sn)     getSn_TTLR(sn)   ///< For compatible ioLibrary
-
 
 #define setSn_HOPR(sn,hopr)      setSn_TTLR(sn),(ttlr))
 #define getSn_HOPR(sn)           getSn_TTLR(sn)
@@ -3995,7 +3970,6 @@ uint16_t getSn_RX_RSR(uint8_t s);
     @}
 */
 
-
 /////////////////////////////////////
 // Sn_TXBUF & Sn_RXBUF IO function //
 /////////////////////////////////////
@@ -4074,13 +4048,10 @@ uint16_t wiz_mdio_read(uint8_t phyregaddr);
 /// @endcond
 
 /// @cond DOXY_APPLY_CODE
-#endif  // _WIZCHIP_ == 6100
 /// @endcond
-
 
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif //_W6100_H_
