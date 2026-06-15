@@ -12,7 +12,6 @@
  * --------------------
  * 2026. 06. 15. - 정적시험 통과를 위한 타기종 및 미사용 TCP/IPv6 기능 전면 삭제
  */
-/
 #include <stddef.h>
 //
 
@@ -366,6 +365,16 @@ void reg_wizchip_qspi_cbfunc(void (*qspi_rb)(uint8_t opcode, uint16_t addr, uint
 }
 #endif
 
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : ctlwizchip
+ * 역할      : W6100 하드웨어 전반(리셋, 메모리 크기 초기화 등)을 제어하기 위한 다목적 제어 함수입니다.
+ * 매개변수  :
+ *   - cwtype : 제어 명령 타입 (예: CW_RESET_WIZCHIP, CW_INIT_WIZCHIP)
+ *   - arg    : 제어 명령에 사용될 인수 포인터
+ * 반환값    : 성공 시 0, 실패 시 -1
+ * -----------------------------------------------------------------------------
+ */
 int8_t ctlwizchip(ctlwizchip_type cwtype, void* arg) {
     //teddy 240122
     uint8_t tmp = *(uint8_t*) arg;
@@ -481,6 +490,16 @@ int8_t ctlwizchip(ctlwizchip_type cwtype, void* arg) {
     return 0;
 }
 
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : ctlnetwork
+ * 역할      : 네트워크 설정(IP/MAC 설정, 네트워크 모드 설정 등)을 제어하기 위한 다목적 함수입니다.
+ * 매개변수  :
+ *   - cntype : 네트워크 제어 명령 타입 (예: CN_SET_NETINFO, CN_GET_NETINFO)
+ *   - arg    : 제어 명령에 사용될 인수 포인터
+ * 반환값    : 성공 시 0, 실패 시 -1
+ * -----------------------------------------------------------------------------
+ */
 int8_t ctlnetwork(ctlnetwork_type cntype, void* arg) {
 
     switch (cntype) {
@@ -546,6 +565,17 @@ void wizchip_sw_reset(void) {
     }
 }
 
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : wizchip_init
+ * 역할      : W6100의 모든 소켓에 대한 Tx/Rx 버퍼 메모리 할당 크기를 초기화합니다.
+ *             배열 포인터가 NULL인 경우, 칩의 기본값으로 전체 버퍼 메모리를 균등하게 할당합니다.
+ * 매개변수  :
+ *   - txsize : 소켓별 Tx 버퍼 크기가 지정된 배열 포인터 (단위: KByte)
+ *   - rxsize : 소켓별 Rx 버퍼 크기가 지정된 배열 포인터 (단위: KByte)
+ * 반환값    : 버퍼 설정이 칩의 물리적 한계를 초과하면 -1, 성공하면 0
+ * -----------------------------------------------------------------------------
+ */
 int8_t wizchip_init(uint8_t* txsize, uint8_t* rxsize) {
     int8_t i;
     int8_t tmp = 0;
@@ -555,30 +585,12 @@ int8_t wizchip_init(uint8_t* txsize, uint8_t* rxsize) {
         for (i = 0 ; i < _WIZCHIP_SOCK_NUM_; i++) {
             tmp += txsize[i];
 
-#if _WIZCHIP_ < W5200
-            if (tmp > 8) {
-                return -1;
-            }
-#elif  _WIZCHIP_ == W6300
-            if (tmp > 32) {
-                return -1;
-            }
-#else
             if (tmp > 16) {
                 return -1;
             }
-#endif
         }
         for (i = 0 ; i < _WIZCHIP_SOCK_NUM_; i++) {
-#if _WIZCHIP_ < W5200
-            j = 0;
-            while ((txsize[i] >> j != 1) && (txsize[i] != 0)) {
-                j++;
-            }
-            setSn_TXBUF_SIZE(i, j);
-#else
             setSn_TXBUF_SIZE(i, txsize[i]);
-#endif
         }
     }
 
@@ -586,30 +598,12 @@ int8_t wizchip_init(uint8_t* txsize, uint8_t* rxsize) {
         tmp = 0;
         for (i = 0 ; i < _WIZCHIP_SOCK_NUM_; i++) {
             tmp += rxsize[i];
-#if _WIZCHIP_ < W5200
-            if (tmp > 8) {
-                return -1;
-            }
-#elif  _WIZCHIP_ == W6300
-            if (tmp > 32) {
-                return -1;
-            }
-#else
             if (tmp > 16) {
                 return -1;
             }
-#endif
         }
         for (i = 0 ; i < _WIZCHIP_SOCK_NUM_; i++) {
-#if _WIZCHIP_ < W5200
-            j = 0;
-            while ((rxsize[i] >> j != 1) && (txsize[i] != 0)) {
-                j++;
-            }
-            setSn_RXBUF_SIZE(i, j);
-#else
             setSn_RXBUF_SIZE(i, rxsize[i]);
-#endif
         }
     }
     return 0;
@@ -920,6 +914,15 @@ int8_t wizchip_getprefix(wiz_Prefix * prefix) {
     return -1;
 }
 
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : wizchip_setnetinfo
+ * 역할      : MAC 주소, IP 주소, 서브넷 마스크, 게이트웨이 등 네트워크 기본 설정값을 W6100에 적용합니다.
+ * 매개변수  :
+ *   - pnetinfo : 적용할 네트워크 정보가 담긴 구조체 포인터 (wiz_NetInfo)
+ * 반환값    : 없음
+ * -----------------------------------------------------------------------------
+ */
 void wizchip_setnetinfo(wiz_NetInfo* pnetinfo) {
     uint8_t i = 0;
     setSHAR(pnetinfo->mac);
@@ -941,6 +944,15 @@ void wizchip_setnetinfo(wiz_NetInfo* pnetinfo) {
     _IPMODE_   = pnetinfo->ipmode;
 }
 
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : wizchip_getnetinfo
+ * 역할      : 현재 W6100 칩에 설정되어 있는 네트워크 기본 설정값(IP, MAC 등)을 읽어옵니다.
+ * 매개변수  :
+ *   - pnetinfo : 정보를 저장할 구조체 포인터 (wiz_NetInfo)
+ * 반환값    : 없음
+ * -----------------------------------------------------------------------------
+ */
 void wizchip_getnetinfo(wiz_NetInfo* pnetinfo) {
     uint8_t i = 0;
     getSHAR(pnetinfo->mac);
@@ -985,6 +997,15 @@ netmode_type wizchip_getnetmode(void) {
 //    return (netmode_type) getMR();
 // }
 
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : wizchip_settimeout
+ * 역할      : W6100 칩의 재전송 타임아웃 시간(RTR)과 재전송 시도 횟수(RCR)를 설정합니다.
+ * 매개변수  :
+ *   - nettime : 설정할 재전송 타임아웃 관련 정보가 담긴 구조체 포인터
+ * 반환값    : 없음
+ * -----------------------------------------------------------------------------
+ */
 void wizchip_settimeout(wiz_NetTimeout* nettime) {
     setRCR(nettime->s_retry_cnt);
     setRTR(nettime->s_time_100us);
@@ -992,6 +1013,15 @@ void wizchip_settimeout(wiz_NetTimeout* nettime) {
     setSLRTR(nettime->sl_time_100us);
 }
 
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : wizchip_gettimeout
+ * 역할      : W6100 칩에 설정된 재전송 타임아웃 시간(RTR)과 재전송 시도 횟수(RCR)를 읽어옵니다.
+ * 매개변수  :
+ *   - nettime : 읽어온 정보를 저장할 구조체 포인터
+ * 반환값    : 없음
+ * -----------------------------------------------------------------------------
+ */
 void wizchip_gettimeout(wiz_NetTimeout* nettime) {
     nettime->s_retry_cnt   = getRCR();
     nettime->s_time_100us  = getRTR();

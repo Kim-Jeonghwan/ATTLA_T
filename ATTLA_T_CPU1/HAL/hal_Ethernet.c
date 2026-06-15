@@ -128,7 +128,7 @@ void Ethernet_Process(void)
     uint16_t rx_size;
     uint8_t dest_ip[4];
     uint16_t dest_port;
-    
+    uint8_t dest_addrlen = 4; // IPv4 address length
     // 1. 현재 0번 소켓의 하드웨어 상태 레지스터(Sn_SR) 값을 읽어옵니다.
     uint8_t sn_sr = getSn_SR(SOCK_UDP_COM);
 
@@ -145,7 +145,7 @@ void Ethernet_Process(void)
                 rx_size = sizeof(rx_buf);
             }
 
-            recvfrom(SOCK_UDP_COM, rx_buf, rx_size, dest_ip, &dest_port);
+            recvfrom(SOCK_UDP_COM, rx_buf, rx_size, dest_ip, &dest_port, &dest_addrlen);
             
             // 수신 후 인터럽트 플래그 클리어 (W6100 하드웨어)
             setSn_IR(SOCK_UDP_COM, 0xFF);
@@ -161,7 +161,7 @@ void Ethernet_Process(void)
             tx_buf[2] = (uint8_t)xXmtSciPcMsg1.Status;
             
             // 수신된 IP와 Port로 즉시 응답 반환
-            sendto(SOCK_UDP_COM, tx_buf, 18U, dest_ip, dest_port);
+            sendto(SOCK_UDP_COM, tx_buf, 18U, dest_ip, dest_port, dest_addrlen);
         }
     } 
     else if (sn_sr == SOCK_CLOSED) 

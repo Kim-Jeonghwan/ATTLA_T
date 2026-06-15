@@ -162,6 +162,18 @@ inline uint8_t inline_CheckAddrlen_W6x00(void) {
 }
 #endif
 
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : socket
+ * 역할      : 새로운 소켓을 생성하고 지정된 프로토콜(TCP, UDP 등), 포트 및 플래그로 초기화합니다.
+ * 매개변수  :
+ *   - sn       : 열고자 하는 소켓 번호 (0 ~ 7)
+ *   - protocol : 사용할 프로토콜 (예: Sn_MR_UDP, Sn_MR_TCP)
+ *   - port     : 바인딩할 로컬 포트 번호. 0일 경우 임의의 포트 자동 할당.
+ *   - flag     : 소켓 동작 플래그 (예: SF_IO_NONBLOCK, SF_MULTI_ENABLE)
+ * 반환값    : 성공 시 열린 소켓 번호(sn), 실패 시 에러 코드(SOCKERR_)
+ * -----------------------------------------------------------------------------
+ */
 int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag) {
 
     uint8_t taddr[16];
@@ -239,6 +251,15 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag) {
     return (int8_t)sn;
 }
 
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : close
+ * 역할      : 열려있는 소켓을 정상적으로 닫고, 해당 소켓의 모든 인터럽트 및 상태를 초기화합니다.
+ * 매개변수  :
+ *   - sn : 닫을 소켓 번호
+ * 반환값    : 항상 SOCK_OK 반환
+ * -----------------------------------------------------------------------------
+ */
 int8_t close(uint8_t sn) {
     CHECK_SOCKNUM();
     setSn_CR(sn, Sn_CR_CLOSE);
@@ -263,6 +284,20 @@ int8_t close(uint8_t sn) {
 
 #endif
 
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : sendto_W6x00 (UDP 송신)
+ * 역할      : UDP 모드로 설정된 소켓을 통해 목적지 IP 및 포트로 데이터를 전송합니다.
+ * 매개변수  :
+ *   - sn      : 데이터를 전송할 소켓 번호
+ *   - buf     : 전송할 데이터가 담긴 버퍼 포인터
+ *   - len     : 전송할 데이터 길이 (바이트)
+ *   - addr    : 목적지 IP 주소 배열 포인터 (IPv4의 경우 4바이트)
+ *   - port    : 목적지 포트 번호
+ *   - addrlen : 주소 배열의 길이 (IPv4는 4)
+ * 반환값    : 성공 시 전송된 데이터 길이, 실패 시 에러 코드(SOCKERR_)
+ * -----------------------------------------------------------------------------
+ */
 int32_t sendto_W6x00(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t port, uint8_t addrlen) {
     // printf("sendto_W6x00\r\n" ) ;
     //static int32_t sendto_IO_6(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t port)
@@ -386,6 +421,20 @@ static int32_t sendto_IO_6(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * ad
     return (int32_t)len;
 }
 
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : recvfrom_W6x00 (UDP 수신)
+ * 역할      : UDP 소켓을 통해 수신된 데이터를 버퍼로 읽어오고, 송신자의 IP와 포트 정보를 획득합니다.
+ * 매개변수  :
+ *   - sn      : 수신할 소켓 번호
+ *   - buf     : 데이터를 저장할 버퍼 포인터
+ *   - len     : 수신할 최대 데이터 길이
+ *   - addr    : 데이터를 보낸 상대방(송신자)의 IP 주소가 저장될 버퍼 포인터
+ *   - port    : 상대방의 포트 번호가 저장될 포인터
+ *   - addrlen : 수신된 주소의 길이 (IPv4는 4)
+ * 반환값    : 성공 시 수신된 데이터 길이, 실패 시 에러 코드(SOCKERR_)
+ * -----------------------------------------------------------------------------
+ */
 int32_t recvfrom_W6x00(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t *port, uint8_t *addrlen) {
     // printf("recvfrom_W6x00\r\n" ) ;
     //int32_t recvfrom_IO_6(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * addr, uint16_t *port)
@@ -529,7 +578,18 @@ static int32_t recvfrom_IO_6(uint8_t sn, uint8_t * buf, uint16_t len, uint8_t * 
     return (int32_t)pack_len;
 }
 
-int8_t  ctlsocket(uint8_t sn, ctlsock_type cstype, void* arg) {
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : ctlsocket
+ * 역할      : 소켓의 네트워크 속성 제어 및 상태 조회를 수행하는 다목적 제어 함수입니다.
+ * 매개변수  :
+ *   - sn     : 제어할 소켓 번호
+ *   - cstype : 수행할 명령 타입 (예: CS_SET_IOMODE, CS_GET_MAXTXBUF 등)
+ *   - arg    : 명령에 필요한 인수 포인터
+ * 반환값    : 성공 시 SOCK_OK, 실패 시 에러 코드(SOCKERR_)
+ * -----------------------------------------------------------------------------
+ */
+int8_t ctlsocket(uint8_t sn, ctlsock_type cstype, void* arg) {
     uint8_t tmp = 0;
     CHECK_SOCKNUM();
     tmp = *((uint8_t*)arg);
@@ -578,7 +638,18 @@ int8_t  ctlsocket(uint8_t sn, ctlsock_type cstype, void* arg) {
     return SOCK_OK;
 }
 
-int8_t  setsockopt(uint8_t sn, sockopt_type sotype, void* arg) {
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : setsockopt
+ * 역할      : 지정한 소켓에 대해 세부 옵션(TTL, TOS, 목적지 IP/포트 등)을 설정합니다.
+ * 매개변수  :
+ *   - sn     : 설정할 소켓 번호
+ *   - sotype : 설정할 옵션 타입 (예: SO_TTL, SO_DESTIP 등)
+ *   - arg    : 설정할 값이 담긴 포인터
+ * 반환값    : 성공 시 SOCK_OK, 실패 시 에러 코드(SOCKERR_)
+ * -----------------------------------------------------------------------------
+ */
+int8_t setsockopt(uint8_t sn, sockopt_type sotype, void* arg) {
     //uint8_t tmp;
     CHECK_SOCKNUM();
     switch (sotype) {
@@ -621,6 +692,17 @@ int8_t  setsockopt(uint8_t sn, sockopt_type sotype, void* arg) {
     return SOCK_OK;
 }
 
+/*
+ * -----------------------------------------------------------------------------
+ * 함수명    : getsockopt
+ * 역할      : 지정한 소켓의 세부 옵션 상태나 설정된 값을 읽어옵니다.
+ * 매개변수  :
+ *   - sn     : 조회할 소켓 번호
+ *   - sotype : 조회할 옵션 타입
+ *   - arg    : 읽어온 값을 저장할 포인터
+ * 반환값    : 성공 시 SOCK_OK, 실패 시 에러 코드(SOCKERR_)
+ * -----------------------------------------------------------------------------
+ */
 int8_t getsockopt(uint8_t sn, sockopt_type sotype, void* arg) {
     CHECK_SOCKNUM();
     switch (sotype) {
