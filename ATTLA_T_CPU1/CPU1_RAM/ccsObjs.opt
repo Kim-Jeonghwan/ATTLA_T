@@ -4,6 +4,7 @@
 "./CSU/csu_Control.obj"
 "./CSU/csu_Dio.obj"
 "./CSU/csu_Encoder.obj"
+"./CSU/csu_Ethernet.obj"
 "./CSU/csu_Led.obj"
 "./CSU/csu_MotorCtrl.obj"
 "./CSU/csu_MotorDriver.obj"

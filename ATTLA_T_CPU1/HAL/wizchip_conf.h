@@ -1,65 +1,24 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : wizchip_conf.h
- Version          : 00.01
+ Version          : 00.07
  Description      : WIZnet 이더넷 라이브러리 파일
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 15. (정적시험용 코드 다이어트: 미사용 기능 삭제)
+ Last Updated     : 2026. 06. 16. (컴파일 에러 해결을 위한 IPv6 Enum/함수 선언 제거)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 16. - 컴파일 에러 해결을 위한 미사용 IPv6 Enum(CNS_DAD 등) 및 함수(wizchip_dad) 선언 완전 제거
+ * 2026. 06. 16. - 중복된 #endif 제거하여 컴파일 오류 재수정
+ * 2026. 06. 16. - 잘못 포함된 #endif 제거하여 컴파일 오류 수정
+ * 2026. 06. 16. - 누락된 열거형 멤버(CN_SET_PREFER 등) 주석 추가
+ * 2026. 06. 16. - 영문 주석 한국어 번역 및 모든 함수에 CSU/HAL 주석 표준 포맷 적용
+ * 2026. 06. 16. - 누락되었던 구조체/열거형 주석 및 함수 주석 추가 보완 
+ * 2026. 06. 16. - 타기종(W5x00) 호환성 매크로, 미사용 IO 모드, IPv6 구조체 전면 삭제 (정적시험 규격 준수)
  * 2026. 06. 15. - 정적시험 통과를 위한 타기종 및 미사용 TCP/IPv6 기능 전면 삭제
  */
-
-//*****************************************************************************
-//! \file wizchip_conf.h
-//! \brief WIZCHIP Config Header File.
-//! \version 1.0.0
-//! \date 2013/10/21
-//! \author MidnightCow
-//! \copyright
-//!
-//! Copyright (c)  2013, WIZnet Co., LTD.
-//! All rights reserved.
-//!
-//! Redistribution and use in source and binary forms, with or without
-//! modification, are permitted provided that the following conditions
-//! are met:
-//!
-//!     * Redistributions of source code must retain the above copyright
-//! notice, this list of conditions and the following disclaimer.
-//!     * Redistributions in binary form must reproduce the above copyright
-//! notice, this list of conditions and the following disclaimer in the
-//! documentation and/or other materials provided with the distribution.
-//!     * Neither the name of the <ORGANIZATION> nor the names of its
-//! contributors may be used to endorse or promote products derived
-//! from this software without specific prior written permission.
-//!
-//! THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-//! AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-//! IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-//! ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-//! LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-//! CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-//! SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-//! INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-//! CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-//! ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-//! THE POSSIBILITY OF SUCH DAMAGE.
-//
-//*****************************************************************************
-
-/**
-    @defgroup extra_functions 2. WIZnet Extra Functions
-
-    @brief These functions is optional function. It could be replaced at WIZCHIP
-   I/O function because they were made by WIZCHIP I/O functions.
-    @details There are functions of configuring WIZCHIP, network, interrupt,
-   phy, network information and timer. \n
-
-*/
 
 #ifndef _WIZCHIP_CONF_H_
 #define _WIZCHIP_CONF_H_
@@ -68,208 +27,91 @@
 extern "C" {
 #endif
 
-#include "device.h" // Provides uint8_t alias for C2000
+#include "device.h" // C2000용 uint8_t 제공
 #include <stdint.h>
-/**
-    @brief Select WIZCHIP.
-    @todo You should select one, \b W5100, \b W5100S, \b W5200, \b W5300, \b
-   W5500 or etc. \n\n ex> <code> #define \_WIZCHIP_      W5500 </code>
-*/
 
-#define W5100 5100
-#define W5100S 5100 + 5
-#define W5200 5200
-#define W5300 5300
-#define W5500 5500
+/**
+    @brief WIZCHIP 모델 선택
+*/
 #define W6100 6100
 #define W6300 6300
 
 #ifndef _WIZCHIP_
-// NOTE_LIHAN: Some sections of this code are not yet fully defined.
-#define _WIZCHIP_ W6100 // W5100, W5100S, W5200, W5300, W5500, 6100, 6300
+#define _WIZCHIP_ W6100 // 6100, 6300
 #endif
 
-//
-// #ifndef _WIZCHIP_
-//   #error  please Define your WIZnet chip numer
-// #endif
-
 #define _WIZCHIP_IO_MODE_NONE_ 0x0000
-#define _WIZCHIP_IO_MODE_BUS_ 0x0100 /**< Bus interface mode */
-#define _WIZCHIP_IO_MODE_SPI_ 0x0200 /**< SPI interface mode */
-// #define _WIZCHIP_IO_MODE_IIC_          0x0400
-// #define _WIZCHIP_IO_MODE_SDIO_         0x0800
-//  Add to
-//
-
-#define _WIZCHIP_IO_MODE_BUS_DIR_                                              \
-  (_WIZCHIP_IO_MODE_BUS_ + 1) /**< BUS interface mode for direct  */
-#define _WIZCHIP_IO_MODE_BUS_INDIR_                                            \
-  (_WIZCHIP_IO_MODE_BUS_ + 2) /**< BUS interface mode for indirect */
+#define _WIZCHIP_IO_MODE_SPI_ 0x0200 ///< SPI 인터페이스 모드
 
 #define _WIZCHIP_IO_MODE_SPI_VDM_                                              \
-  (_WIZCHIP_IO_MODE_SPI_ + 1) /**< SPI interface mode for variable length      \
-                                 data*/
-#define _WIZCHIP_IO_MODE_SPI_FDM_                                              \
-  (_WIZCHIP_IO_MODE_SPI_ +                                                     \
-   2) /**< SPI interface mode for fixed length data mode*/
-#define _WIZCHIP_IO_MODE_SPI_5500_                                             \
-  (_WIZCHIP_IO_MODE_SPI_ +                                                     \
-   3) /**< SPI interface mode for fixed length data mode*/
-// teddy 240122
-#define _WIZCHIP_IO_MODE_SPI_QSPI_                                             \
-  (_WIZCHIP_IO_MODE_SPI_ + 4) /**< SPI interface mode for QSPI mode*/
+  (_WIZCHIP_IO_MODE_SPI_ + 1) ///< 가변 길이 데이터를 위한 SPI 인터페이스 모드
 
 /**
-    @brief PHY can be accessed by @ref _PHYCR0_, _PHYCR1_.
-    @details It provides hardware access method.
-    @note It is smaller s/w footprint than @ref _PHY_IO_MODE_MII_.
-    @sa _PHY_IO_MODE_MII_, _PHY_IO_MODE_
-    @sa ctlwizchip(), getPHYCR0(), getPHYCR1(), setPHYCR1(), getPHYSR()
+    @brief PHY는 @ref _PHYCR0_, _PHYCR1_을 통해 접근 가능합니다.
+    @details 하드웨어 접근 방식을 제공합니다. 소프트웨어 차지 메모리가 적습니다.
 */
 #define _PHY_IO_MODE_PHYCR_ 0x0000
 
 /**
-    @brief PHY can be accessed by MDC/MDIO signals of MII interface.
-    @details It provide software access method.
-    @note It is bigger s/w footprint than @ref _PHY_IO_MODE_PHYCR_.
-    @sa _PHY_IO_MODE_PHYCR_, _PHY_IO_MODE_
-    @sa ctlwizchip(), wiz_read_mdio(), wiz_write_mdio()
+    @brief PHY는 MII 인터페이스의 MDC/MDIO 신호를 통해 접근 가능합니다.
+    @details 소프트웨어 접근 방식을 제공합니다.
 */
 #define _PHY_IO_MODE_MII_ 0x0010
 
 /**
-    @brief Select PHY Access Mode
-    @details @ref _PHY_IO_MODE_ selects PHY access method.
-    @todo You should select one of @ref _PHY_IO_MODE_PHYCR_ or @ref
-   _PHY_IO_MODE_MII_.
-    @sa ctlwizchip()
+    @brief PHY 접근 모드 선택
+    @details _PHY_IO_MODE_를 통해 PHY 접근 방식을 결정합니다.
 */
 #define _PHY_IO_MODE_ _PHY_IO_MODE_MII_ //_PHY_IO_MODE_MII_
 
 #define _WIZCHIP_ID_ "W6100\0"
 
 /**
-    @brief Define @ref _WIZCHIP_ interface mode.
-    @todo You should select interface mode of @ref _WIZCHIP_.\n\n
-        Select one of @ref _WIZCHIP_IO_MODE_SPI_VDM_, @ref
-   _WIZCHIP_IO_MODE_SPI_FDM_, and @ref _WIZCHIP_IO_MODE_BUS_INDIR_
-    @sa WIZCHIP_READ(), WIZCHIP_WRITE(), WIZCHIP_READ_BUF(), WIZCHIP_WRITE_BUF()
+    @brief _WIZCHIP_ 인터페이스 모드를 정의합니다.
 */
-#if 1
-// 20231103 taylor
 #define _WIZCHIP_IO_MODE_ _WIZCHIP_IO_MODE_SPI_VDM_
-#elif 0
-#define _WIZCHIP_IO_MODE_ _WIZCHIP_IO_MODE_SPI_VDM_
-#else
-#define _WIZCHIP_IO_MODE_ _WIZCHIP_IO_MODE_SPV_FDM_
-#endif
 
-typedef uint8_t iodata_t;   ///< IO access unit. bus width
-typedef int16_t datasize_t; ///< sent or received data size
-// #include "../Application/Application.h"
+typedef uint8_t iodata_t;   ///< IO 접근 단위 (버스 너비)
+typedef int16_t datasize_t; ///< 송신 또는 수신 데이터 크기
 #include "w6100.h"
 
-// teddy 240122
-
-#ifndef _WIZCHIP_IO_MODE_
-#error "Undefined _WIZCHIP_IO_MODE_. You should define it !!!"
-#endif
-
-/**
-    @brief Define I/O base address when BUS IF mode.
-    @todo Should re-define it to fit your system when BUS IF Mode (@ref
-   \_WIZCHIP_IO_MODE_BUS_,
-         @ref \_WIZCHIP_IO_MODE_BUS_DIR_, @ref \_WIZCHIP_IO_MODE_BUS_INDIR_).
-   \n\n ex> <code> #define \_WIZCHIP_IO_BASE_      0x00008000 </code>
-*/
-#if _WIZCHIP_IO_MODE_ & _WIZCHIP_IO_MODE_BUS_
-#if 1
-// 20231108 taylor
-#define _WIZCHIP_IO_BASE_ 0x60000000 // for W5100S-EV
-
-#else
-#define _WIZCHIP_IO_BASE_ 0x60000000 // for W6100 BUS
-#endif
-#elif _WIZCHIP_IO_MODE_ & _WIZCHIP_IO_MODE_SPI_
-// #define _WIZCHIP_IO_BASE_				0x00000000	// for
-// 5100S SPI
-#endif
-
-#ifndef _WIZCHIP_IO_BASE_
-#if 1
-// 20231108 taylor
 #define _WIZCHIP_IO_BASE_ 0x00000000
-#else
-#define _WIZCHIP_IO_BASE_ 0x00000000 // 0x8000
-#endif
-#endif
 
-// #if _WIZCHIP_IO_MODE_ & _WIZCHIP_IO_MODE_BUS
-#if _WIZCHIP_IO_MODE_ & _WIZCHIP_IO_MODE_BUS_
-#ifndef _WIZCHIP_IO_BASE_
-#error "You should be define _WIZCHIP_IO_BASE to fit your system memory map."
-#endif
-#endif
-
-#define _WIZCHIP_SOCK_NUM_ 8 ///< The count of independant socket of @b WIZCHIP
+#define _WIZCHIP_SOCK_NUM_ 8 ///< WIZCHIP의 독립적인 소켓 개수
 
 /********************************************************
-    WIZCHIP BASIC IF functions for SPI, SDIO, I2C , ETC.
+    SPI, SDIO, I2C 등을 위한 WIZCHIP 기본 I/F 콜백 함수 구조체
 *********************************************************/
 /**
     @ingroup DATA_TYPE
-    @brief The set of callback functions for W5500:@ref WIZCHIP_IO_Functions
-   W5200:@ref WIZCHIP_IO_Functions_W5200
+    @brief WIZCHIP을 위한 기본 I/F 콜백 함수 포인터 구조체
 */
 typedef struct __WIZCHIP {
-  uint16_t if_mode; ///< host interface mode
-  uint8_t id[8]; ///< @b WIZCHIP ID such as @b 5100, @b 5100S, @b 5200, @b 5500,
-                 ///< and so on.
+  uint16_t if_mode; ///< 호스트 인터페이스 모드
+  uint8_t id[8];    ///< WIZCHIP 칩 ID (예: 6100)
+
   /**
-      The set of critical section callback func.
+      크리티컬 섹션 제어 콜백 함수 포인터
   */
   struct _CRIS {
-    void (*_enter)(void); ///< crtical section enter
-    void (*_exit)(void);  ///< critial section exit
+    void (*_enter)(void); ///< 크리티컬 섹션 진입
+    void (*_exit)(void);  ///< 크리티컬 섹션 종료
   } CRIS;
+
   /**
-      The set of @ref \_WIZCHIP_ select control callback func.
+      WIZCHIP 칩 선택(CS) 제어 콜백 함수 포인터
   */
   struct _CS {
-    void (*_select)(void);   ///< @ref \_WIZCHIP_ selected
-    void (*_deselect)(void); ///< @ref \_WIZCHIP_ deselected
+    void (*_select)(void);   ///< WIZCHIP 선택 (CS Low)
+    void (*_deselect)(void); ///< WIZCHIP 해제 (CS High)
   } CS;
+
   /**
-      The set of interface IO callback func.
+      인터페이스 IO 제어 콜백 함수 포인터
   */
   union _IF {
     /**
-        For BUS interface IO
-    */
-    // struct
-    //{
-    //    uint8_t  (*_read_byte)  (uint32_t AddrSel);
-    //    void     (*_write_byte) (uint32_t AddrSel, uint8_t wb);
-    // }BUS;
-    struct {
-      iodata_t (*_read_data)(uint32_t AddrSel);
-      void (*_write_data)(uint32_t AddrSel, iodata_t wb);
-#if 1
-      // 20231103 taylor
-      void (*_read_data_buf)(
-          uint32_t AddrSel, iodata_t *pBuf, int16_t len,
-          uint8_t addrinc); ///< Read @ref iodata_t as many as <i>len</i> from
-                            ///< @ref _WIZCHIP_ through BUS
-      void (*_write_data_buf)(
-          uint32_t AddrSel, iodata_t *pBuf, int16_t len,
-          uint8_t addrinc); ///< Write @ref iodata_t data as many as <i>len</i>
-                            ///< to @ref _WIZCHIP_ through BUS
-#endif
-    } BUS;
-
-    /**
-        For SPI interface IO
+        SPI 인터페이스용
     */
     struct {
       uint8_t (*_read_byte)(void);
@@ -277,19 +119,6 @@ typedef struct __WIZCHIP {
       void (*_read_burst)(uint8_t *pBuf, uint16_t len);
       void (*_write_burst)(uint8_t *pBuf, uint16_t len);
     } SPI;
-
-    /**
-        For QSPI interface IO
-    */
-    // teddy 240122
-    struct {
-      void (*_read_qspi)(uint8_t opcode, uint16_t addr, uint8_t *pBuf,
-                         uint16_t len);
-      void (*_write_qspi)(uint8_t opcode, uint16_t addr, uint8_t *pBuf,
-                          uint16_t len);
-    } QSPI;
-    // To be added
-    //
   } IF;
 } _WIZCHIP;
 
@@ -297,976 +126,475 @@ extern _WIZCHIP WIZCHIP;
 
 /**
     @ingroup DATA_TYPE
-    WIZCHIP control type enumration used in @ref ctlwizchip().
+    @brief ctlwizchip() 함수에서 사용하는 WIZCHIP 제어 명령 타입
 */
 typedef enum {
-  CW_SYS_LOCK, ///< Lock or Unlock @ref _WIZCHIP_ with @ref SYS_CHIP_LOCK, @ref
-               ///< SYS_PHY_LOCK, and @ref SYS_NET_LOCK
-  CW_SYS_UNLOCK,  ///< Lock or Unlock @ref _WIZCHIP_ with @ref SYS_CHIP_LOCK,
-                  ///< @ref SYS_PHY_LOCK, and @ref SYS_NET_LOCK
-  CW_GET_SYSLOCK, ///< Get the lock status of @ref _WIZCHIP_ with @ref
-                  ///< SYS_CHIP_LOCK, @ref SYS_PHY_LOCK, and @ref SYS_NET_LOCK
+  CW_SYS_LOCK, ///< 시스템 칩, PHY, 네트워크 정보 설정을 잠금(Lock) 처리합니다.
+  CW_SYS_UNLOCK,  ///< 잠금을 해제(Unlock)합니다.
+  CW_GET_SYSLOCK, ///< 칩 잠금 상태를 가져옵니다.
 
-  CW_RESET_WIZCHIP, ///< Reset @ref _WIZCHIP_ by software
-  CW_INIT_WIZCHIP,  ///< Initialize to SOCKETn buffer size with n byte array
-                    ///< typed uint8_t
-  CW_GET_INTERRUPT, ///< Get the interrupt status with @ref intr_kind
-  CW_CLR_INTERRUPT, ///< Clear the interrupt with @ref intr_kind
-  CW_SET_INTRMASK,  ///< Set the interrupt mask with @ref intr_kind
-  CW_GET_INTRMASK,  ///< Get the interrupt mask with @ref intr_kind
-  CW_SET_INTRTIME,  ///< Set the interrupt pending time
-  CW_GET_INTRTIME,  ///< Get the interrupt pending time
-  CW_SET_IEN, ///< Set the global interrupt enable only when @ref SYS_CHIP_LOCK
-              ///< is not set
-  CW_GET_IEN, ///< Get the global interrupt enable
+  CW_RESET_WIZCHIP, ///< WIZCHIP을 소프트웨어적으로 리셋합니다.
+  CW_INIT_WIZCHIP,  ///< 소켓 버퍼 크기를 초기화합니다.
+  CW_GET_INTERRUPT, ///< 인터럽트 발생 상태를 가져옵니다.
+  CW_CLR_INTERRUPT, ///< 인터럽트를 클리어합니다.
+  CW_SET_INTRMASK,  ///< 인터럽트 마스크를 설정합니다.
+  CW_GET_INTRMASK,  ///< 설정된 인터럽트 마스크를 가져옵니다.
+  CW_SET_INTRTIME,  ///< 인터럽트 보류(Pending) 시간을 설정합니다.
+  CW_GET_INTRTIME,  ///< 인터럽트 보류 시간을 가져옵니다.
+  CW_SET_IEN,       ///< 글로벌 인터럽트를 활성화합니다.
+  CW_GET_IEN,       ///< 글로벌 인터럽트 상태를 가져옵니다.
 
-  CW_GET_ID,  ///< Get @ref _WIZCHIP_ name.
-  CW_GET_VER, ///< Get the version of TCP/IP TOE engine
+  CW_GET_ID,  ///< WIZCHIP의 이름을 가져옵니다.
+  CW_GET_VER, ///< TCP/IP 엔진의 버전을 가져옵니다.
 
-  CW_SET_SYSCLK, ///< Set the system clock with @ref SYSCLK_100MHZ or
-                 ///< SYSCLK_10MHZ only when @ref SYS_CHIP_LOCK is unlock
-  CW_GET_SYSCLK, ///< Get the system clock with @ref SYSCLK_100MHZ or
-                 ///< SYSCLK_10MHZ
+  CW_SET_SYSCLK, ///< 시스템 클럭 주파수(100MHz/25MHz)를 설정합니다.
+  CW_GET_SYSCLK, ///< 시스템 클럭 설정을 가져옵니다.
 
-  CW_RESET_PHY,     ///< Reset PHY
-  CW_SET_PHYCONF,   ///< Set PHY operation mode (Manual/Auto, 10/100, Half/Full)
-                    ///< with @ref wiz_PhyConf
-  CW_GET_PHYCONF,   ///< Get PHY operation mode (Manual/Auto, 10/100, Half/Full)
-                    ///< with @ref wiz_PhyConf
-  CW_GET_PHYSTATUS, ///< Get real operation mode with @ref wiz_PhyConf when PHY
-                    ///< is linked up.
-  CW_SET_PHYPOWMODE, ///< Set PHY power mode with @ref PHY_POWER_NORM or
-                     ///< PHY_POWER_DOWN
-  CW_GET_PHYPOWMODE, ///< Get PHY Power mode with @ref PHY_POWER_NORM or
-                     ///< PHY_POWER_DOWN
-  CW_GET_PHYLINK     ///< Get PHY Link status with @ref PHY_LINK_ON or @ref
-                     ///< PHY_LINK_OFF
+  CW_RESET_PHY,      ///< 내장 PHY 모듈을 리셋합니다.
+  CW_SET_PHYCONF,    ///< PHY 동작 모드(속도, Duplex, 자동협상)를 설정합니다.
+  CW_GET_PHYCONF,    ///< 설정된 PHY 동작 모드를 가져옵니다.
+  CW_GET_PHYSTATUS,  ///< 이더넷 링크 연결 시 실제 적용된 PHY 상태를 가져옵니다.
+  CW_SET_PHYPOWMODE, ///< PHY의 전력 동작 모드(정상/절전)를 설정합니다.
+  CW_GET_PHYPOWMODE, ///< PHY의 전력 동작 모드를 가져옵니다.
+  CW_GET_PHYLINK     ///< PHY 링크 연결 상태(ON/OFF)를 가져옵니다.
 } ctlwizchip_type;
 
 /**
     @ingroup DATA_TYPE
-    Network control type enumration used in @ref ctlnetwork().
+    @brief ctlnetwork() 함수에서 사용하는 네트워크 제어 명령 타입
 */
 typedef enum {
-  CN_SET_NETINFO, ///< Set Network with @ref wiz_NetInfo
-  CN_GET_NETINFO, ///< Get Network with @ref wiz_NetInfo
-  CN_SET_NETMODE, ///< Set network mode as WOL, PPPoE, Ping Block, and Force ARP
-                  ///< mode
-  CN_GET_NETMODE, ///< Get network mode as WOL, PPPoE, Ping Block, and Force ARP
-                  ///< mode
-  CN_SET_TIMEOUT, ///< Set network timeout as retry count and time.
-  CN_GET_TIMEOUT, ///< Get network timeout as retry count and time.
-                  // teddy 240122
-  CN_SET_PREFER,
-  CN_GET_PREFER,
+  CN_SET_NETINFO, ///< IP 주소 등의 네트워크 정보를 설정합니다.
+  CN_GET_NETINFO, ///< 네트워크 정보를 가져옵니다.
+  CN_SET_NETMODE, ///< WOL, PPPoE 등의 네트워크 모드를 설정합니다.
+  CN_GET_NETMODE, ///< 네트워크 모드를 가져옵니다.
+  CN_SET_TIMEOUT, ///< 재시도 횟수, 시간 등의 네트워크 타임아웃을 설정합니다.
+  CN_GET_TIMEOUT, ///< 네트워크 타임아웃 설정을 가져옵니다.
+  CN_SET_PREFER,  ///< 소켓리스 통신의 선호도를 설정합니다.
+  CN_GET_PREFER,  ///< 설정된 소켓리스 통신의 선호도를 가져옵니다.
 } ctlnetwork_type;
 
-// teddy 240122
 /**
     @ingroup DATA_TYPE
-    @brief  Network Service Control Type enumeration
-    @details @ref ctlnetservice_type includes network management or monitor
-   functions for @ref _WIZCHIP_.
-    @sa ctlnetservice(), wiz_IPAddress, wiz_Prefix
+    @brief 네트워크 서비스 제어 명령 타입
 */
 typedef enum {
-  CNS_ARP,  ///< ARP process with @ref wiz_IPAddress
-  CNS_PING, ///< PING process with @ref wiz_IPAddress
-  CNS_DAD,
-  /**
-      @brief Stateless Address Auto-configuration(SLAAC) with @ref wiz_Prefix.
-      @details @ref CNS_SLAAC sends first RS message to all-router and then
-     receives RA message from a router.
-      @note It is valid only when the first received RA option is the source
-     link-layer address(0x01) and the second is prefix information(0x03).\n
-           Refer to @ref SLIR_RS.
-      @sa ctlnetservice()
-      @sa CNS_GET_PREFIX
-  */
-  CNS_SLAAC,
-  CNS_UNSOL_NA, ///< Unsolicited Neighbor Advertisement for update @ref
-                ///< _WIZCHIP_ network information to neighbors
-  /**
-      @brief Get prefix information with @ref wiz_Prefix.
-      @details @ref CNS_GET_PREFIX can get prefix information of RA message to
-     be sent by a router without RS message.
-      @note It is valid only when @ref IK_SOCKL_RA is set and the prefix
-     information(0x03) of RA option is first received.
-      @sa ctlnetservice()
-      @sa CNS_SLAAC
-  */
-  CNS_GET_PREFIX
+  CNS_ARP,   ///< 목적지 IP에 대한 ARP 요청을 수행합니다.
+  CNS_PING  ///< 목적지 IP에 대한 PING 요청을 수행합니다.
 } ctlnetservice_type;
 
-#if (_WIZCHIP_ == W5100 || _WIZCHIP_ == W5100S || _WIZCHIP_ == W5200 ||        \
-     _WIZCHIP_ == W5300 || _WIZCHIP_ == W5500)
 /**
     @ingroup DATA_TYPE
-    Interrupt kind when CW_SET_INTRRUPT, CW_GET_INTERRUPT, CW_SET_INTRMASK
-    and CW_GET_INTRMASK is used in @ref ctlnetwork().
-    It can be used with OR operation.
+    @brief 인터럽트 비트 종류 (매스크, 클리어 등에 사용됨)
 */
 typedef enum {
+  IK_PPPOE_TERMINATED = (1 << 0), ///< PPPoE 종료 인터럽트
+  IK_DEST_UNREACH = (1 << 1),     ///< 목적지 도달 불가(Unreachable) 인터럽트
+  IK_IP_CONFLICT = (1 << 2),      ///< IP 주소 충돌 인터럽트
+  IK_WOL = (1 << 7),              ///< 매직 패킷(WOL) 수신 인터럽트
+  IK_NET_ALL = (0x97),            ///< 모든 네트워크 관련 인터럽트
 
-  IK_PPPOE_TERMINATED = (1 << 5), ///< PPPoE Disconnected
+  IK_SOCK_0 = (1 << 8),      ///< 소켓 0 인터럽트
+  IK_SOCK_1 = (1 << 9),      ///< 소켓 1 인터럽트
+  IK_SOCK_2 = (1 << 10),     ///< 소켓 2 인터럽트
+  IK_SOCK_3 = (1 << 11),     ///< 소켓 3 인터럽트
+  IK_SOCK_4 = (1 << 12),     ///< 소켓 4 인터럽트
+  IK_SOCK_5 = (1 << 13),     ///< 소켓 5 인터럽트
+  IK_SOCK_6 = (1 << 14),     ///< 소켓 6 인터럽트
+  IK_SOCK_7 = (1 << 15),     ///< 소켓 7 인터럽트
+  IK_SOCK_ALL = (0xFF << 8), ///< 전체 소켓 인터럽트 통합
 
-  IK_DEST_UNREACH =
-      (1 << 6),
+  IK_SOCKL_TOUT = (1UL << 16),   ///< 소켓리스 타임아웃 인터럽트
+  IK_SOCKL_ARP4 = (1UL << 17),   ///< 소켓리스 IPv4 ARP 인터럽트
+  IK_SOCKL_PING4 = (1UL << 18),  ///< 소켓리스 IPv4 PING 인터럽트
+  IK_SOCKL_ALL = (0xFFUL << 16), ///< 소켓리스 인터럽트 통합
 
-  IK_IP_CONFLICT = (1 << 7), ///< IP conflict occurred
-
-  IK_SOCK_0 = (1 << 8),  ///< Socket 0 interrupt
-  IK_SOCK_1 = (1 << 9),  ///< Socket 1 interrupt
-  IK_SOCK_2 = (1 << 10), ///< Socket 2 interrupt
-  IK_SOCK_3 = (1 << 11), ///< Socket 3 interrupt
-  IK_SOCK_4 = (1 << 12), ///< Socket 4 interrupt, No use in 5100
-  IK_SOCK_5 = (1 << 13), ///< Socket 5 interrupt, No use in 5100
-  IK_SOCK_6 = (1 << 14), ///< Socket 6 interrupt, No use in 5100
-  IK_SOCK_7 = (1 << 15), ///< Socket 7 interrupt, No use in 5100
-
-  IK_SOCK_ALL = (0xFF << 8) ///< All Socket interrupt
+  IK_INT_ALL = (0x00FFFF97) ///< 칩의 모든 인터럽트 비트 통합
 } intr_kind;
-// teddy 240122
-#elif ((_WIZCHIP_ == W6100) || (_WIZCHIP_ == W6300))
-/**
-    @ingroup DATA_TYPE
-    @brief Interrupt Kind
-    @details @ref intr_kind can be used as the interrupt bits of @ref _IR_, @ref
-   _SIR_, and @ref _SLIR_,\n It can be used as the interrupt mask bits of @ref
-   _IMR_, @ref _SIMR_, and @ref _SLIMR_,\n and also, It can be used as the
-   interrupt clear bits of @ref _IRCLR_, @ref _Sn_IRCLR_, and @ref _SLIRCLR_.
-    @note It can be used with @b OR operation.
-    @sa ctlwizchip(), CW_GET_INTERRUPT, CW_CLR_INTERRUPT, CW_GET_INTRMASK,
-   CW_SET_INTRMASK
-    @sa ctlnetservice(), ctlnetservice_type
-    @sa wizchip_getinterrupt(), wizchip_clrinterrupt(),
-   wizchip_getinterruptmask(), wizchip_setinterruptmask()
-*/
-typedef enum {
-  IK_PPPOE_TERMINATED = (1 << 0), ///< PPPoE Termination Interrupt
-  IK_DEST_UNREACH = (1 << 1),     ///< ICMPv4 Destination Unreachable Interrupt
-  IK_IP_CONFLICT = (1 << 2),      ///< IPv4 Address Conflict Interrupt
-  IK_DEST_UNREACH6 = (1 << 4),    ///< ICMPv6 Destination Unreachable Interrupt
-  IK_WOL = (1 << 7),              ///< WOL magic packet Interrupt
-  IK_NET_ALL = (0x97),            ///< All Network Interrupt
 
-  IK_SOCK_0 = (1 << 8),      ///< Socket 0 Interrupt
-  IK_SOCK_1 = (1 << 9),      ///< Socket 1 Interrupt
-  IK_SOCK_2 = (1 << 10),     ///< Socket 2 Interrupt
-  IK_SOCK_3 = (1 << 11),     ///< Socket 3 Interrupt
-  IK_SOCK_4 = (1 << 12),     ///< Socket 4 Interrupt
-  IK_SOCK_5 = (1 << 13),     ///< Socket 5 Interrupt
-  IK_SOCK_6 = (1 << 14),     ///< Socket 6 Interrupt
-  IK_SOCK_7 = (1 << 15),     ///< Socket 7 Interrupt
-  IK_SOCK_ALL = (0xFF << 8), ///< All Socket Interrupt
+#define SYS_CHIP_LOCK (1 << 2) ///< 시스템 칩 설정 잠금
+#define SYS_NET_LOCK (1 << 1)  ///< 네트워크 설정 잠금
+#define SYS_PHY_LOCK (1 << 0)  ///< PHY 제어 잠금
 
-  IK_SOCKL_TOUT = (1UL << 16), ///< @ref _SLCR_ Timeout Interrupt.\n Refer to @ref
-                             ///< ctlnetservice_type.
-  IK_SOCKL_ARP4 =
-      (1UL << 17), ///< @ref _SLCR_ APR4 Interrupt.\n Refer to @ref CNS_ARP.
-  IK_SOCKL_PING4 =
-      (1UL << 18), ///< @ref _SLCR_ PING4 Interrupt.\n Refer to @ref CNS_PING.
-  IK_SOCKL_ARP6 =
-      (1UL << 19), ///< @ref _SLCR_ ARP6 Interrupt.\n Refer to @ref CNS_ARP.
-  IK_SOCKL_PING6 =
-      (1UL << 20), ///< @ref _SLCR_ PING6 Interrupt.\n Refer to @ref CNS_PING.
-  IK_SOCKL_NS =
-      (1UL << 21), ///< @ref _SLCR_ NS Interrupt.\n Refer to @ref CNS_DAD.
-  IK_SOCKL_RS =
-      (1UL << 22), ///< @ref _SLCR_ RS Interrupt.\n Refer to @ref CNS_SLAAC.
-  IK_SOCKL_RA =
-      (1UL << 23), ///< @ref _SLCR_ RA Interrupt.\n Refer to @ref CNS_GET_PREFIX.
-  IK_SOCKL_ALL = (0xFFUL << 16), ///< @ref _SLCR_ All Interrupt
+#define SYSCLK_100MHZ 0 ///< 시스템 클럭 100MHz
+#define SYSCLK_25MHZ 1  ///< 시스템 클럭 25MHz
 
-  IK_INT_ALL = (0x00FFFF97) ///< All Interrupt
-} intr_kind;
-#endif
-
-// teddy 240122
-#define SYS_CHIP_LOCK                                                          \
-  (1 << 2) ///< CHIP LOCK. \n Refer to @ref CW_SYS_LOCK, @ref CW_SYS_UNLOCK, and
-           ///< @ref CW_GET_SYSLOCK.
-#define SYS_NET_LOCK                                                           \
-  (1 << 1) ///< NETWORK Information LOCK. \n Refer to @ref CW_SYS_LOCK, @ref
-           ///< CW_SYS_UNLOCK, and @ref CW_GET_SYSLOCK.
-#define SYS_PHY_LOCK                                                           \
-  (1 << 0) ///< PHY LOCK.\n Refer to @ref CW_SYS_LOCK, @ref CW_SYS_UNLOCK, and
-           ///< @ref CW_GET_SYSLOCK.
-
-#define SYSCLK_100MHZ                                                          \
-  0 ///< System Clock 100MHz.\n Refer to Refer to @ref CW_SET_SYSCLK and  @ref
-    ///< CW_GET_SYSCLK.
-#define SYSCLK_25MHZ                                                           \
-  1 ///< System Clock 25MHz.\n Refer to Refer to @ref CW_SET_SYSCLK and  @ref
-    ///< CW_GET_SYSCLK.
-
-#define PHY_MODE_MANUAL                                                        \
-  0 ///< Configured PHY operation mode with user setting.\n Refer to @ref
-    ///< CW_SET_PHYCONF and @ref CW_GET_PHYCONF.
-#define PHY_MODE_AUTONEGO                                                      \
-  1 ///< Configured PHY operation mode with auto-negotiation.\n Refer to @ref
-    ///< CW_SET_PHYCONF and @ref CW_GET_PHYCONF.
+#define PHY_MODE_MANUAL 0   ///< 수동 PHY 동작 모드 설정
+#define PHY_MODE_AUTONEGO 1 ///< PHY 자동 협상 모드 설정
 #define PHY_MODE_TE 2
 
-#define IPV6_ADDR_AUTO                                                         \
-  0x00
-       ///< CN_GET_PREFER.
-#define IPV6_ADDR_LLA                                                          \
-  0x02
-       ///< CN_GET_PREFER, @ref CNS_DAD.
-#define IPV6_ADDR_GUA                                                          \
-  0x03
-       ///< CN_GET_PREFER, @ref CNS_DAD.
+#define PHY_CONFBY_HW 0   ///< 하드웨어 핀 설정에 의한 PHY 모드 적용
+#define PHY_CONFBY_SW 1   ///< 소프트웨어 레지스터 설정에 의한 PHY 모드 적용
+#define PHY_SPEED_10 0    ///< 속도 10Mbps
+#define PHY_SPEED_100 1   ///< 속도 100Mbps
+#define PHY_DUPLEX_HALF 0 ///< 반이중 (Half-Duplex)
+#define PHY_DUPLEX_FULL 1 ///< 전이중 (Full-Duplex)
+#define PHY_LINK_OFF 0    ///< 링크 단절 상태
+#define PHY_LINK_ON 1     ///< 링크 연결 상태
+#define PHY_POWER_NORM 0  ///< 정상 전력 모드
+#define PHY_POWER_DOWN 1  ///< 절전(파워 다운) 모드
 
-#define PHY_CONFBY_HW 0   ///< Configured PHY operation mode by HW pin
-#define PHY_CONFBY_SW 1   ///< Configured PHY operation mode by SW register
-#define PHY_MODE_MANUAL 0 ///< Configured PHY operation mode with user setting.
-#define PHY_MODE_AUTONEGO                                                      \
-  1                     ///< Configured PHY operation mode with auto-negotiation
-#define PHY_SPEED_10 0  ///< Link Speed 10
-#define PHY_SPEED_100 1 ///< Link Speed 100
-#define PHY_DUPLEX_HALF 0 ///< Link Half-Duplex
-#define PHY_DUPLEX_FULL 1 ///< Link Full-Duplex
-#define PHY_LINK_OFF 0    ///< Link Off
-#define PHY_LINK_ON 1     ///< Link On
-#define PHY_POWER_NORM 0  ///< PHY power normal mode
-#define PHY_POWER_DOWN 1  ///< PHY power down mode
-
-// teddy 240122
-#if _WIZCHIP_ == W5100S || _WIZCHIP_ == W5500 || _WIZCHIP_ == W6100 ||         \
-    _WIZCHIP_ == W6300
 /**
     @ingroup DATA_TYPE
-    It configures PHY configuration when CW_SET PHYCONF or CW_GET_PHYCONF in
-   W5500, and it indicates the real PHY status configured by HW or SW in all
-   WIZCHIP. \n Valid only in W5500.
+    @brief 하드웨어 또는 소프트웨어에 의해 설정된 PHY의 실제 동작 상태 구조체
 */
 typedef struct wiz_PhyConf_t {
-  uint8_t by;     ///< set by @ref PHY_CONFBY_HW or @ref PHY_CONFBY_SW
-  uint8_t mode;   ///< set by @ref PHY_MODE_MANUAL or @ref PHY_MODE_AUTONEGO
-  uint8_t speed;  ///< set by @ref PHY_SPEED_10 or @ref PHY_SPEED_100
-  uint8_t duplex; ///< set by @ref PHY_DUPLEX_HALF @ref PHY_DUPLEX_FULL
-  // uint8_t power;  ///< set by @ref PHY_POWER_NORM or @ref PHY_POWER_DOWN
-  // uint8_t link;   ///< Valid only in CW_GET_PHYSTATUS. set by @ref
-  // PHY_LINK_ON or PHY_DUPLEX_OFF
+  uint8_t by;     ///< H/W 핀 또는 S/W 레지스터로 설정되었는지 여부
+  uint8_t mode;   ///< 수동 설정 또는 자동 협상 모드 여부
+  uint8_t speed;  ///< 10Mbps 또는 100Mbps 속도
+  uint8_t duplex; ///< 반이중 또는 전이중 모드
 } wiz_PhyConf;
-#endif
 
-#if (_WIZCHIP_ == W5100 || _WIZCHIP_ == W5100S || _WIZCHIP_ == W5200 ||        \
-     _WIZCHIP_ == W5300 || _WIZCHIP_ == W5500)
 /**
     @ingroup DATA_TYPE
-    It used in setting dhcp_mode of @ref wiz_NetInfo.
+    @brief IP 주소 구성 모드 (DHCP 사용 여부)
 */
 typedef enum {
-  NETINFO_STATIC = 1, ///< Static IP configuration by manually.
-  NETINFO_DHCP        ///< Dynamic IP configruation from a DHCP sever
-} dhcp_mode;
-
-/**
-    @ingroup DATA_TYPE
-    Network Information for WIZCHIP
-*/
-typedef struct wiz_NetInfo_t {
-  uint8_t mac[6]; ///< Source Mac Address
-  uint8_t ip[4];  ///< Source IP Address
-  uint8_t sn[4];  ///< Subnet Mask
-  uint8_t gw[4];  ///< Gateway IP Address
-  uint8_t dns[4]; ///< DNS server IP Address
-  dhcp_mode dhcp; ///< 1 - Static, 2 - DHCP
-} wiz_NetInfo;
-
-/**
-    @ingroup DATA_TYPE
-    Network mode
-*/
-typedef enum {
-  NM_WAKEONLAN = (1 << 5), ///< Wake On Lan
-  NM_PINGBLOCK = (1 << 4), ///< Block ping-request
-  NM_PPPOE = (1 << 3),     ///< PPPoE mode
-} netmode_type;
-
-/**
-    @ingroup DATA_TYPE
-    Used in CN_SET_TIMEOUT or CN_GET_TIMEOUT of @ref ctlwizchip() for timeout
-   configruation.
-*/
-typedef struct wiz_NetTimeout_t {
-  uint8_t retry_cnt;   ///< retry count
-  uint16_t time_100us; ///< time unit 100us
-} wiz_NetTimeout;
-// teddy 240122
-#elif ((_WIZCHIP_ == W6100) || (_WIZCHIP_ == W6300))
-/**
-    @ingroup DATA_TYPE
-    @brief IP Address Configuration Mode
-    @details @ref ipconf_mode can be used to save the DHCP mode running on your
-   system.
-    @sa ctlnetwork(), CN_SET_NETINFO, CN_GET_NETINFO
-    @sa wizchip_setnetinfo(), wizchip_getnetinfo(), wiz_NetInfo
-*/
-typedef enum {
-  NETINFO_NONE = 0x00,      ///< No use DHCP
-  NETINFO_STATIC_V4 = 0x01, ///< Static IPv4 configuration by manually.
-  NETINFO_STATIC_V6 = 0x02,
-  NETINFO_STATIC_ALL =
-      0x03,
-  NETINFO_SLAAC_V6 = 0x04,
-  NETINFO_DHCP_V4 = 0x10,  ///< Dynamic IPv4 configuration from a DHCP sever
-  NETINFO_DHCP_V6 = 0x20,
-  NETINFO_DHCP_ALL =
-      0x30
+  NETINFO_NONE = 0x00,      ///< DHCP를 사용하지 않음
+  NETINFO_STATIC_V4 = 0x01, ///< IPv4 주소를 수동(정적)으로 설정함
+  NETINFO_DHCP_V4 = 0x10    ///< DHCP 서버로부터 동적으로 IPv4 주소를 할당받음
 } ipconf_mode;
 
 /**
     @ingroup DATA_TYPE
-    @brief Network Information for @ref _WIZCHIP_
-    @details @ref wiz_NetInfo is a structure type to configure or indicate the
-   network information of @ref _WIZCHIP_.
-    @sa ctlnetwork(), CN_SET_NETINFO, CN_GET_NETINFO
-    @sa wizchip_setnetinfo(), wizchip_getnetinfo()
+    @brief DHCP 동작 모드
 */
-
 typedef enum {
-  NETINFO_STATIC = 1, ///< Static IP configuration by manually.
-  NETINFO_DHCP        ///< Dynamic IP configruation from a DHCP sever
+  NETINFO_STATIC = 1, ///< 정적 IP 설정
+  NETINFO_DHCP        ///< 동적(DHCP) IP 설정
 } dhcp_mode;
 
+/**
+    @ingroup DATA_TYPE
+    @brief WIZCHIP 네트워크 정보 구성 구조체
+*/
 typedef struct wiz_NetInfo_t {
-  uint8_t mac[6];     ///< Source Hardware Address
-  uint8_t ip[4];      ///< Source IPv4 Address
-  uint8_t sn[4];      ///< Subnet Mask value
-  uint8_t gw[4];      ///< Gateway IPv4 Address
-  uint8_t lla[16];    ///< Source Link Local Address
-  uint8_t gua[16];    ///< Source Global Unicast Address
-  uint8_t sn6[16];
-  uint8_t gw6[16];
-  uint8_t dns[4];     ///< DNS server IPv4 Address
-  uint8_t dns6[16];
-  ipconf_mode ipmode; ///< IP Configuration Mode
-  dhcp_mode dhcp;     ///< 1 - Static, 2 - DHCP
+  uint8_t mac[6];     ///< 출발지(기기) MAC 주소
+  uint8_t ip[4];      ///< 출발지 IPv4 주소
+  uint8_t sn[4];      ///< 서브넷 마스크 주소
+  uint8_t gw[4];      ///< 게이트웨이 IPv4 주소
+  uint8_t dns[4];     ///< DNS 서버 IPv4 주소
+  ipconf_mode ipmode; ///< IP 구성 모드 (정적/동적)
+  dhcp_mode dhcp;     ///< DHCP 사용 여부 (1: 정적, 2: 동적)
 } wiz_NetInfo;
 
 /**
     @ingroup DATA_TYPE
-    @brief Network mode Configuration
-    @details @ref netmode_type includes the network mode control function such
-   as ping, TCP/RST block and etc.
-    @sa ctlnetwork(), CN_SET_NETMODE, CN_GET_NETMODE
+    @brief 각종 네트워크 특수 모드 제어 플래그
 */
 typedef enum {
-  // NETMR Bit Values
-  NM_IPB_V4 = (1 << 0), ///< IPv4 Packet Block
-  NM_IPB_V6 = (1 << 1),
-  NM_WOL = (1 << 2),    ///< Wake On Lan(WOL) Mode
-  NM_PB6_MULTI =
-      (1 << 4), ///< PING6 request from multicasting group address Block
-  NM_PB6_ALLNODE =
-      (1 << 5), ///< PING6 request from all-node multicasting address Block
-  NM_MR_MASK = (0x37), ///< @ref _NETMR_ Mask value
+  NM_IPB_V4 = (1 << 0), ///< IPv4 패킷 차단 모드
+  NM_WOL = (1 << 2),    ///< Wake On Lan 활성화
+  NM_MR_MASK = (0x05),  ///< NETMR 마스크
 
-  // NETMR2 Bit Values
-  NM_PPPoE = (1 << 8),       ///< PPPoE Mode
-  NM_DHA_SELECT = (1 << 15), ///< Destination Hardware Address Select
-  NM_MR2_MASK = (0x09 << 8), ///< @ref _NETMR2_ Mask value
+  NM_PPPoE = (1 << 8),       ///< PPPoE 모드
+  NM_DHA_SELECT = (1 << 15), ///< 목적지 하드웨어 주소 강제 지정
+  NM_MR2_MASK = (0x09 << 8), ///< NETMR2 마스크
 
-  // NET4MR Bit Values
-  NM_PB4_ALL = (1UL << 16),      ///< All PING4 request Block
-  NM_TRSTB_V4 = (1UL << 17),     ///< TCP RST packet for IPv4 Send Block
-  NM_PARP_V4 = (1UL << 18),      ///< ARP request for IPv4 before PINGv4 Replay
-  NM_UNRB_V4 = (1UL << 19),      ///< Unreachable Destination for IPv4 Block
-  NM_NET4_MASK = (0x0FUL << 16), ///< @ref _NET4MR_ Mask value
+  NM_PB4_ALL = (1UL << 16),      ///< 모든 IPv4 PING 요청 차단
+  NM_TRSTB_V4 = (1UL << 17),     ///< IPv4 전송용 TCP RST 패킷 차단
+  NM_PARP_V4 = (1UL << 18),      ///< IPv4 PING 응답 전 ARP 요청
+  NM_UNRB_V4 = (1UL << 19),      ///< 목적지 도달 불가(Unreachable) 차단
+  NM_NET4_MASK = (0x0FUL << 16), ///< NET4MR 마스크
 
-  // NET4MR Bit Values
-  NM_PB6_ALL = (1UL << 24),      ///< All PING6 request Block
-  NM_TRSTB_V6 = (1UL << 25),
-  NM_PARP_V6 = (1UL << 26),
-  NM_UNRB_V6 = (1UL << 27),
-  NM_NET6_MASK = (0x0FUL << 24), ///< @ref _NET6MR_ Mask value
-
-  NM_MASK_ALL = (0x0F0F0937) ///< @ref netmode_type all mask value
+  NM_MASK_ALL = (0x000F0905) ///< 전체 설정 마스크
 } netmode_type;
 
 /**
     @ingroup DATA_TYPE
-    @brief Network Timeout for @ref _WIZCHIP_
-    @details @ref wiz_NetInfo is a structure type to configure or indicate the
-   network timeout of @ref _WIZCHIP_.
-    @sa ctlnetwork(), CN_SET_TIMEOUT, CN_GET_TIMEOUT
-    @sa wizchip_settimeout(), wizchip_gettimeout()
+    @brief WIZCHIP 패킷 재전송 타임아웃 구성 구조체
 */
 typedef struct wiz_NetTimeout_t {
-  uint8_t s_retry_cnt;   ///< The default retry count of SOCKETn
-  uint16_t s_time_100us; ///< The retransmission time of SOCKETn (unit 100us)
-  uint8_t sl_retry_cnt;  ///< The retry count of SOCKET-less
-  uint16_t
-      sl_time_100us; ///< The retransmission time of SOCKET-less (unit 100us)
+  uint8_t s_retry_cnt;    ///< 소켓 통신의 기본 재시도 횟수
+  uint16_t s_time_100us;  ///< 소켓 통신의 재전송 시간 (100us 단위)
+  uint8_t sl_retry_cnt;   ///< 소켓리스 통신의 재시도 횟수
+  uint16_t sl_time_100us; ///< 소켓리스 통신의 재전송 시간 (100us 단위)
 } wiz_NetTimeout;
 
 /**
     @ingroup DATA_TYPE
-    @brief Destination Information for Network Service of @ref _WIZCHIP_
-    @details @ref wiz_NetInfo is a structure type to configure or indicate a
-   destination information of network service.
-    @sa ctlnetservice(), CNS_ARP, CNS_PING
-    @sa IK_SOCKL_TOUT, IK_SOCKL_ARP4, IK_SOCKL_ARP6, IK_SOCKL_PING4,
-   IK_SOCKL_PING6
+    @brief 네트워크 서비스를 위한 IP 주소 보관 구조체
 */
 typedef struct wiz_IPAddress_t {
-  uint8_t ip[16];
-                  ///< index : 0 to 15
-  uint8_t len;
+  uint8_t ip[16]; ///< 주소 버퍼 배열
+  uint8_t len;    ///< 사용되는 주소의 길이
 } wiz_IPAddress;
 
 /**
     @ingroup DATA_TYPE
-    @brief Prefix Information
-    @details @ref wiz_Prefix is a structure type to indicate a prefix
-   information(0x03) of received RA message from a router.
-    @sa ctlnetservice(), CNS_SLAAC, IK_SOCKL_RS
-    @sa IK_SOCKL_TOUT, IK_SOCKL_RA, CNS_GET_PREFIX
-*/
-typedef struct wiz_Prefix_t {
-  uint8_t len;  ///< Prefix Length. \n It is used to set @ref _SUB6R_ to 1 as
-                ///< many as <i>len</i> from LSB bit.
-  uint8_t flag; ///< Prefix Flag
-  uint32_t valid_lifetime;     ///< Valid Lifetime
-  uint32_t preferred_lifetime; ///< Preferred Lifetime
-  uint8_t prefix[16];          ///< Prefix
-} wiz_Prefix;
-
-/**
-    @ingroup DATA_TYPE
-    @brief Destination Information & Destination Hardware Address for @ref
-   CNS_ARP
-    @details @ref wiz_ARP is a structure type to set a destination IP address
-   for ARP-request or \n indicate a destination hardware address in APR-reply.
-    @sa ctlnetservice(), CNS_ARP
-    @sa IK_SOCKL_TOUT, IK_SOCKL_ARP4, IK_SOCKL_ARP6
+    @brief 소켓리스 ARP 프로세스를 위한 목적지 정보 보관 구조체
 */
 typedef struct wiz_ARP_t {
-  wiz_IPAddress destinfo; ///< Destination IP address for ARP-request
-  uint8_t dha[6]; ///< Destination Hardware Address when ARP-reply is received
-                  ///< from the destination.
+  wiz_IPAddress destinfo; ///< ARP 요청을 전송할 목적지 IP 주소
+  uint8_t dha[6]; ///< ARP 응답 수신 시 기록될 목적지의 하드웨어 MAC 주소
 } wiz_ARP;
 
 /**
     @ingroup DATA_TYPE
-    @brief Destination Information & Destination Hardware Address for @ref
-   CNS_ARP
-    @details @ref wiz_PING is a structure type to set a ID, sequence number,
-   destination IP address for PING-request.
-    @sa ctlnetservice(), CNS_PING
-    @sa IK_SOCKL_TOUT, IK_SOCKL_PING4, IK_SOCKL_PING6
+    @brief 소켓리스 PING 프로세스를 위한 정보 보관 구조체
 */
 typedef struct wiz_PING_t {
-  uint16_t id;
-  uint16_t seq;
-  wiz_IPAddress destinfo;
+  uint16_t id;            ///< PING 세션 ID
+  uint16_t seq;           ///< PING 시퀀스 번호
+  wiz_IPAddress destinfo; ///< PING을 요청할 목적지 IP 주소
 } wiz_PING;
-#endif
 
-/**
-    @brief Registers call back function for critical section of I/O functions
-   such as
-    \ref WIZCHIP_READ, @ref WIZCHIP_WRITE, @ref WIZCHIP_READ_BUF and @ref
-   WIZCHIP_WRITE_BUF.
-    @param cris_en : callback function for critical section enter.
-    @param cris_ex : callback function for critical section exit.
-    @todo Describe @ref WIZCHIP_CRITICAL_ENTER and @ref WIZCHIP_CRITICAL_EXIT
-   marco or register your functions.
-    @note If you do not describe or register, default functions(@ref
-   wizchip_cris_enter & @ref wizchip_cris_exit) is called.
+/*
+@function    void reg_wizchip_cris_cbfunc(void (*cris_en)(void), void
+(*cris_ex)(void))
+@brief      WIZCHIP 레지스터 읽기/쓰기 시 동시 접근을 막기 위한 크리티컬 섹션
+콜백 함수를 등록합니다.
+@param      cris_en: 크리티컬 섹션 진입(Enter) 콜백 포인터
+@param      cris_ex: 크리티컬 섹션 종료(Exit) 콜백 포인터
+@return     void
 */
 void reg_wizchip_cris_cbfunc(void (*cris_en)(void), void (*cris_ex)(void));
 
-/**
-    @brief Registers call back function for WIZCHIP select & deselect.
-    @param cs_sel : callback function for WIZCHIP select
-    @param cs_desel : callback fucntion for WIZCHIP deselect
-    @todo Describe @ref wizchip_cs_select and @ref wizchip_cs_deselect function
-   or register your functions.
-    @note If you do not describe or register, null function is called.
+/*
+@function    void reg_wizchip_cs_cbfunc(void (*cs_sel)(void), void
+(*cs_desel)(void))
+@brief      통신을 시작하고 끝낼 때 호출되는 WIZCHIP 칩 선택(CS) 콜백 함수를
+등록합니다.
+@param      cs_sel: 칩 선택(CS Low) 콜백 포인터
+@param      cs_desel: 칩 해제(CS High) 콜백 포인터
+@return     void
 */
 void reg_wizchip_cs_cbfunc(void (*cs_sel)(void), void (*cs_desel)(void));
 
-/**
-    @brief Registers call back function for bus interface.
-    @param bus_rb   : callback function to read byte data using system bus
-    @param bus_wb   : callback function to write byte data using system bus
-    @todo Describe @ref wizchip_bus_readbyte and @ref wizchip_bus_writebyte
-   function or register your functions.
-    @note If you do not describe or register, null function is called.
-*/
-// void reg_wizchip_bus_cbfunc(uint8_t (*bus_rb)(uint32_t addr), void
-// (*bus_wb)(uint32_t addr, uint8_t wb));
-void reg_wizchip_bus_cbfunc(iodata_t (*bus_rb)(uint32_t addr),
-                            void (*bus_wb)(uint32_t addr, iodata_t wb));
-
-/**
-    @brief Registers call back function for SPI interface.
-    @param spi_rb : callback function to read byte using SPI
-    @param spi_wb : callback function to write byte using SPI
-    @todo Describe \ref wizchip_spi_readbyte and \ref wizchip_spi_writebyte
-   function or register your functions.
-    @note If you do not describe or register, null function is called.
+/*
+@function    void reg_wizchip_spi_cbfunc(uint8_t (*spi_rb)(void), void
+(*spi_wb)(uint8_t wb), void (*spi_rbuf)(uint8_t *buf, datasize_t len), void
+(*spi_wbuf)(uint8_t *buf, datasize_t len))
+@brief      SPI 통신을 통한 1바이트 및 버스트 단위 읽기/쓰기 콜백 함수를
+등록합니다.
+@param      spi_rb: 1바이트 읽기 함수 포인터
+@param      spi_wb: 1바이트 쓰기 함수 포인터
+@param      spi_rbuf: 버스트 데이터 읽기 함수 포인터
+@param      spi_wbuf: 버스트 데이터 쓰기 함수 포인터
+@return     void
 */
 void reg_wizchip_spi_cbfunc(uint8_t (*spi_rb)(void), void (*spi_wb)(uint8_t wb),
-                            void (*spi_rbuf)(uint8_t *buf, datasize_t len),
-                            void (*spi_wbuf)(uint8_t *buf, datasize_t len));
+                            void (*spi_rbuf)(uint8_t *buf, uint16_t len),
+                            void (*spi_wbuf)(uint8_t *buf, uint16_t len));
 
-/**
-    @brief Registers call back function for SPI interface.
-    @param spi_rb : callback function to burst read using SPI
-    @param spi_wb : callback function to burst write using SPI
-    @todo Describe \ref wizchip_spi_readbyte and \ref wizchip_spi_writebyte
-   function or register your functions.
-    @note If you do not describe or register, null function is called.
+/*
+@function    void reg_wizchip_spiburst_cbfunc(void (*spi_rb)(uint8_t *pBuf,
+uint16_t len), void (*spi_wb)(uint8_t *pBuf, uint16_t len))
+@brief      SPI 버스트 읽기/쓰기 콜백 함수만 별도로 등록합니다.
+@param      spi_rb: 버스트 읽기 함수 포인터
+@param      spi_wb: 버스트 쓰기 함수 포인터
+@return     void
 */
 void reg_wizchip_spiburst_cbfunc(void (*spi_rb)(uint8_t *pBuf, uint16_t len),
                                  void (*spi_wb)(uint8_t *pBuf, uint16_t len));
 
-// teddy 240122
-/**
-    @brief Registers call back function for QSPI interface.
-    @param spi_rb : callback function to read using QSPI
-    @param spi_wb : callback function to write using QSPI
-    @todo Describe \ref wizchip_qspi_read and \ref wizchip_qspi_write function
-    or register your functions.
-    @note If you do not describe or register, null function is called.
-*/
-void reg_wizchip_qspi_cbfunc(void (*qspi_rb)(uint8_t opcode, uint16_t addr,
-                                             uint8_t *pBuf, uint16_t len),
-                             void (*qspi_wb)(uint8_t opcode, uint16_t addr,
-                                             uint8_t *pBuf, uint16_t len));
-
-/**
-    @ingroup extra_functions
-    @brief Controls to the WIZCHIP.
-    @details Resets WIZCHIP & internal PHY, Configures PHY mode, Monitor
-   PHY(Link,Speed,Half/Full/Auto), controls interrupt & mask and so on.
-    @param cwtype : Decides to the control type
-    @param arg : arg type is dependent on cwtype.
-    @return  0 : Success \n
-           -1 : Fail because of invalid \ref ctlwizchip_type or unsupported \ref
-   ctlwizchip_type in WIZCHIP
+/*
+@function    int8_t ctlwizchip(ctlwizchip_type cwtype, void *arg)
+@brief      WIZCHIP 하드웨어(PHY 리셋, 인터럽트 제어 등)를 제어하는 통합 관리
+함수입니다.
+@param      cwtype: 실행할 명령의 타입 (ctlwizchip_type 참고)
+@param      arg: 명령에 따라 요구되는 인자 구조체 포인터
+@return     성공 시 0 반환, 잘못된 명령일 경우 -1 반환
 */
 int8_t ctlwizchip(ctlwizchip_type cwtype, void *arg);
 
-/**
-    @ingroup extra_functions
-    @brief Controls to network.
-    @details Controls to network environment, mode, timeout and so on.
-    @param cntype : Input. Decides to the control type
-    @param arg : Inout. arg type is dependent on cntype.
-    @return -1 : Fail because of invalid \ref ctlnetwork_type or unsupported
-   \ref ctlnetwork_type in WIZCHIP \n 0 : Success
+/*
+@function    int8_t ctlnetwork(ctlnetwork_type cntype, void *arg)
+@brief      WIZCHIP 네트워크 환경(IP, 서브넷, 타임아웃, 특수 모드 등)을
+설정하거나 가져오는 통합 함수입니다.
+@param      cntype: 실행할 명령의 타입 (ctlnetwork_type 참고)
+@param      arg: 명령에 따라 요구되는 인자 구조체 포인터
+@return     성공 시 0 반환, 잘못된 명령일 경우 -1 반환
 */
 int8_t ctlnetwork(ctlnetwork_type cntype, void *arg);
 
-// teddy 240122
-/**
-    @ingroup extra_functions
-    @brief Controls to network service.
-    @details Controls to network environment, mode, timeout and so on.
-    @param cnstype : Decides to the control type
-    @param arg : arg type is dependent on cnstype.
-    @return -1 : Fail because of invalid @ref ctlnetwork_type or unsupported
-   @ref ctlnetwork_type \n 0 : Success
-*/
-
 /*
-    The following functions are implemented for internal use.
-    but You can call these functions for code size reduction instead of
-   ctlwizchip() and ctlnetwork().
-*/
-
-/**
-    @ingroup extra_functions
-    @brief Reset WIZCHIP by softly.
+@function    void wizchip_sw_reset(void)
+@brief      소프트웨어 레지스터 명령을 통해 WIZCHIP을 리셋합니다.
+@param      void
+@return     void
 */
 void wizchip_sw_reset(void);
 
-/**
-    @ingroup extra_functions
-    @brief Initializes WIZCHIP with socket buffer size
-    @param txsize Socket tx buffer sizes. If null, initialized the default size
-   2KB.
-    @param rxsize Socket rx buffer sizes. If null, initialized the default size
-   2KB.
-    @return 0 : succcess \n
-          -1 : fail. Invalid buffer size
+/*
+@function    int8_t wizchip_init(uint8_t *txsize, uint8_t *rxsize)
+@brief      8개의 소켓에 대한 송신(TX) 버퍼와 수신(RX) 버퍼 크기를 할당하여
+WIZCHIP을 초기화합니다.
+@param      txsize: 각 소켓에 할당할 송신 버퍼 크기 배열 포인터. (NULL 전달 시
+기본 2KB 할당)
+@param      rxsize: 각 소켓에 할당할 수신 버퍼 크기 배열 포인터. (NULL 전달 시
+기본 2KB 할당)
+@return     성공 시 0 반환, 총 버퍼 메모리 한계를 초과하여 할당 실패 시 -1 반환
 */
 int8_t wizchip_init(uint8_t *txsize, uint8_t *rxsize);
 
-/**
-    @ingroup extra_functions
-    @brief Clear Interrupt of WIZCHIP.
-    @param intr : @ref intr_kind value operated OR. It can type-cast to
-   uint16_t.
+/*
+@function    void wizchip_clrinterrupt(intr_kind intr)
+@brief      지정된 종류의 WIZCHIP 인터럽트를 클리어(해제)합니다.
+@param      intr: 클리어할 인터럽트 종류를 지정 (intr_kind 값을 OR 연산하여 사용
+가능)
+@return     void
 */
 void wizchip_clrinterrupt(intr_kind intr);
 
-/**
-    @ingroup extra_functions
-    @brief Get Interrupt of WIZCHIP.
-    @return @ref intr_kind value operated OR. It can type-cast to uint16_t.
+/*
+@function    intr_kind wizchip_getinterrupt(void)
+@brief      칩셋에서 발생한 모든 인터럽트의 상태를 읽어옵니다.
+@param      void
+@return     현재 발생한 인터럽트들의 조합 값 (intr_kind의 OR 연산 결과)
 */
 intr_kind wizchip_getinterrupt(void);
 
-/**
-    @ingroup extra_functions
-    @brief Mask or Unmask Interrupt of WIZCHIP.
-    @param intr : @ref intr_kind value operated OR. It can type-cast to
-   uint16_t.
+/*
+@function    void wizchip_setinterruptmask(intr_kind intr)
+@brief      외부 인터럽트 핀으로 신호를 발생시킬 인터럽트들을 마스크 설정합니다.
+@param      intr: 마스킹을 허용할 인터럽트 종류들을 지정 (intr_kind 값을 OR
+연산하여 사용)
+@return     void
 */
 void wizchip_setinterruptmask(intr_kind intr);
 
-/**
-    @ingroup extra_functions
-    @brief Get Interrupt mask of WIZCHIP.
-    @return : The operated OR vaule of @ref intr_kind. It can type-cast to
-   uint16_t.
+/*
+@function    intr_kind wizchip_getinterruptmask(void)
+@brief      현재 설정된 인터럽트 마스크 상태를 읽어옵니다.
+@param      void
+@return     현재 설정된 마스크 값 (intr_kind의 OR 연산 결과)
 */
 intr_kind wizchip_getinterruptmask(void);
 
-// todo
-int8_t wizphy_getphylink(
-    void);
-int8_t wizphy_getphypmode(
-    void);
-
-/**
-    @ingroup extra_functions
-    @brief Reset the integrated PHY.
-    @details @ref wizphy_reset() resets the integrated Ethernet PHY \n
-            through @ref _PHY_IO_MODE_PHYCR_ or @ref _PHY_IO_MODE_MII_. \n
-    @note In @ref _PHY_IO_MODE_PHYCR_, It needs a stable reset time. \n
-         So you need to wait for the stable reset time.\n
-         The stable reset time for each @ref _WIZCHIP_ maybe different.
-    @sa ctlwizchip(), CW_RESET_PHY
-    @sa _PHY_IO_MODE_
+/*
+@function    int8_t wizphy_getphylink(void)
+@brief      현재 이더넷 이더넷 케이블의 링크 연결 상태(UP/DOWN)를 읽어옵니다.
+@param      void
+@return     링크 연결됨(1), 링크 끊어짐(0) 반환
 */
-void wizphy_reset(void);
+int8_t wizphy_getphylink(void);
 
-/**
-    @ingroup extra_functions
-    @details @ref wizphy_setphyconf() set a operation mode of the integrated
-   Ethernet PHY \n through @ref _PHY_IO_MODE_PHYCR_ or @ref _PHY_IO_MODE_MII_.\n
-    @param phyconf : @ref wiz_PhyConf
-    @note The operation mode can be applied to Ethernet PHY after the Ethernet
-   PHY is reset by @ref wizphy_reset().
-    @sa ctlwizchip(), CW_SET_PHYCONF, CW_GET_PHYCONF, CW_GET_PHYSTATUS,
-   CW_RESET_PHY
-    @sa _PHY_IO_MODE_, wizphy_getphyconf(), wizphy_getphystatus(),
-   wizphy_reset()
-*/
-void wizphy_setphyconf(wiz_PhyConf *phyconf);
-
-/**
-    @ingroup extra_functions
-    @brief Get the integrated Ethernet PHY operation mode.
-    @details @ref wizphy_getphyconf() gets a operation mode of the integrated
-   Ethernet PHY \n through @ref _PHY_IO_MODE_PHYCR_ or @ref _PHY_IO_MODE_MII_.\n
-    @param phyconf : @ref wiz_PhyConf
-    @note It gets just the configured value for PHY operation, not real PHY
-   operation.\n To get real PHY operation, you can call @ref
-   wizphy_getphystatus()
-    @sa ctlwizchip(), CW_GET_PHYCONF, CW_SET_PHYCONF, CW_GET_PHYSTATUS
-    @sa _PHY_IO_MODE_, wizphy_setphyconf(), wizphy_getphystatus()
-*/
-void wizphy_getphyconf(wiz_PhyConf *phyconf);
-
-/**
-    @ingroup extra_functions
-    @brief Get the real PHY operation status when link is established.
-    @details @ref wizphy_getphystatus() gets a operation mode of the integrated
-   Ethernet PHY. \n
-    @param phyconf : @ref wiz_PhyConf
-    @sa ctlwizchip(), CW_GET_PHYSTATUS, CW_GET_PHYCONF, CW_SET_PHYCONF
-    @sa wizphy_setphyconf(), wizphy_getphyconf()
-*/
-void wizphy_getphystat(wiz_PhyConf *phyconf);
-
-/**
-    @ingroup extra_functions
-    @brief Set the power mode of integrated Ethernet PHY.
-    @details @ref wizphy_setphypmode() sets a power mode of the integrated
-   Ethernet PHY \n through @ref _PHY_IO_MODE_PHYCR_ or @ref _PHY_IO_MODE_MII_.\n
-    @param pmode @ref PHY_POWER_NORM or @ref PHY_POWER_DOWN
-    @note When the integrated Ethernet PHY enters in power down mode, \n
-         the system clock of @ref _WIZCHIP_ is changed to the lowest speed. \n
-         So, you should adjust the access time of @ref _WIZCHIP_ to the changed
-   system clock.
-    @sa ctlwizchip(), CW_SET_PHYPOWMODE, CW_GET_PHYPOWMODE
-    @sa _PHY_IO_MODE_, wizphy_setphypmode(), wizphy_getphypmode()
-*/
-void wizphy_setphypmode(uint8_t pmode);
-
-/**
-    @ingroup extra_functions
-    @brief get the power mode of integrated Ethernet PHY.
-    @details @ref wizphy_getphypmode() gets a power mode of the integrated
-   Ethernet PHY \n through @ref _PHY_IO_MODE_PHYCR_ or @ref _PHY_IO_MODE_MII_.\n
-    @return @ref PHY_POWER_NORM or @ref PHY_POWER_DOWN
-    @note When the integrated Ethernet PHY enters in power down mode,\n
-         the system clock of @ref _WIZCHIP_ is changed to the lowest speed. \n
-         So, you should adjust the access time of @ref _WIZCHIP_ to the changed
-   system clock.
-    @sa ctlwizchip(), CW_SET_PHYPOWMODE, CW_GET_PHYPOWMODE
-    @sa _PHY_IO_MODE_, wizphy_setphypmode(), wizphy_getphypmode()
+/*
+@function    int8_t wizphy_getphypmode(void)
+@brief      내장 PHY 모듈의 동작 파워 모드(절전/정상 모드) 상태를 읽어옵니다.
+@param      void
+@return     정상 파워 모드(0), 파워 다운 절전 모드(1) 반환
 */
 int8_t wizphy_getphypmode(void);
 
-/**
-    @ingroup extra_functions
-    @brief Set the network information for @ref _WIZCHIP_
-    @param pnetinfo : @ref wiz_NetInfo
-    @sa ctlnetwork(), CN_SET_NETINFO, CN_GET_NETINFO
-    @sa wizchip_getnetinfo()
+/*
+@function    void wizphy_reset(void)
+@brief      MDC/MDIO 또는 자체 통신 인터페이스를 통해 내장된 이더넷 PHY 모듈을
+초기화합니다.
+@param      void
+@return     void
+*/
+void wizphy_reset(void);
+
+/*
+@function    void wizphy_setphyconf(wiz_PhyConf *phyconf)
+@brief      내장된 이더넷 PHY의 속도(10/100) 및 통신 방식(Auto, Full/Half)
+모드를 설정합니다.
+@param      phyconf: 설정할 PHY 구성 정보 구조체 포인터
+@return     void
+*/
+void wizphy_setphyconf(wiz_PhyConf *phyconf);
+
+/*
+@function    void wizphy_getphyconf(wiz_PhyConf *phyconf)
+@brief      사용자가 설정한 이더넷 PHY 동작 모드 설정값을 가져옵니다. (실제 적용
+상태와는 다를 수 있음)
+@param      phyconf: 설정값을 반환받을 구조체 포인터
+@return     void
+*/
+void wizphy_getphyconf(wiz_PhyConf *phyconf);
+
+/*
+@function    void wizphy_getphystat(wiz_PhyConf *phyconf)
+@brief      링크가 연결된 경우 자동 협상 등에 의해 '실제' 결정된 PHY의 동작 속도
+및 통신 모드 상태를 읽어옵니다.
+@param      phyconf: 실제 적용 상태를 반환받을 구조체 포인터
+@return     void
+*/
+void wizphy_getphystat(wiz_PhyConf *phyconf);
+
+/*
+@function    void wizphy_setphypmode(uint8_t pmode)
+@brief      이더넷 PHY 전력 동작 모드를 설정하여 칩의 클럭 소비 전력을
+최소화합니다.
+@param      pmode: 정상 동작 모드(PHY_POWER_NORM) 또는 절전 모드(PHY_POWER_DOWN)
+@return     void
+*/
+void wizphy_setphypmode(uint8_t pmode);
+
+/*
+@function    void wizchip_setnetinfo(wiz_NetInfo *pnetinfo)
+@brief      WIZCHIP 레지스터에 IP 주소, 서브넷 마스크, 게이트웨이 등의 출발지
+네트워크 정보를 설정합니다.
+@param      pnetinfo: 설정할 네트워크 정보가 담긴 구조체 포인터
+@return     void
 */
 void wizchip_setnetinfo(wiz_NetInfo *pnetinfo);
 
-/**
-    @ingroup extra_functions
-    @brief Get the network information of @ref _WIZCHIP_
-    @param pnetinfo : @ref wiz_NetInfo
-    @sa ctlnetwork(), CN_GET_NETINFO, CN_SET_NETINFO
-    @sa wizchip_setnetinfo()
+/*
+@function    void wizchip_getnetinfo(wiz_NetInfo *pnetinfo)
+@brief      WIZCHIP 레지스터에 현재 설정된 출발지 네트워크 정보(IP, 서브넷 등)를
+읽어옵니다.
+@param      pnetinfo: 읽어온 네트워크 정보를 반환받을 구조체 포인터
+@return     void
 */
 void wizchip_getnetinfo(wiz_NetInfo *pnetinfo);
 
-/**
-    @ingroup extra_functions
-    @brief Set the network mode such as WOL, PPPoE, PING Block, and etc.
-    @param netmode : @ref netmode_type.
-    @sa ctlnetwork(), CN_SET_NETMODE, CN_GET_NETMODE
-    @sa wizchip_getnetmode()
+/*
+@function    void wizchip_setnetmode(netmode_type netmode)
+@brief      네트워크 모드(WOL 허용 여부, PING 응답 차단 여부 등)를 비트 마스크
+형태로 설정합니다.
+@param      netmode: 설정할 네트워크 모드의 비트 플래그 조합
+@return     void
 */
 void wizchip_setnetmode(netmode_type netmode);
 
-/**
-    @ingroup extra_functions
-    @brief Get the network mode such as WOL, PPPoE, PING Block, and etc.
-    @return @ref netmode_type.
-    @sa ctlnetwork(), CN_GET_NETMODE, CN_SET_NETMODE
-    @sa wizchip_setnetmode()
+/*
+@function    netmode_type wizchip_getnetmode(void)
+@brief      현재 설정된 네트워크 모드(WOL, PING 차단 여부 등) 상태를 가져옵니다.
+@param      void
+@return     현재 설정된 네트워크 모드 반환
 */
 netmode_type wizchip_getnetmode(void);
 
-/**
-    @ingroup extra_functions
-    @brief Set retransmission time values and retry counts.
-    @param nettime : @ref wiz_NetTimeout.
-    @sa ctlnetwork(), CN_SET_TIMEOUT, CN_GET_TIMEOUT
-    @sa wizchip_gettimeout()
+/*
+@function    void wizchip_settimeout(wiz_NetTimeout *nettime)
+@brief      네트워크 패킷 통신 실패 시 패킷을 재전송할 타임아웃 시간 단위 및
+재시도 횟수를 설정합니다.
+@param      nettime: 재전송 횟수 및 시간 값을 포함한 설정 구조체 포인터
+@return     void
 */
 void wizchip_settimeout(wiz_NetTimeout *nettime);
 
-/**
-    @ingroup extra_functions
-    @brief Get retransmission time values and retry counts.
-    @param nettime : @ref wiz_NetTimeout.
-    @sa ctlnetwork(), CN_GET_TIMEOUT, CN_SET_TIMEOUT
-    @sa wizchip_settimeout()
+/*
+@function    void wizchip_gettimeout(wiz_NetTimeout *nettime)
+@brief      설정된 네트워크 통신 재전송 타임아웃 정보(시간, 횟수)를 읽어옵니다.
+@param      nettime: 읽어온 타임아웃 정보를 반환받을 구조체 포인터
+@return     void
 */
 void wizchip_gettimeout(wiz_NetTimeout *nettime);
 
-/**
-    @ingroup extra_functions
-    @brief ARP process.
-    @details @ref wizchip_arp() processes ARP. \n
-            It sends the APR-request to destination and waits to receive the
-   ARP-reply.
-    @param arp @ref wiz_ARP.\n
-              It sets a destination IP address and indicates the destination
-   hardware address.
-    @return 0 : success, destination hardware address is valid.\n
-           -1 : fail. destination hardware address is invalid because timeout is
-   occurred.\n
-    @sa ctlnetservice(), CNS_ARP
+/*
+@function    int8_t wizchip_arp(wiz_ARP *arp)
+@brief      소켓 없이 자체 기능(소켓리스)으로 목적지 IP에 대한 MAC 주소를
+요청하는 ARP 프로토콜을 수행합니다.
+@param      arp: 목적지 IP를 담고, 응답 시 목적지의 MAC 하드웨어 주소가 저장될
+구조체 포인터
+@return     성공 시 0(정상 MAC 획득), 타임아웃 등 실패 시 -1 반환
 */
 int8_t wizchip_arp(wiz_ARP *arp);
 
-/**
-    @ingroup extra_functions
-    @brief PING process.
-    @details @ref wizchip_ping() processes PING. \n
-            It sends the PING-request to destination and waits to receive the
-   PING-reply.
-    @param ping @ref wiz_PING, It sets a destination IP address, ID, SEQ of
-   PING-request message
-    @return 0 : success, PING-reply is successfully received.\n
-           -1 : fail. Timeout is occurred.\n
-    @sa ctlnetservice(), CNS_PING
+/*
+@function    int8_t wizchip_ping(wiz_PING *ping)
+@brief      소켓 없이 특정 목적지에 대해 PING 요청(ICMP Echo Request)을 전송하여
+네트워크 상태를 점검합니다.
+@param      ping: 전송할 PING ID와 시퀀스 정보가 담긴 구조체 포인터
+@return     성공 시 0(정상 Ping 응답 획득), 타임아웃 등 실패 시 -1 반환
 */
 int8_t wizchip_ping(wiz_PING *ping);
 
-/**
-    @ingroup extra_functions
-    @brief DAD(Duplcated Address Detection) process.
-    @details @ref wizchip_dad() detects the duplication of source IPv6
-   address.\n It sends a NA message for DAD to all-node multicasting
-   address(FF02::01).
-    @param ipv6 : IPv6 address to be detected the duplication.
-    @return 0 : success, There is no duplicated address. \n
-           -1 : fail. @ref _WIZCHIP_ source IP address to use is duplicated with
-   a neighbor's one.
-    @sa ctlnetservice(), CNS_DAD
-*/
-int8_t wizchip_dad(uint8_t *ipv6);
 
-/**
-    @ingroup extra_functions
-    @brief Stateless Address Auto Configuration(SLAAC) process.
-    @details @ref wizchip_slaac() get a prefix information from a router for
-   SLAAC.\n It sends first a RS message to all-router and waits to receive a RS
-   message with prefix information option from a router.
-    @param prefix @ref wiz_Prefix
-    @return 0 : success, RA message is successfully received, and <i>prefix</i>
-   is valid.  \n -1 : fail. Timeout is occurred.
-    @note It is valid only when the prefix information type(0x03) of RA option
-   received first.\n The prefix option should be in the order of prefix length,
-   prefix flag, valid lifetime, default lifetime and prefix address. \n For more
-   detail, Refer to @ref SLIR_RS.
-    @sa ctlnetservice(), CNS_SLAAC
-*/
-int8_t wizchip_slaac(wiz_Prefix *prefix);
-
-/**
-    @ingroup extra_functions
-    @brief Unsolicited NA process.
-    @details @ref wizchip_unsolicited() updates the network information of @ref
-   _WIZCHIP_ to neighbors.\n It sends a unsolicited NA message with @ref _LLAR_
-   or @ref _GUAR_ to neighbors \n in order to update the network information of
-   @ref _WIZCHIP_.\n Because the unsolicited NA message have no reply, timeout
-   is always occurred.
-    @return always 0. Timeout is occurred.
-    @sa ctlnetservice(), CNS_UNSOL
-*/
-int8_t wizchip_unsolicited(void);
-
-/**
-    @ingroup extra_functions
-    @brief Get a prefix information of RA message from a router.
-    @details @ref wizchip_getprefix() get a prefix information of RA is
-   periodically sent by a router. \n
-    @return 0 : success, a RS message is successfully received from a router.
-           -1 : fail, a RS message is not received from a router yet.
-    @note It is valid only when the prefix information type(0x03) of RA option
-   received first.\n The prefix option should be in the order of prefix length,
-   prefix flag, valid lifetime, default lifetime and prefix address. \n For more
-   detail, Refer to @ref SLIR_RS.
-    @sa ctlnetservice(), CNS_GET_PREFIX
-*/
-int8_t wizchip_getprefix(wiz_Prefix *prefix);
-
-#if (_WIZCHIP_ == W5100 || _WIZCHIP_ == W5100S || _WIZCHIP_ == W5200 ||        \
-     _WIZCHIP_ == W5300 || _WIZCHIP_ == W5500)
-/**
-    @ingroup extra_functions
-    @brief Set the network information for WIZCHIP
-    @param pnetinfo : @ref wizNetInfo
-*/
-void wizchip_setnetinfo(wiz_NetInfo *pnetinfo);
-
-/**
-    @ingroup extra_functions
-    @brief Get the network information for WIZCHIP
-    @param pnetinfo : @ref wizNetInfo
-*/
-void wizchip_getnetinfo(wiz_NetInfo *pnetinfo);
-
-/**
-    @ingroup extra_functions
-    @brief Set the network mode such WOL, PPPoE, Ping Block, and etc.
-    @param pnetinfo Value of network mode. Refer to @ref netmode_type.
-*/
-int8_t wizchip_setnetmode(netmode_type netmode);
-
-/**
-    @ingroup extra_functions
-    @brief Get the network mode such WOL, PPPoE, Ping Block, and etc.
-    @return Value of network mode. Refer to @ref netmode_type.
-*/
-netmode_type wizchip_getnetmode(void);
-
-/**
-    @ingroup extra_functions
-    @brief Set retry time value(@ref _RTR_) and retry count(@ref _RCR_).
-    @details @ref _RTR_ configures the retransmission timeout period and @ref
-   _RCR_ configures the number of time of retransmission.
-    @param nettime @ref _RTR_ value and @ref _RCR_ value. Refer to @ref
-   wiz_NetTimeout.
-*/
-void wizchip_settimeout(wiz_NetTimeout *nettime);
-
-/**
-    @ingroup extra_functions
-    @brief Get retry time value(@ref _RTR_) and retry count(@ref _RCR_).
-    @details @ref _RTR_ configures the retransmission timeout period and @ref
-   _RCR_ configures the number of time of retransmission.
-    @param nettime @ref _RTR_ value and @ref _RCR_ value. Refer to @ref
-   wiz_NetTimeout.
-*/
-void wizchip_gettimeout(wiz_NetTimeout *nettime);
-// teddy 240122
-#elif ((_WIZCHIP_ == W6100) || (_WIZCHIP_ == W6300))
-/**
-    @ingroup extra_functions
-    @brief Set the network information for @ref _WIZCHIP_
-    @param pnetinfo : @ref wiz_NetInfo
-    @sa ctlnetwork(), CN_SET_NETINFO, CN_GET_NETINFO
-    @sa wizchip_getnetinfo()
-*/
-void wizchip_setnetinfo(wiz_NetInfo *pnetinfo);
-
-/**
-    @ingroup extra_functions
-    @brief Get the network information of @ref _WIZCHIP_
-    @param pnetinfo : @ref wiz_NetInfo
-    @sa ctlnetwork(), CN_GET_NETINFO, CN_SET_NETINFO
-    @sa wizchip_setnetinfo()
-*/
-void wizchip_getnetinfo(wiz_NetInfo *pnetinfo);
-
-/**
-    @ingroup extra_functions
-    @brief Set the network mode such as WOL, PPPoE, PING Block, and etc.
-    @param netmode : @ref netmode_type.
-    @sa ctlnetwork(), CN_SET_NETMODE, CN_GET_NETMODE
-    @sa wizchip_getnetmode()
-*/
-void wizchip_setnetmode(netmode_type netmode);
-
-/**
-    @ingroup extra_functions
-    @brief Get the network mode such as WOL, PPPoE, PING Block, and etc.
-    @return @ref netmode_type.
-    @sa ctlnetwork(), CN_GET_NETMODE, CN_SET_NETMODE
-    @sa wizchip_setnetmode()
-*/
-netmode_type wizchip_getnetmode(void);
-
-/**
-    @ingroup extra_functions
-    @brief Set retransmission time values and retry counts.
-    @param nettime : @ref wiz_NetTimeout.
-    @sa ctlnetwork(), CN_SET_TIMEOUT, CN_GET_TIMEOUT
-    @sa wizchip_gettimeout()
-*/
-void wizchip_settimeout(wiz_NetTimeout *nettime);
-
-/**
-    @ingroup extra_functions
-    @brief Get retransmission time values and retry counts.
-    @param nettime : @ref wiz_NetTimeout.
-    @sa ctlnetwork(), CN_GET_TIMEOUT, CN_SET_TIMEOUT
-    @sa wizchip_settimeout()
-*/
-void wizchip_gettimeout(wiz_NetTimeout *nettime);
-
-#endif
 
 #ifdef __cplusplus
 }

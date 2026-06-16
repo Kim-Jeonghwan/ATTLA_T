@@ -10,17 +10,8 @@
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 16. - 100us 핵심 제어 루프(ISR) 실행 순서 가이드에 맞게 재배치 (CBIT/FRAM 유지)
  * 2026. 06. 15. - ADC 인터럽트 폴링 무한루프 방지용 타임아웃 적용 (하드웨어 미연결 보드 대응)
- * 2026. 06. 12. - 매크로 상수명 추상화: ADC_SCALE_REF_VOLT 반영
- * 2026. 06. 12. - 오프셋 보정 변수 및 ADC 상수 헤더(.h)로 이동 (글로벌 룰 적용)
- * 2026. 06. 15. - ADC 인터럽트 폴링 무한루프 방지용 타임아웃 적용 (하드웨어 미연결 보드 대응)
- * 2026. 06. 12. - 이산신호(DIO) 디바운싱 갱신 및 FRAM 저장 로직(saveData) 연동
- * 2026. 06. 12. - 3단계 동적 인터럽트 전환 적용 (csu_Offset_Isr, Pbit, MainControl)
- * 2026. 06. 11. - CBIT(Bit_RunCBIT)에 스톨, 과속, 엔코더 신규 점검 함수 추가
- * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
- * 2026. 06. 11. - 상태 변수들을 stControlState 구조체(xSysCtrl)로 통합
- * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
- * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
  */
 
 
@@ -117,12 +108,18 @@ void Bit_RunCBIT(void)
     Bit_MotorOverSpeed_Check();
 }
 
+/*
+@function    void Control_SystemOperation(void)
+@brief      시스템 운용 CSU (전체 로직 판단 및 제어권 관리)
+@param      void
+@return     void
+*/
 void Control_SystemOperation(void)
 {
     // 인터럽트 체인에 의해 오프셋 및 PBIT는 모두 통과된 상태로 진입함
 
     // 1. 아날로그신호 입력 및 연산 CSU
-    // CalcAdcData(); // (참고용. ADC 자체 인터럽트로 분리될 경우 호출 안 함)
+    CalcAdcData();
     
     // 2. 이산신호 입력 CSU
     Dio_UpdateInput();
@@ -131,9 +128,9 @@ void Control_SystemOperation(void)
     Encoder_UpdatePosition();
 
     // 4. 모터 드라이버 상태 정보 획득 및 처리 CSU
-    // updateMotorDriverStatus();
+    MotorDriver_UpdateStatus();
 
-    // 5. 주기점검(CBIT) CSU
+    // 5. 주기점검(CBIT) CSU (모터 제어 이전 수행)
     Bit_RunCBIT();
 
     // 6. 모터 구동제어 CSU
@@ -223,9 +220,12 @@ __interrupt void csu_Pbit_Isr(void)
     CalcAdcData();
     Bit_RunPBIT();
 
-    // 1회 확인 시 바로 메인 제어로 스위칭 (대기시간 없음)
+    // 1회 확인 후 PBIT을 통과했다면,
+    // 이더넷 초기화가 완료될 때까지 반복 실행되지 않도록 EPWM 인터럽트를 일시 중지하고 벡터를 메인 제어로 교체함.
     if (xSysCtrl.isPbitComplete == 1U)
     {
+        Interrupt_disable(INT_EPWM1);
+        
         EALLOW;
         PieVectTable.EPWM1_INT = &csu_MainControl_Isr;
         EDIS;
@@ -257,27 +257,8 @@ __interrupt void csu_MainControl_Isr(void)
     adcRawData.vsenRef = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER1);
     adcRawData.tsenBd  = ADC_readResult(ADCBRESULT_BASE, ADC_SOC_NUMBER3);
 
-    CalcAdcData();
-
     // 100us 시스템 운용 파이프라인 실행
-    // Control_SystemOperation() 내부 로직 전개 (SPI 통신 블로킹 의심 부분을 제외하고 개별 호출)
-    // 1. 아날로그신호 입력 및 연산 CSU
-    // CalcAdcData(); 
-    
-    // 2. 이산신호 입력 CSU
-    Dio_UpdateInput();
-
-    // 3. 위치(각도) 정보 획득 및 처리 CSU (!! 메인 루프 기아 원인 1순위: SPI 무한 블로킹 의심으로 임시 주석 처리 !!)
-    // Encoder_UpdatePosition();
-
-    // 5. 주기점검(CBIT) CSU
-    Bit_RunCBIT();
-
-    // 6. 모터 구동제어 CSU
-    MotorCtrl_Run();
-
-    // 7. 데이터 저장 CSU
-    Control_SaveDataToFram();
+    Control_SystemOperation();
 
 
     // --- 사용자 요청: 메인컨트롤 ISR 동작 확인용 GPIO 34번 토글 (1초 주기: 5000번 호출 시 상태 반전) ---

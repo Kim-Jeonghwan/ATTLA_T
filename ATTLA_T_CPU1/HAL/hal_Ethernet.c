@@ -1,15 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Ethernet.c
-    Version          : 00.03
+    Version          : 00.05
     Description      : 이더넷(W6100) 하드웨어 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 15. (SPIA 전용 콜백 함수명 반영)
+    Last Updated     : 2026. 06. 16. (수신 패킷 파싱 로직 연결)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 16. - 수신 패킷을 csu_Ethernet_ParsePacket()로 전달하고 기존 임시 응답 코드 제거
+ * 2026. 06. 16. - socket.h의 오버로딩 매크로 삭제에 맞춰 sendto/recvfrom을 sendto_W6x00/recvfrom_W6x00으로 변경
  * 2026. 06. 15. - W6100용 SPI 통신 콜백 함수 이름을 spia_ 접두어를 포함한 이름으로 수정 반영
  * 2026. 06. 15. - Initial_W6100 반환값 처리 추가로 하드웨어 미연결 시 소켓 개방 스킵(무한루프 방지) 구현
  * 2026. 06. 12. - 소켓 및 포트 매크로 상수를 헤더(.h)로 이동 (글로벌 룰 적용)
@@ -145,23 +147,13 @@ void Ethernet_Process(void)
                 rx_size = sizeof(rx_buf);
             }
 
-            recvfrom(SOCK_UDP_COM, rx_buf, rx_size, dest_ip, &dest_port, &dest_addrlen);
+            recvfrom_W6x00(SOCK_UDP_COM, rx_buf, rx_size, dest_ip, &dest_port, &dest_addrlen);
             
             // 수신 후 인터럽트 플래그 클리어 (W6100 하드웨어)
             setSn_IR(SOCK_UDP_COM, 0xFF);
             
-            // TODO: 수신된 패킷 파싱 로직 구현
-            // parsePacket(rx_buf);
-            
-            // 데이터 수신 시, 즉각적으로 화포통제컴퓨터로 응답(Tx) 전송
-            uint8_t tx_buf[18] = {0}; 
-            
-            tx_buf[0] = (uint8_t)xXmtSciPcMsg1.DspTemp;
-            tx_buf[1] = (uint8_t)xXmtSciPcMsg1.IncNumber;
-            tx_buf[2] = (uint8_t)xXmtSciPcMsg1.Status;
-            
-            // 수신된 IP와 Port로 즉시 응답 반환
-            sendto(SOCK_UDP_COM, tx_buf, 18U, dest_ip, dest_port, dest_addrlen);
+            // 수신된 패킷 파싱 로직 호출 (CSU 계층으로 전달)
+            csu_Ethernet_ParsePacket(rx_buf, rx_size);
         }
     } 
     else if (sn_sr == SOCK_CLOSED) 

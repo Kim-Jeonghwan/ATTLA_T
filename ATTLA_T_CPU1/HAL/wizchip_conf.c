@@ -1,152 +1,88 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : wizchip_conf.c
- Version          : 00.01
+ Version          : 00.02
  Description      : WIZnet 이더넷 라이브러리 파일
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 15. (정적시험용 코드 다이어트: 미사용 기능 삭제)
+ Last Updated     : 2026. 06. 16. (IPv6 및 미사용 I/O 인터페이스 관련 오류 수정)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 16. - 전체 함수에 CSU/HAL 표준 주석 포맷 및 한글화 적용
+ * 2026. 06. 16. - 정적시험 관련 IPv6, BUS/QSPI 미사용 I/O 제거 후 발생한 컴파일 에러 수정
  * 2026. 06. 15. - 정적시험 통과를 위한 타기종 및 미사용 TCP/IPv6 기능 전면 삭제
  */
 #include <stddef.h>
-//
-
 #include "wizchip_conf.h"
 
-/////////////
-/////////////
+#pragma diag_suppress 69
+#pragma diag_suppress 1269
 
-/**
-    @brief Default function to enable interrupt.
-    @note This function help not to access wrong address. If you do not describe this function or register any functions,
-    null function is called.
+/*
+@function    void wizchip_cris_enter(void)
+@brief      크리티컬 섹션(인터럽트 비활성화) 진입을 위한 기본 콜백 함수입니다.
+@param      void
+@return     void
 */
-//void 	  wizchip_cris_enter(void)           {};
+
 void 	  wizchip_cris_enter(void)           {}
 
-/**
-    @brief Default function to disable interrupt.
-    @note This function help not to access wrong address. If you do not describe this function or register any functions,
-    null function is called.
+/*
+@function    void wizchip_cris_exit(void)
+@brief      크리티컬 섹션(인터럽트 활성화) 종료를 위한 기본 콜백 함수입니다.
+@param      void
+@return     void
 */
-//void 	  wizchip_cris_exit(void)          {};
+
 void 	  wizchip_cris_exit(void)          {}
 
-/**
-    @brief Default function to select chip.
-    @note This function help not to access wrong address. If you do not describe this function or register any functions,
-    null function is called.
+/*
+@function    void wizchip_cs_select(void)
+@brief      WIZCHIP 칩 선택(CS Low)을 위한 기본 콜백 함수입니다.
+@param      void
+@return     void
 */
-//void 	wizchip_cs_select(void)            {};
+
 void 	wizchip_cs_select(void)            {}
 
-/**
-    @brief Default function to deselect chip.
-    @note This function help not to access wrong address. If you do not describe this function or register any functions,
-    null function is called.
+/*
+@function    void wizchip_cs_deselect(void)
+@brief      WIZCHIP 칩 선택 해제(CS High)를 위한 기본 콜백 함수입니다.
+@param      void
+@return     void
 */
-//void 	wizchip_cs_deselect(void)          {};
+
 void 	wizchip_cs_deselect(void)          {}
 
-/**
-    @brief Default function to read in direct or indirect interface.
-    @note This function help not to access wrong address. If you do not describe this function or register any functions,
-    null function is called.
+/*
+@function    void wizchip_spi_writebyte(uint8_t wb)
+@brief      SPI 인터페이스에서 1바이트를 쓰기 위한 기본 콜백 함수입니다.
+@param      wb: 전송할 1바이트 데이터
+@return     void
 */
-//uint8_t wizchip_bus_readbyte(uint32_t AddrSel) { return * ((volatile uint8_t *)((ptrdiff_t) AddrSel)); }
-iodata_t wizchip_bus_readdata(uint32_t AddrSel) {
-    return * ((volatile iodata_t *)((ptrdiff_t) AddrSel));
-}
 
-/**
-    @brief Default function to write in direct or indirect interface.
-    @note This function help not to access wrong address. If you do not describe this function or register any functions,
-    null function is called.
-*/
-//void 	wizchip_bus_writebyte(uint32_t AddrSel, uint8_t wb)  { *((volatile uint8_t*)((ptrdiff_t)AddrSel)) = wb; }
-void 	wizchip_bus_writedata(uint32_t AddrSel, iodata_t wb)  {
-    *((volatile iodata_t*)((ptrdiff_t)AddrSel)) = wb;
-}
-#if 1
-// 20231103 taylor
-/**
-    @brief Default function to read @ref iodata_t buffer by using BUS interface
-    @details @ref wizchip_bus_read_buf() provides the default read @ref iodata_t data as many as <i>len</i> from BUS of @ref _WIZCHIP_.
-    @param AddrSel It specifies the address of register to be read.
-    @param buf It specifies your buffer pointer to be saved the read data from @ref _WIZCHIP_.
-    @param len It specifies the data length to be read from @ref _WIZCHIP_.
-    @param addrinc It specifies whether the address is increased by every read operation or not.\n
-          0 : Not Increased \n
-          1 : Increased
-    @return void
-    @note It can be overwritten with your function or register your functions by calling @ref reg_wizchip_bus_cbfunc().
-    @sa wizchip_bus_write_buf()
-*/
-void wizchip_bus_read_buf(uint32_t AddrSel, iodata_t* buf, int16_t len, uint8_t addrinc) {
-    uint16_t i;
-    if (addrinc) {
-        addrinc = sizeof(iodata_t);
-    }
-    for (i = 0; i < len; i++) {
-        *buf++ = WIZCHIP.IF.BUS._read_data(AddrSel);
-        AddrSel += (uint32_t) addrinc;
-    }
-}
+void 	wizchip_spi_writebyte(uint8_t wb) {}
 
-/**
-    @brief Default function to write @ref iodata_t buffer by using BUS interface.
-    @details @ref wizchip_bus_write_buf() provides the default write @ref iodata_t data as many as <i>len</i> to BUS of @ref _WIZCHIP_.
-    @param AddrSel It specifies the address of register to be written.
-    @param buf It specifies your buffer pointer to be written to @ref _WIZCHIP_.
-    @param len It specifies the data length to be written to @ref _WIZCHIP_.
-    @param addrinc It specifies whether the address is increased by every write operation or not.\n
-          0 : Not Increased \n
-          1 : Increased
-    @return void
-    @note It can be overwritten with your function or register your functions by calling @ref reg_wizchip_bus_cbfunc().
-    @sa wizchip_bus_read_buf()
-*/
-void wizchip_bus_write_buf(uint32_t AddrSel, iodata_t* buf, int16_t len, uint8_t addrinc) {
-    uint16_t i;
-    if (addrinc) {
-        addrinc = sizeof(iodata_t);
-    }
-    for (i = 0; i < len ; i++) {
-        WIZCHIP.IF.BUS._write_data(AddrSel, *buf++);
-        AddrSel += (uint32_t)addrinc;
-    }
 
-}
-#endif
-
-/**
-    @brief Default function to read in SPI interface.
-    @note This function help not to access wrong address. If you do not describe this function or register any functions,
-    null function is called.
+/*
+@function    uint8_t wizchip_spi_readbyte(void)
+@brief      SPI 인터페이스에서 1바이트를 읽기 위한 기본 콜백 함수입니다.
+@param      void
+@return     읽어온 1바이트 데이터
 */
-//uint8_t wizchip_spi_readbyte(void)        {return 0;};
 uint8_t wizchip_spi_readbyte(void)        {
     return 0;
 }
 
-/**
-    @brief Default function to write in SPI interface.
-    @note This function help not to access wrong address. If you do not describe this function or register any functions,
-    null function is called.
+/*
+@function    void wizchip_spi_readburst(uint8_t* pBuf, uint16_t len)
+@brief      SPI 인터페이스에서 여러 바이트(버스트)를 연속으로 읽기 위한 기본 콜백 함수입니다.
+@param      pBuf: 수신된 데이터를 저장할 버퍼 포인터
+@param      len: 읽어올 데이터 길이
+@return     void
 */
-//void 	wizchip_spi_writebyte(uint8_t wb) {};
-void 	wizchip_spi_writebyte(uint8_t wb) {}
-
-/**
-    @brief Default function to burst read in SPI interface.
-    @note This function help not to access wrong address. If you do not describe this function or register any functions,
-    null function is called.
-*/
-//void 	wizchip_spi_readburst(uint8_t* pBuf, uint16_t len) 	{};
 #if 1
 // 20231018 taylor
 void 	wizchip_spi_readburst(uint8_t* pBuf, uint16_t len) {
@@ -159,12 +95,13 @@ void 	wizchip_spi_readburst(uint8_t* pBuf, uint16_t len) {
 void 	wizchip_spi_readburst(uint8_t* pBuf, uint16_t len) 	{}
 #endif
 
-/**
-    @brief Default function to burst write in SPI interface.
-    @note This function help not to access wrong address. If you do not describe this function or register any functions,
-    null function is called.
+/*
+@function    void wizchip_spi_writeburst(uint8_t* pBuf, uint16_t len)
+@brief      SPI 인터페이스에서 여러 바이트(버스트)를 연속으로 쓰기 위한 기본 콜백 함수입니다.
+@param      pBuf: 전송할 데이터가 저장된 버퍼 포인터
+@param      len: 전송할 데이터 길이
+@return     void
 */
-//void 	wizchip_spi_writeburst(uint8_t* pBuf, uint16_t len) {};
 #if 1
 // 20231018 taylor
 void 	wizchip_spi_writeburst(uint8_t* pBuf, uint16_t len) {
@@ -176,47 +113,10 @@ void 	wizchip_spi_writeburst(uint8_t* pBuf, uint16_t len) {
 #else
 void 	wizchip_spi_writeburst(uint8_t* pBuf, uint16_t len) {}
 #endif
-#if 1   //teddy 240122
 
-/**
-    @brief Default function to read in QSPI interface.
-    @note This function help not to access wrong address. If you do not describe this function or register any functions,
-    null function is called.
-*/
-void wizchip_qspi_read(uint8_t opcode, uint16_t addr, uint8_t* pBuf, uint16_t len) {}
-
-/**
-    @brief Default function to write in QSPI interface.
-    @note This function help not to access wrong address. If you do not describe this function or register any functions,
-    null function is called.
-*/
-void wizchip_qspi_write(uint8_t opcode, uint16_t addr, uint8_t* pBuf, uint16_t len) {}
-
-#endif
-/**
-    @\ref _WIZCHIP instance
-*/
-//
-//            Replace the assignment of struct members with the assingment of array
-//
-/*
-    _WIZCHIP  WIZCHIP =
-      {
-      .id                  = _WIZCHIP_ID_,
-      .if_mode             = _WIZCHIP_IO_MODE_,
-      .CRIS._enter         = wizchip_cris_enter,
-      .CRIS._exit          = wizchip_cris_exit,
-      .CS._select          = wizchip_cs_select,
-      .CS._deselect        = wizchip_cs_deselect,
-      .IF.BUS._read_byte   = wizchip_bus_readbyte,
-      .IF.BUS._write_byte  = wizchip_bus_writebyte
-    //    .IF.SPI._read_byte   = wizchip_spi_readbyte,
-    //    .IF.SPI._write_byte  = wizchip_spi_writebyte
-      };
-*/
 _WIZCHIP  WIZCHIP = {
     _WIZCHIP_IO_MODE_,
-    {'W','6','1','0','0','\0','\0','\0'}, // _WIZCHIP_ID_ (Fixed for TI C2000 Assembler bug)
+    {'W','6','1','0','0', 0, 0, 0}, // _WIZCHIP_ID_ (Fixed for TI C2000 Assembler bug)
     {
         wizchip_cris_enter,
         wizchip_cris_exit
@@ -227,19 +127,24 @@ _WIZCHIP  WIZCHIP = {
     },
     {
         {
-            //wizchip_bus_readbyte,
-            //wizchip_bus_writebyte
-            wizchip_bus_readdata,
-            wizchip_bus_writedata
-        },
-
+            wizchip_spi_readbyte,
+            wizchip_spi_writebyte,
+            wizchip_spi_readburst,
+            wizchip_spi_writeburst
+        }
     }
 };
 
 static uint8_t    _DNS_[4];      // DNS server ip address
-static uint8_t      _DNS6_[16];
 static ipconf_mode  _IPMODE_;      ///< IP configuration mode
 
+/*
+@function    void reg_wizchip_cris_cbfunc(void (*cris_en)(void), void (*cris_ex)(void))
+@brief      WIZCHIP 레지스터 읽기/쓰기 시 동시 접근을 막기 위한 크리티컬 섹션 콜백 함수를 등록합니다.
+@param      cris_en: 크리티컬 섹션 진입(Enter) 콜백 포인터
+@param      cris_ex: 크리티컬 섹션 종료(Exit) 콜백 포인터
+@return     void
+*/
 void reg_wizchip_cris_cbfunc(void(*cris_en)(void), void(*cris_ex)(void)) {
     if (!cris_en || !cris_ex) {
         WIZCHIP.CRIS._enter = wizchip_cris_enter;
@@ -250,6 +155,13 @@ void reg_wizchip_cris_cbfunc(void(*cris_en)(void), void(*cris_ex)(void)) {
     }
 }
 
+/*
+@function    void reg_wizchip_cs_cbfunc(void (*cs_sel)(void), void (*cs_desel)(void))
+@brief      통신을 시작하고 끝낼 때 호출되는 WIZCHIP 칩 선택(CS) 콜백 함수를 등록합니다.
+@param      cs_sel: 칩 선택(CS Low) 콜백 포인터
+@param      cs_desel: 칩 해제(CS High) 콜백 포인터
+@return     void
+*/
 void reg_wizchip_cs_cbfunc(void(*cs_sel)(void), void(*cs_desel)(void)) {
     if (!cs_sel || !cs_desel) {
         WIZCHIP.CS._select   = wizchip_cs_select;
@@ -260,59 +172,19 @@ void reg_wizchip_cs_cbfunc(void(*cs_sel)(void), void(*cs_desel)(void)) {
     }
 }
 
-//void reg_wizchip_bus_cbfunc(uint8_t(*bus_rb)(uint32_t addr), void (*bus_wb)(uint32_t addr, uint8_t wb))
-void reg_wizchip_bus_cbfunc(iodata_t(*bus_rb)(uint32_t addr), void (*bus_wb)(uint32_t addr, iodata_t wb)) {
-    while (!(WIZCHIP.if_mode & _WIZCHIP_IO_MODE_BUS_));
-    /*
-        if(!bus_rb || !bus_wb)
-        {
-        WIZCHIP.IF.BUS._read_byte   = wizchip_bus_readbyte;
-        WIZCHIP.IF.BUS._write_byte  = wizchip_bus_writebyte;
-        }
-        else
-        {
-        WIZCHIP.IF.BUS._read_byte   = bus_rb;
-        WIZCHIP.IF.BUS._write_byte  = bus_wb;
-        }
-    */
-    if (!bus_rb || !bus_wb) {
-        WIZCHIP.IF.BUS._read_data   = wizchip_bus_readdata;
-        WIZCHIP.IF.BUS._write_data  = wizchip_bus_writedata;
-    } else {
-        WIZCHIP.IF.BUS._read_data   = bus_rb;
-        WIZCHIP.IF.BUS._write_data  = bus_wb;
-    }
-}
-#if 1
-// 20231103 taylor
-void reg_wizchip_busbuf_cbfunc(void(*busbuf_rb)(uint32_t AddrSel, iodata_t* pBuf, int16_t len, uint8_t addrinc), void (*busbuf_wb)(uint32_t AddrSel, iodata_t* pBuf, int16_t len, uint8_t addrinc)) {
-    while (!(WIZCHIP.if_mode & _WIZCHIP_IO_MODE_BUS_));
-    /*
-        if(!bus_rb || !bus_wb)
-        {
-        WIZCHIP.IF.BUS._read_byte   = wizchip_bus_readbyte;
-        WIZCHIP.IF.BUS._write_byte  = wizchip_bus_writebyte;
-        }
-        else
-        {
-        WIZCHIP.IF.BUS._read_byte   = bus_rb;
-        WIZCHIP.IF.BUS._write_byte  = bus_wb;
-        }
-    */
-    if (!busbuf_rb || !busbuf_wb) {
-        WIZCHIP.IF.BUS._read_data_buf   = wizchip_bus_read_buf;
-        WIZCHIP.IF.BUS._write_data_buf  = wizchip_bus_write_buf;
-    } else {
-        WIZCHIP.IF.BUS._read_data_buf   = busbuf_rb;
-        WIZCHIP.IF.BUS._write_data_buf  = busbuf_wb;
-    }
-}
-#endif
-
+/*
+@function    void reg_wizchip_spi_cbfunc(uint8_t (*spi_rb)(void), void (*spi_wb)(uint8_t wb), void (*spi_rbuf)(uint8_t *buf, uint16_t len), void (*spi_wbuf)(uint8_t *buf, uint16_t len))
+@brief      SPI 통신을 통한 1바이트 및 버스트 단위 읽기/쓰기 콜백 함수를 등록합니다.
+@param      spi_rb: 1바이트 읽기 함수 포인터
+@param      spi_wb: 1바이트 쓰기 함수 포인터
+@param      spi_rbuf: 버스트 데이터 읽기 함수 포인터
+@param      spi_wbuf: 버스트 데이터 쓰기 함수 포인터
+@return     void
+*/
 void reg_wizchip_spi_cbfunc(uint8_t (*spi_rb)(void),
                             void (*spi_wb)(uint8_t wb),
-                            void (*spi_rbuf)(uint8_t* buf, datasize_t len),
-                            void (*spi_wbuf)(uint8_t* buf, datasize_t len)) {
+                            void (*spi_rbuf)(uint8_t* buf, uint16_t len),
+                            void (*spi_wbuf)(uint8_t* buf, uint16_t len)) {
     while (!(WIZCHIP.if_mode & _WIZCHIP_IO_MODE_SPI_));
 
     if (!spi_rb) {
@@ -338,7 +210,13 @@ void reg_wizchip_spi_cbfunc(uint8_t (*spi_rb)(void),
     }
 }
 
-// 20140626 Eric Added for SPI burst operations
+/*
+@function    void reg_wizchip_spiburst_cbfunc(void (*spi_rb)(uint8_t *pBuf, uint16_t len), void (*spi_wb)(uint8_t *pBuf, uint16_t len))
+@brief      SPI 버스트 읽기/쓰기 콜백 함수만 별도로 등록합니다.
+@param      spi_rb: 버스트 읽기 함수 포인터
+@param      spi_wb: 버스트 쓰기 함수 포인터
+@return     void
+*/
 void reg_wizchip_spiburst_cbfunc(void (*spi_rb)(uint8_t* pBuf, uint16_t len), void (*spi_wb)(uint8_t* pBuf, uint16_t len)) {
     while (!(WIZCHIP.if_mode & _WIZCHIP_IO_MODE_SPI_));
 
@@ -350,34 +228,25 @@ void reg_wizchip_spiburst_cbfunc(void (*spi_rb)(uint8_t* pBuf, uint16_t len), vo
         WIZCHIP.IF.SPI._write_burst  = spi_wb;
     }
 }
-#if 1 //teddy 240122
-void reg_wizchip_qspi_cbfunc(void (*qspi_rb)(uint8_t opcode, uint16_t addr, uint8_t* pBuf, uint16_t len),
-                             void (*qspi_wb)(uint8_t opcode, uint16_t addr, uint8_t* pBuf, uint16_t len)) {
-    while (!(WIZCHIP.if_mode & _WIZCHIP_IO_MODE_SPI_QSPI_));
 
-    if (!qspi_rb || !qspi_wb) {
-        WIZCHIP.IF.QSPI._read_qspi   = wizchip_qspi_read;
-        WIZCHIP.IF.QSPI._write_qspi  = wizchip_qspi_write;
-    } else {
-        WIZCHIP.IF.QSPI._read_qspi   = qspi_rb;
-        WIZCHIP.IF.QSPI._write_qspi  = qspi_wb;
-    }
-}
-#endif
+
 
 /*
- * -----------------------------------------------------------------------------
- * 함수명    : ctlwizchip
- * 역할      : W6100 하드웨어 전반(리셋, 메모리 크기 초기화 등)을 제어하기 위한 다목적 제어 함수입니다.
- * 매개변수  :
- *   - cwtype : 제어 명령 타입 (예: CW_RESET_WIZCHIP, CW_INIT_WIZCHIP)
- *   - arg    : 제어 명령에 사용될 인수 포인터
- * 반환값    : 성공 시 0, 실패 시 -1
- * -----------------------------------------------------------------------------
- */
+@function    int8_t ctlwizchip(ctlwizchip_type cwtype, void *arg)
+@brief      WIZCHIP 하드웨어(PHY 리셋, 인터럽트 제어 등)를 제어하는 통합 관리
+함수입니다.
+@param      cwtype: 실행할 명령의 타입 (ctlwizchip_type 참고)
+@param      arg: 명령에 따라 요구되는 인자 구조체 포인터
+@return     성공 시 0 반환, 잘못된 명령일 경우 -1 반환
+*/
+
 int8_t ctlwizchip(ctlwizchip_type cwtype, void* arg) {
     //teddy 240122
-    uint8_t tmp = *(uint8_t*) arg;
+    uint8_t tmp = 0;
+    if(arg != NULL) {
+        tmp = *(uint8_t*) arg;
+    }
+    int8_t ret_tmp = 0;
     uint8_t* ptmp[2] = {0, 0};
     switch (cwtype) {
         //teddy 240122
@@ -471,18 +340,18 @@ int8_t ctlwizchip(ctlwizchip_type cwtype, void* arg) {
         break;
         //teddy 240122
     case CW_GET_PHYPOWMODE:
-        tmp = wizphy_getphypmode();
-        if ((int8_t)tmp == -1) {
+        ret_tmp = wizphy_getphypmode();
+        if (ret_tmp == -1) {
             return -1;
         }
-        *(uint8_t*)arg = tmp;
+        *(uint8_t*)arg = (uint8_t)ret_tmp;
         break;
     case CW_GET_PHYLINK:
-        tmp = wizphy_getphylink();
-        if ((int8_t)tmp == -1) {
+        ret_tmp = wizphy_getphylink();
+        if (ret_tmp == -1) {
             return -1;
         }
-        *(uint8_t*)arg = tmp;
+        *(uint8_t*)arg = (uint8_t)ret_tmp;
         break;
     default:
         return -1;
@@ -491,15 +360,14 @@ int8_t ctlwizchip(ctlwizchip_type cwtype, void* arg) {
 }
 
 /*
- * -----------------------------------------------------------------------------
- * 함수명    : ctlnetwork
- * 역할      : 네트워크 설정(IP/MAC 설정, 네트워크 모드 설정 등)을 제어하기 위한 다목적 함수입니다.
- * 매개변수  :
- *   - cntype : 네트워크 제어 명령 타입 (예: CN_SET_NETINFO, CN_GET_NETINFO)
- *   - arg    : 제어 명령에 사용될 인수 포인터
- * 반환값    : 성공 시 0, 실패 시 -1
- * -----------------------------------------------------------------------------
- */
+@function    int8_t ctlnetwork(ctlnetwork_type cntype, void *arg)
+@brief      WIZCHIP 네트워크 환경(IP, 서브넷, 타임아웃, 특수 모드 등)을
+설정하거나 가져오는 통합 함수입니다.
+@param      cntype: 실행할 명령의 타입 (ctlnetwork_type 참고)
+@param      arg: 명령에 따라 요구되는 인자 구조체 포인터
+@return     성공 시 0 반환, 잘못된 명령일 경우 -1 반환
+*/
+
 int8_t ctlnetwork(ctlnetwork_type cntype, void* arg) {
 
     switch (cntype) {
@@ -533,17 +401,22 @@ int8_t ctlnetwork(ctlnetwork_type cntype, void* arg) {
     return 0;
 }
 
+/*
+@function    void wizchip_sw_reset(void)
+@brief      소프트웨어 레지스터 명령을 통해 WIZCHIP을 리셋합니다.
+@param      void
+@return     void
+*/
+
 void wizchip_sw_reset(void) {
     uint8_t gw[4], sn[4], sip[4];
     uint8_t mac[6];
-    //teddy 240122
-    uint8_t gw6[16], sn6[16], lla[16], gua[16];
     uint8_t islock = getSYSR();
 
     CHIPUNLOCK();
 
     getSHAR(mac);
-    getGAR(gw);  getSUBR(sn);  getSIPR(sip); getGA6R(gw6); getSUB6R(sn6); getLLAR(lla); getGUAR(gua);
+    getGAR(gw);  getSUBR(sn);  getSIPR(sip);
     setSYCR0(SYCR0_RST);
     getSYCR0(); // for delay
 
@@ -553,10 +426,6 @@ void wizchip_sw_reset(void) {
     setGAR(gw);
     setSUBR(sn);
     setSIPR(sip);
-    setGA6R(gw6);
-    setSUB6R(sn6);
-    setLLAR(lla);
-    setGUAR(gua);
     if (islock & SYSR_CHPL) {
         CHIPLOCK();
     }
@@ -566,19 +435,19 @@ void wizchip_sw_reset(void) {
 }
 
 /*
- * -----------------------------------------------------------------------------
- * 함수명    : wizchip_init
- * 역할      : W6100의 모든 소켓에 대한 Tx/Rx 버퍼 메모리 할당 크기를 초기화합니다.
- *             배열 포인터가 NULL인 경우, 칩의 기본값으로 전체 버퍼 메모리를 균등하게 할당합니다.
- * 매개변수  :
- *   - txsize : 소켓별 Tx 버퍼 크기가 지정된 배열 포인터 (단위: KByte)
- *   - rxsize : 소켓별 Rx 버퍼 크기가 지정된 배열 포인터 (단위: KByte)
- * 반환값    : 버퍼 설정이 칩의 물리적 한계를 초과하면 -1, 성공하면 0
- * -----------------------------------------------------------------------------
- */
+@function    int8_t wizchip_init(uint8_t *txsize, uint8_t *rxsize)
+@brief      8개의 소켓에 대한 송신(TX) 버퍼와 수신(RX) 버퍼 크기를 할당하여
+WIZCHIP을 초기화합니다.
+@param      txsize: 각 소켓에 할당할 송신 버퍼 크기 배열 포인터. (NULL 전달 시
+기본 2KB 할당)
+@param      rxsize: 각 소켓에 할당할 수신 버퍼 크기 배열 포인터. (NULL 전달 시
+기본 2KB 할당)
+@return     성공 시 0 반환, 총 버퍼 메모리 한계를 초과하여 할당 실패 시 -1 반환
+*/
+
 int8_t wizchip_init(uint8_t* txsize, uint8_t* rxsize) {
-    int8_t i;
-    int8_t tmp = 0;
+    uint8_t i;
+    uint8_t tmp = 0;
     wizchip_sw_reset();
     if (txsize) {
         tmp = 0;
@@ -609,6 +478,14 @@ int8_t wizchip_init(uint8_t* txsize, uint8_t* rxsize) {
     return 0;
 }
 
+/*
+@function    void wizchip_clrinterrupt(intr_kind intr)
+@brief      지정된 종류의 WIZCHIP 인터럽트를 클리어(해제)합니다.
+@param      intr: 클리어할 인터럽트 종류를 지정 (intr_kind 값을 OR 연산하여 사용
+가능)
+@return     void
+*/
+
 void wizchip_clrinterrupt(intr_kind intr) {
     uint8_t ir  = (uint8_t)intr;
     uint8_t sir = (uint8_t)((uint16_t)intr >> 8);
@@ -623,17 +500,14 @@ void wizchip_clrinterrupt(intr_kind intr) {
         }
     }
     setSLIRCLR(slir);
-    return;
-
-    setIR(ir);
-    //setSIR(sir);
-    for (ir = 0; ir < 8; ir++) {
-        if (sir & (0x01 << ir)) {
-            setSn_IR(ir, 0xff);
-        }
-    }
-
 }
+
+/*
+@function    intr_kind wizchip_getinterrupt(void)
+@brief      칩셋에서 발생한 모든 인터럽트의 상태를 읽어옵니다.
+@param      void
+@return     현재 발생한 인터럽트들의 조합 값 (intr_kind의 OR 연산 결과)
+*/
 
 intr_kind wizchip_getinterrupt(void) {
     uint8_t ir  = 0;
@@ -651,6 +525,14 @@ intr_kind wizchip_getinterrupt(void) {
     return (intr_kind)ret;
 }
 
+/*
+@function    void wizchip_setinterruptmask(intr_kind intr)
+@brief      외부 인터럽트 핀으로 신호를 발생시킬 인터럽트들을 마스크 설정합니다.
+@param      intr: 마스킹을 허용할 인터럽트 종류들을 지정 (intr_kind 값을 OR
+연산하여 사용)
+@return     void
+*/
+
 void wizchip_setinterruptmask(intr_kind intr) {
     uint8_t imr  = (uint8_t)intr;
     uint8_t simr = (uint8_t)((uint16_t)intr >> 8);
@@ -661,6 +543,13 @@ void wizchip_setinterruptmask(intr_kind intr) {
     uint8_t slimr = (uint8_t)((uint32_t)intr >> 16);
     setSLIMR(slimr);
 }
+
+/*
+@function    intr_kind wizchip_getinterruptmask(void)
+@brief      현재 설정된 인터럽트 마스크 상태를 읽어옵니다.
+@param      void
+@return     현재 설정된 마스크 값 (intr_kind의 OR 연산 결과)
+*/
 
 intr_kind wizchip_getinterruptmask(void) {
     uint8_t imr  = 0;
@@ -678,9 +567,14 @@ intr_kind wizchip_getinterruptmask(void) {
     return (intr_kind)ret;
 }
 
-int8_t wizphy_getphylink(void) {
-    int8_t tmp = PHY_LINK_OFF;
+/*
+@function    int8_t wizphy_getphylink(void)
+@brief      현재 이더넷 이더넷 케이블의 링크 연결 상태(UP/DOWN)를 읽어옵니다.
+@param      void
+@return     링크 연결됨(1), 링크 끊어짐(0) 반환
+*/
 
+int8_t wizphy_getphylink(void) {
 #if (_PHY_IO_MODE_ == _PHY_IO_MODE_PHYCR_)
     return (getPHYSR() & PHYSR_LNK);
 #elif (_PHY_IO_MODE_ == _PHY_IO_MODE_MII_)
@@ -689,12 +583,16 @@ int8_t wizphy_getphylink(void) {
     }
     return PHY_LINK_OFF;
 #endif
-
-    return tmp;
 }
 
+/*
+@function    int8_t wizphy_getphypmode(void)
+@brief      내장 PHY 모듈의 동작 파워 모드(절전/정상 모드) 상태를 읽어옵니다.
+@param      void
+@return     정상 파워 모드(0), 파워 다운 절전 모드(1) 반환
+*/
+
 int8_t wizphy_getphypmode(void) {
-    int8_t tmp = 0;
 #if (_PHY_IO_MODE_ == _PHY_IO_MODE_PHYCR_)
     if (getPHYCR1() & PHYCR1_PWDN) {
         return PHY_POWER_DOWN;
@@ -705,8 +603,15 @@ int8_t wizphy_getphypmode(void) {
     }
 #endif
     return PHY_POWER_NORM;
-    return tmp;
 }
+
+/*
+@function    void wizphy_reset(void)
+@brief      MDC/MDIO 또는 자체 통신 인터페이스를 통해 내장된 이더넷 PHY 모듈을
+초기화합니다.
+@param      void
+@return     void
+*/
 
 void wizphy_reset(void) {
 #if (_PHY_IO_MODE_ == _PHY_IO_MODE_PHYCR_)
@@ -719,6 +624,14 @@ void wizphy_reset(void) {
     while (wiz_mdio_read(PHYRAR_BMCR) & BMCR_RST);
 #endif
 }
+
+/*
+@function    void wizphy_setphyconf(wiz_PhyConf *phyconf)
+@brief      내장된 이더넷 PHY의 속도(10/100) 및 통신 방식(Auto, Full/Half)
+모드를 설정합니다.
+@param      phyconf: 설정할 PHY 구성 정보 구조체 포인터
+@return     void
+*/
 
 void wizphy_setphyconf(wiz_PhyConf* phyconf) {
 #if (_PHY_IO_MODE_ == _PHY_IO_MODE_PHYCR_)
@@ -764,6 +677,14 @@ void wizphy_setphyconf(wiz_PhyConf* phyconf) {
 #endif
 }
 
+/*
+@function    void wizphy_getphyconf(wiz_PhyConf *phyconf)
+@brief      사용자가 설정한 이더넷 PHY 동작 모드 설정값을 가져옵니다. (실제 적용
+상태와는 다를 수 있음)
+@param      phyconf: 설정값을 반환받을 구조체 포인터
+@return     void
+*/
+
 void wizphy_getphyconf(wiz_PhyConf* phyconf) {
 #if (_PHY_IO_MODE_ == _PHY_IO_MODE_PHYCR_)
     uint8_t tmp = 0;
@@ -788,6 +709,14 @@ void wizphy_getphyconf(wiz_PhyConf* phyconf) {
 #endif
 }
 
+/*
+@function    void wizphy_getphystat(wiz_PhyConf *phyconf)
+@brief      링크가 연결된 경우 자동 협상 등에 의해 '실제' 결정된 PHY의 동작 속도
+및 통신 모드 상태를 읽어옵니다.
+@param      phyconf: 실제 적용 상태를 반환받을 구조체 포인터
+@return     void
+*/
+
 void wizphy_getphystat(wiz_PhyConf* phyconf) {
     uint8_t tmp = 0;
     tmp = getPHYSR();
@@ -799,6 +728,14 @@ void wizphy_getphystat(wiz_PhyConf* phyconf) {
     phyconf->speed  = (tmp & PHYSR_SPD) ? PHY_SPEED_10    : PHY_SPEED_100;
     phyconf->duplex = (tmp & PHYSR_DPX) ? PHY_DUPLEX_HALF : PHY_DUPLEX_FULL;
 }
+
+/*
+@function    void wizphy_setphypmode(uint8_t pmode)
+@brief      이더넷 PHY 전력 동작 모드를 설정하여 칩의 클럭 소비 전력을
+최소화합니다.
+@param      pmode: 정상 동작 모드(PHY_POWER_NORM) 또는 절전 모드(PHY_POWER_DOWN)
+@return     void
+*/
 
 void wizphy_setphypmode(uint8_t pmode) {
 #if (_PHY_IO_MODE_ == _PHY_IO_MODE_PHYCR_)
@@ -821,138 +758,84 @@ void wizphy_setphypmode(uint8_t pmode) {
 #endif
 }
 
+/*
+@function    int8_t wizchip_arp(wiz_ARP *arp)
+@brief      소켓 없이 자체 기능(소켓리스)으로 목적지 IP에 대한 MAC 주소를
+요청하는 ARP 프로토콜을 수행합니다.
+@param      arp: 목적지 IP를 담고, 응답 시 목적지의 MAC 하드웨어 주소가 저장될
+구조체 포인터
+@return     성공 시 0(정상 MAC 획득), 타임아웃 등 실패 시 -1 반환
+*/
+
 int8_t wizchip_arp(wiz_ARP* arp) {
     uint8_t tmp;
-    if (arp->destinfo.len == 16) {
-        setSLDIP6R(arp->destinfo.ip);
-        setSLCR(SLCR_ARP6);
-    } else {
-        setSLDIP4R(arp->destinfo.ip);
-        setSLCR(SLCR_ARP4);
-    }
+    setSLDIP4R(arp->destinfo.ip);
+    setSLCR(SLCR_ARP4);
     while (getSLCR());
     while ((tmp = getSLIR()) == 0x00);
     setSLIRCLR(~SLIR_RA);
-    if (tmp & (SLIR_ARP4 | SLIR_ARP6)) {
+    if (tmp & SLIR_ARP4) {
         getSLDHAR(arp->dha);
         return 0;
     }
     return -1;
 }
 
+/*
+@function    int8_t wizchip_ping(wiz_PING *ping)
+@brief      소켓 없이 특정 목적지에 대해 PING 요청(ICMP Echo Request)을 전송하여
+네트워크 상태를 점검합니다.
+@param      ping: 전송할 PING ID와 시퀀스 정보가 담긴 구조체 포인터
+@return     성공 시 0(정상 Ping 응답 획득), 타임아웃 등 실패 시 -1 반환
+*/
+
 int8_t wizchip_ping(wiz_PING* ping) {
     uint8_t tmp;
     setPINGIDR(ping->id);
     setPINGSEQR(ping->seq);
-    if (ping->destinfo.len == 16) {
-        setSLDIP6R(ping->destinfo.ip);
-        setSLCR(SLCR_PING6);
-    } else {
-        setSLDIP4R(ping->destinfo.ip);
-        setSLCR(SLCR_PING4);
-    }
+    setSLDIP4R(ping->destinfo.ip);
+    setSLCR(SLCR_PING4);
     while (getSLCR());
     while ((tmp = getSLIR()) == 0x00);
     setSLIRCLR(~SLIR_RA);
-    if (tmp & (SLIR_PING4 | SLIR_PING6)) {
+    if (tmp & SLIR_PING4) {
         return 0;
     }
     return -1;
 }
 
-int8_t wizchip_dad(uint8_t* ipv6) {
-    uint8_t tmp;
-    setSLDIP6R(ipv6);
-    setSLCR(SLCR_NS);
-    while (getSLCR());
-    while ((tmp = getSLIR()) == 0x00);
-    setSLIRCLR(~SLIR_RA);
-    if (tmp & SLIR_TOUT) {
-        return 0;
-    }
-    return -1;
-}
-
-int8_t wizchip_slaac(wiz_Prefix* prefix) {
-    uint8_t tmp;
-    setSLCR(SLCR_RS);
-    while (getSLCR());
-    while ((tmp = getSLIR()) == 0x00);
-    setSLIRCLR(~SLIR_RA);
-    if (tmp & SLIR_RS) {
-        prefix->len = getPLR();
-        prefix->flag = getPFR();
-        prefix->valid_lifetime = getVLTR();
-        prefix->preferred_lifetime = getPLTR();
-        getPAR(prefix->prefix);
-        return 0;
-    }
-    return -1;
-}
-
-int8_t wizchip_unsolicited(void) {
-    uint8_t tmp;
-    setSLCR(SLCR_UNA);
-    while (getSLCR());
-    while ((tmp = getSLIR()) == 0x00);
-    setSLIRCLR(~SLIR_RA);
-    if (tmp & SLIR_TOUT) {
-        return 0;
-    }
-    return -1;
-}
-
-int8_t wizchip_getprefix(wiz_Prefix * prefix) {
-    if (getSLIR() & SLIR_RA) {
-        prefix->len = getPLR();
-        prefix->flag = getPFR();
-        prefix->valid_lifetime = getVLTR();
-        prefix->preferred_lifetime = getPLTR();
-        getPAR(prefix->prefix);
-        setSLIRCLR(SLIR_RA);
-    }
-    return -1;
-}
+// IPv6 functions (DAD, SLAAC, Unsolicited NA, Prefix) removed for static analysis compliance
 
 /*
- * -----------------------------------------------------------------------------
- * 함수명    : wizchip_setnetinfo
- * 역할      : MAC 주소, IP 주소, 서브넷 마스크, 게이트웨이 등 네트워크 기본 설정값을 W6100에 적용합니다.
- * 매개변수  :
- *   - pnetinfo : 적용할 네트워크 정보가 담긴 구조체 포인터 (wiz_NetInfo)
- * 반환값    : 없음
- * -----------------------------------------------------------------------------
- */
+@function    void wizchip_setnetinfo(wiz_NetInfo *pnetinfo)
+@brief      WIZCHIP 레지스터에 IP 주소, 서브넷 마스크, 게이트웨이 등의 출발지
+네트워크 정보를 설정합니다.
+@param      pnetinfo: 설정할 네트워크 정보가 담긴 구조체 포인터
+@return     void
+*/
+
 void wizchip_setnetinfo(wiz_NetInfo* pnetinfo) {
     uint8_t i = 0;
     setSHAR(pnetinfo->mac);
     setGAR(pnetinfo->gw);
     setSUBR(pnetinfo->sn);
     setSIPR(pnetinfo->ip);
-    setGA6R(pnetinfo->gw6);
-    setSUB6R(pnetinfo->sn6);
-    setLLAR(pnetinfo->lla);
-    setGUAR(pnetinfo->gua);
 
     for (i = 0; i < 4; i++) {
         _DNS_[i]  = pnetinfo->dns[i];
-    }
-    for (i = 0; i < 16; i++) {
-        _DNS6_[i] = pnetinfo->dns6[i];
     }
 
     _IPMODE_   = pnetinfo->ipmode;
 }
 
 /*
- * -----------------------------------------------------------------------------
- * 함수명    : wizchip_getnetinfo
- * 역할      : 현재 W6100 칩에 설정되어 있는 네트워크 기본 설정값(IP, MAC 등)을 읽어옵니다.
- * 매개변수  :
- *   - pnetinfo : 정보를 저장할 구조체 포인터 (wiz_NetInfo)
- * 반환값    : 없음
- * -----------------------------------------------------------------------------
- */
+@function    void wizchip_getnetinfo(wiz_NetInfo *pnetinfo)
+@brief      WIZCHIP 레지스터에 현재 설정된 출발지 네트워크 정보(IP, 서브넷 등)를
+읽어옵니다.
+@param      pnetinfo: 읽어온 네트워크 정보를 반환받을 구조체 포인터
+@return     void
+*/
+
 void wizchip_getnetinfo(wiz_NetInfo* pnetinfo) {
     uint8_t i = 0;
     getSHAR(pnetinfo->mac);
@@ -961,19 +844,20 @@ void wizchip_getnetinfo(wiz_NetInfo* pnetinfo) {
     getSUBR(pnetinfo->sn);
     getSIPR(pnetinfo->ip);
 
-    getGA6R(pnetinfo->gw6);
-    getSUB6R(pnetinfo->sn6);
-    getLLAR(pnetinfo->lla);
-    getGUAR(pnetinfo->gua);
     for (i = 0; i < 4; i++) {
         pnetinfo->dns[i] = _DNS_[i];
-    }
-    for (i = 0; i < 16; i++) {
-        pnetinfo->dns6[i]  = _DNS6_[i];
     }
 
     pnetinfo->ipmode = _IPMODE_;
 }
+
+/*
+@function    void wizchip_setnetmode(netmode_type netmode)
+@brief      네트워크 모드(WOL 허용 여부, PING 응답 차단 여부 등)를 비트 마스크
+형태로 설정합니다.
+@param      netmode: 설정할 네트워크 모드의 비트 플래그 조합
+@return     void
+*/
 
 void wizchip_setnetmode(netmode_type netmode) {
     uint32_t tmp = (uint32_t) netmode;
@@ -982,6 +866,13 @@ void wizchip_setnetmode(netmode_type netmode) {
     setNET4MR((uint8_t)(tmp >> 16));
     setNET6MR((uint8_t)(tmp >> 24));
 }
+
+/*
+@function    netmode_type wizchip_getnetmode(void)
+@brief      현재 설정된 네트워크 모드(WOL, PING 차단 여부 등) 상태를 가져옵니다.
+@param      void
+@return     현재 설정된 네트워크 모드 반환
+*/
 
 netmode_type wizchip_getnetmode(void) {
     uint32_t ret = 0;
@@ -998,14 +889,13 @@ netmode_type wizchip_getnetmode(void) {
 // }
 
 /*
- * -----------------------------------------------------------------------------
- * 함수명    : wizchip_settimeout
- * 역할      : W6100 칩의 재전송 타임아웃 시간(RTR)과 재전송 시도 횟수(RCR)를 설정합니다.
- * 매개변수  :
- *   - nettime : 설정할 재전송 타임아웃 관련 정보가 담긴 구조체 포인터
- * 반환값    : 없음
- * -----------------------------------------------------------------------------
- */
+@function    void wizchip_settimeout(wiz_NetTimeout *nettime)
+@brief      네트워크 패킷 통신 실패 시 패킷을 재전송할 타임아웃 시간 단위 및
+재시도 횟수를 설정합니다.
+@param      nettime: 재전송 횟수 및 시간 값을 포함한 설정 구조체 포인터
+@return     void
+*/
+
 void wizchip_settimeout(wiz_NetTimeout* nettime) {
     setRCR(nettime->s_retry_cnt);
     setRTR(nettime->s_time_100us);
@@ -1014,14 +904,12 @@ void wizchip_settimeout(wiz_NetTimeout* nettime) {
 }
 
 /*
- * -----------------------------------------------------------------------------
- * 함수명    : wizchip_gettimeout
- * 역할      : W6100 칩에 설정된 재전송 타임아웃 시간(RTR)과 재전송 시도 횟수(RCR)를 읽어옵니다.
- * 매개변수  :
- *   - nettime : 읽어온 정보를 저장할 구조체 포인터
- * 반환값    : 없음
- * -----------------------------------------------------------------------------
- */
+@function    void wizchip_gettimeout(wiz_NetTimeout *nettime)
+@brief      설정된 네트워크 통신 재전송 타임아웃 정보(시간, 횟수)를 읽어옵니다.
+@param      nettime: 읽어온 타임아웃 정보를 반환받을 구조체 포인터
+@return     void
+*/
+
 void wizchip_gettimeout(wiz_NetTimeout* nettime) {
     nettime->s_retry_cnt   = getRCR();
     nettime->s_time_100us  = getRTR();

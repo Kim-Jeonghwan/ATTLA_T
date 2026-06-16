@@ -1,45 +1,39 @@
-# 이더넷 드라이버(WIZnet) 정적시험 최적화 계획 (W6100 / UDP / IPv4 전용)
+# ATTLA_T 체계 연동 통제안 및 소프트웨어 아키텍처 반영 계획
 
-본 계획은 정적시험 통과를 위한 불필요 코드(타기종 호환, TCP 프로토콜, IPv6 기능)를 완전히 제거하고, `w6100`, `wizchip_conf`, `socket` 라이브러리의 파일 크기 및 함수 복잡도(Cyclomatic Complexity)를 대폭 낮추는 것을 목표로 합니다.
+본 문서는 명세서 상 '미구현'으로 분류된 이더넷 체계 연동 규격(UDP 프로토콜 및 상태 머신)과 100us 핵심 제어 루프의 CSU 실행 흐름을 코드에 반영하기 위한 상세 구현 계획입니다.
 
-## User Review Required
-> [!IMPORTANT]
-> - 본 계획에 따라 삭제되는 코드는 향후 W5500 등 타 칩셋으로 변경하거나, TCP 프로토콜 또는 IPv6 기능 추가가 필요할 경우 원본을 참고하여 복구해야 할 수 있습니다. 
-> - **공통 코드(Common Code)** 와 하드웨어 레지스터 접근 매크로 등은 안전하게 유지됩니다.
-> - 수정 후 반드시 IDE 컴파일 및 동작 확인(UDP 패킷 정상 송수신 여부)을 수행해야 합니다.
-> - 아래의 **계획(Plan)을 검토하시고 승인(또는 추가 의견)** 해 주시면, 즉시 실제 소스코드 파일들의 다이어트(삭제/수정) 작업을 진행하겠습니다.
+## 사용자 확인 필요
+> **100us 핵심 제어 루프 (EPWM1 ISR) 변경 사항**
+> 기존 `csu_MainControl_Isr()` 내에 포함되어 있던 주기점검(`Bit_RunCBIT`) 및 FRAM 저장 로직을 ISR에서 분리하여 백그라운드(`main.c`)로 이동시킵니다.
+> 인터럽트 내에서의 무한 블로킹을 방지하기 위해 `Encoder_UpdatePosition()`과 `updateMotorDriverStatus()`는 비동기 처리 또는 타임아웃을 적용하여 실행 순서 3번, 4번에 배치합니다.
 
----
+## 상세 변경 계획 (Proposed Changes)
 
-## Proposed Changes (변경 예정 사항)
+### 1. 100us 핵심 제어 루프(ISR) 실행 순서 재배치 (`csu_Control.c`, `main.c`)
+- **[MODIFY] `csu_Control.c`**:
+  `csu_MainControl_Isr()` 함수의 내부 로직을 가이드에 명시된 6단계로 엄격히 재배치합니다.
+  1. 아날로그 신호 입력 및 연산 CSU: `CalcAdcData();`
+  2. 이산신호 입력 CSU: `Dio_UpdateInput();`
+  3. 위치(각도) 정보 획득 및 처리 CSU: 주석 처리된 `Encoder_UpdatePosition();` 활성화.
+  4. 모터 드라이버 상태 정보 획득 및 처리 CSU: DRV8343 폴트 확인 함수 호출 배치.
+  5. 모터 구동 제어 CSU: `MotorCtrl_Run();`
+  6. 시스템 운용 CSU: 전체 로직 판단을 위한 `Control_SystemOperation()` 배치.
+  ※ 기존 포함되어 있던 `Bit_RunCBIT()` 및 `Control_SaveDataToFram()`은 제거.
+- **[MODIFY] `main.c`**:
+  제거된 `Bit_RunCBIT()`, `Control_SaveDataToFram()`, 그리고 `csu_Ethernet_StateMachine()`을 메인 백그라운드 유휴 루프(예: `cycle_100ms` 등)에서 비동기적으로 실행하도록 이관.
 
-### HAL 계층: WIZnet 라이브러리 최적화 (`ATTLA_T_CPU1/HAL/`)
+### 2. 브레이크 핀 제어 로직 보완 (`csu_MotorCtrl.c` 등)
+- 브레이크 핀(GPIO 35)이 **Active High(High 출력 시 잠금 해제)**임을 코드에 명확히 반영합니다. `hal_DspInit.c`의 초기화(Low로 잠금 유지)는 정상이므로, 모터 제어 시작(모드 변경) 시 브레이크를 `High`로 출력하여 해제하는 로직을 모터 구동 모드 제어부(`csu_MotorCtrl.c` 또는 시스템 운용 제어부)에 추가합니다.
 
-#### [COMPLETED] [wizchip_conf.h](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/HAL/wizchip_conf.h)
-- **타기종 호환 코드 삭제:** `#if (_WIZCHIP_ == W5100)` 부터 시작되는 W5100S, W5200, W5300, W5500, W6300 관련 `#elif` 블록 및 해당 블록 내부의 기종별 선언(자료형, 매크로 등) 전면 삭제. (오직 `W6100` 분기만 유지)
-- **IPv6 기능 선언 삭제:** `IPV6_ADDR_LLA`, `CNS_DAD`, `CNS_SLAAC`, `IK_SOCKL_ARP6` 등 IPv6 전용 매크로, 인터럽트 종류(Enum), `netinfo6` 등의 구조체 부분 삭제. (IPv4와 공용되는 Enum은 유지)
+### 3. 체계 연동 통신망 상태 머신 및 전원 시퀀스 구현 (`csu_Ethernet.c/h`)
+- **[MODIFY] `csu_Ethernet.c` / `csu_Ethernet.h`**:
+  - 망 가입: 부팅 완료 시 `Boot Done` (500ms 주기) 전송 및 ACK 수신 대기 로직 완성.
+  - Heartbeat: 망 가입 완료 시 100ms 주기로 상태정보(`ETH_CODE_HEARTBEAT`) 요청/응답 개시 및 무한 반복 통신 추가.
+  - 통신 두절 예외 처리: 100ms 메시지가 연속 50회 미응답 시 소켓 리셋 후 망 가입 단계로 롤백하는 로직 검증.
+  - 전원 시퀀스 제어: 270VDC 구동 전원 인가 메시지 수신 파싱 및 ACK 처리 후 상태 갱신.
+  - IBIT / CBIT 연동: IBIT 요청 수신 시 CBIT를 중단하고, N초 간 IBIT 수행 후 IBIT Done 결과를 전송한 뒤 CBIT를 재개하는 시퀀스 로직 구현.
 
-#### [COMPLETED] [wizchip_conf.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/HAL/wizchip_conf.c)
-- **타기종 본문 삭제:** `wizchip_init()`, `wizchip_setnetinfo()`, `ctlwizchip()` 등 주요 함수 내부에 존재하는 `#if (_WIZCHIP_ == W5100)` 등 타 칩셋 전용 로직 및 함수 호출부 제거.
-- **IPv6 전용 함수 삭제:** `wizchip_setnetinfo6()`, `wizchip_getnetinfo6()` 함수 본문 전체 삭제 및 `ctlnetservice()` 내에 존재하는 IPv6 주소 기반 분기 로직(DAD, SLAAC 등) 제거.
-
-#### [COMPLETED] [socket.h](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/HAL/socket.h)
-- **미사용 TCP API 선언 삭제:** UDP 환경에서 사용되지 않는 `listen()`, `connect()`, `send()`, `recv()`, `disconnect()` 및 이와 관련된 타기종(`_W5x00`) 함수 선언 제거.
-- **IPv6 및 MACRAW 선언 삭제:** MACRAW 전용 API, 또는 IPv6 주소 할당을 위한 별도의 16바이트 구조체/함수 선언 제거. 
-- **공용 코드 유지 (DHCP/DNS 포함):** 공용 소켓 에러 코드, UDP 소켓 송수신 함수(`socket`, `sendto`, `recvfrom`), 그리고 **DHCP와 DNS 구현에 필수적인 구조체 및 함수들은 모두 유지**합니다.
-
-#### [COMPLETED] [socket.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/HAL/socket.c)
-- **미사용 TCP API 구현부 삭제:** `listen()`, `connect()`, `send()`, `recv()`, `disconnect()` 등 TCP 소켓 연결 및 송수신 함수 본문 전체 삭제.
-- **타기종 함수 삭제:** `sendto_W5x00()`, `recvfrom_W5x00()` 등 타기종 지원용 함수들 삭제. 오로지 W6100(혹은 공통) 하드웨어에 맞춰진 `sendto_W6x00()` 및 `recvfrom_W6x00()` 로직만 유지.
-- **IPv6 패킷 처리 로직 분기 삭제:** `sendto()`와 `recvfrom()` 내부에 존재하는 `AF_INET6` 프로토콜 분기문 및 IPv6 주소(16바이트) 복사 처리 로직 삭제. 오직 `AF_INET` (IPv4, 4바이트) 기준의 헤더/페이로드 조립 로직만 유지.
-
-#### [COMPLETED] [w6100.h](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/HAL/w6100.h) 및 [w6100.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/HAL/w6100.c)
-- **타기종 코드 제로화:** 이 파일들은 기본적으로 W6100 전용이나, 헤더 인클루드 부분에 잔존할 수 있는 `#if` 타기종 예외 코드 확인 후 정리.
-- **IPv6 전용 레지스터 접근 함수 삭제:** IPv6 Destination/Source 주소 설정용 레지스터(`Sn_DEST_IP6`, `Sn_SRC_IP6` 등)를 제어하는 `getSn_DEST_IP6()`, `setSn_DEST_IP6()` 류의 매크로/인라인 헬퍼 함수들과 본문들을 삭제하여 전체 함수 개수(Fan-out 등) 감소 처리.
-
----
-
-## Verification Plan (검증 및 테스트 계획)
-1. **코드 다이어트 후 컴파일 검증:** 삭제된 매크로나 함수로 인해 기존의 `hal_Ethernet.c` (UDP 사용부)에서 컴파일 에러나 누락된 종속성이 발생하는지 1차 확인. (에이전트가 알려드리면, 사용자님께서 직접 CCS에서 Build 수행)
-2. **정적시험 기준 (DAPA SCR-G) 충족성 검토:** 삭제 작업 완료 후, `socket.c` 및 `wizchip_conf.c` 파일의 크기(Line Count)와 Cyclomatic Complexity(분기문 개수)가 눈에 띄게 줄어들었는지 확인.
-3. **실 장비 UDP 통신 테스트 (사용자 수동 테스트):** 빌드 성공 이후, 화포통제컴퓨터 등 타겟 장비와의 UDP 패킷(Tx/Rx) 송수신 로직 및 핑(Ping) 응답이 정상 작동하는지 기존과 동일하게 수동으로 점검 요망.
+## 검증 계획 (Verification Plan)
+1. **정적 분석 및 빌드**: TI Clang 컴파일러 에러 유무 확인, DAPA 무기체계 소프트웨어 코딩규칙 준수 검증.
+2. **ISR 사이클 검증**: 100us 인터럽트 내부에서 지연(Blocking) 발생 여부와 순차적 실행 흐름 확인.
+3. **UDP 상태 머신 로직 검증**: 망 가입(Boot Done) -> Heartbeat 지속 -> 타임아웃 발생 -> 망 가입 롤백의 State Transition Flow 정합성 검토.

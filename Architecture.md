@@ -57,7 +57,8 @@
 
 ### 2.3 브레이크 (Brake) 제어 회로
 - **동작 전류**: 최대 1.0 A
-- **제어 핀**: `DSP_BRAKE` (GPIO 35, Active High - 전원 인가 시 브레이크 잠금 해제, 차단 시 잠금 유지)
+- **제어 핀**: `DSP_BRAKE` (GPIO 35, Active High - High 출력 시 브레이크 잠금 해제, Low 출력 시 기계적 잠금 유지)
+- **로직 구현**: `csu_MotorCtrl.c` 내 `MotorCtrl_Run()`에서 모터가 정지 상태(`MOTOR_MODE_STOP`)일 경우 Low(잠금)를 출력하고, 구동 모드 진입 시 High(해제)를 출력하여 모터 기동 전 브레이크를 개방합니다.
 - **회로 구성**: DSP(3.3V) ➡️ NPN TR(MMBT489LT1G) ➡️ TLP293(광절연) ➡️ P-Ch MOSFET(SPD15P10PLGBTMA1) ➡️ 24V 브레이크 구동. 역기전력 방어용 쇼트키 다이오드(V8PAM10HM3/I) 탑재.
 - **모니터링**: 브레이크용 TMCS1126 개별 전류 센서를 통해 동작 및 고장 상태 진단.
 
@@ -127,11 +128,33 @@
 
 ## 4. 체계 통신 및 외부 인터페이스 (Comms & I/O)
 
-### 4.1 체계 통신 (W6100 이더넷)
+### 4.1 체계 통신 (W6100 이더넷) 및 연동통제안 규격
 - 하드웨어 TCP/IP 스택 기반 대용량 칩셋(W6100) 적용 (HX1188NL 절연).
-- **인터페이스 (SPI-A)**: `SIMO`(16), `SOMI`(17), `CLK`(18), `nCS`(19), `INTn`(20), `RSTn`(21)
-- **통신 프로토콜**: UDP 소켓(`SOCK_UDP_COM`: 0), 통신 포트(`PORT_UDP_COM` = 5001), 18바이트 페이로드.
-- **인터럽트 수신**: `INTn`(GPIO 20) 핀을 **XINT1 (외부 인터럽트)** 로 수신하여 즉각 응답.
+- **인터페이스 (SPI-A)**: `SIMO`(16), `SOMI`(17), `CLK`(18), `nCS`(19), `INTn`(20, XINT1 외부 인터럽트 수신), `RSTn`(21)
+- **통신 프로토콜 기본 정책**: 
+  - UDP 통신 단일 사용 (`SOCK_UDP_COM`: 0, 통신 포트: 5001)
+  - **드라이버 경량화**: 정적 시험 복잡도 및 메모리 최적화를 위해 TCP, IPv6, MACRAW 등 미사용 통신 기능 코드를 전면 제거한 UDP 전용 드라이버 아키텍처 적용 완료.
+  - 모든 데이터는 **Little Endian** 형식 준수
+  - **체크섬 (Checksum)**: 메시지 맨 끝 2 Bytes 할당. 체크섬 필드를 제외한 모든 필드의 바이트(Byte) 단위 합산 결과 중 최하위 2 Bytes 적용.
+- **메시지 패킷 구조 (`__attribute__((packed))` 적용)**:
+  - **일반 Payload 메시지**: Header(12 Bytes) + Data(가변, 최대 1010 Bytes) + Checksum(2 Bytes)
+    - `Header`: Timestamp(4B), Source_ID(1B), Dest_ID(1B), Code(1B), Request_ACK(1B), Priority(1B), Send_Count(1B), Data_Length(2B)
+  - **ACK 응답 메시지 (18 Bytes 고정)**: Header(12 Bytes) + Data(4 Bytes) + Checksum(2 Bytes)
+    - `ACK Data`: Code_Info(2B), Ack_Info(2B, 정상:0x00, 체크섬오류:0x01 등)
+- **응답(ACK) 및 타임아웃/재전송 로직**:
+  - ACK를 요청받은 경우 수신 후 100ms 이내에 리턴 (체크섬 오류 시 NACK 0x11 리턴)
+  - 송신 후 100ms 이내 응답 없을 시 재전송 수행. 최초 1회 포함 **총 4회** (재전송 3회) 시도 (`Send_Count` 반영).
+  - 4회 시도에도 응답이 없으면 통신 두절로 판단하고 소켓 리셋.
+- **상태 머신 (통신망 가입 및 BIT 절차, `csu_Ethernet.c` 통합 구현 완료)**:
+  - **Step 1 (초기화)**: 부팅 및 PBIT 완료 후 W6100 소켓(UDP, Port 5001) 개방.
+  - **Step 2 (망 가입)**: 화포통제컴퓨터로 Boot Done 전송. ACK 수신 전까지 **500ms 주기** 무한 반복.
+  - **Step 3/4 (Heartbeat)**: 망 가입 완료 후, 100ms 주기로 상태정보(`ETH_CODE_HEARTBEAT`) 송수신 영구 수행. 이때 Payload의 첫 번째 바이트에 270V 전원 상태(`Power270VStatus`)를 실어 보냄.
+  - **Step 5 (두절 예외 처리)**: 100ms 주기 상태 메시지가 **연속 50회(5초) 이상** 미응답 시 소켓 리셋하고 Step 2로 롤백.
+- **270VDC 구동 전원 시퀀스**:
+  - 망 가입 후 270V 구동 전원 인가 메시지(`ETH_CODE_POWER_270V`) 수신 시 전원 상태 변수 갱신 후 Heartbeat를 통해 응답.
+- **CBIT / IBIT 제어 로직**:
+  - CBIT(주기 점검)는 지정된 N초 단위로 100us ISR 내부에서 백그라운드로 송신. (ACK 미요청)
+  - IBIT(지시 점검) 수행 시 CBIT가 일시 중단되며, IBIT 완료 보고 후 다시 CBIT를 재개함.
 
 ### 4.2 디버깅 및 장거리 통신
 - **easyDSP**: SCI-A (`SCI_PC_GPIO_PIN_SCIA_RXD`: GPIO 28, `SCI_PC_GPIO_PIN_SCIA_TXD`: GPIO 29), 115200bps. `PonRST` 신호를 통해 전원/DSP 리셋 동기화.
@@ -183,7 +206,14 @@
 
 ### ✅ 단계 3: 메인 제어 인터럽트 (`csu_MainControl_Isr`)
 - 모든 초기화가 끝난 후 시스템이 종료될 때까지 100us 주기로 영구적으로 호출되는 최종 Heartbeat ISR입니다.
-- ADC 데이터를 기반으로 센싱 필터링 ➡️ 위치 추정 ➡️ 주기 점검(CBIT) ➡️ 다단 Cascade PID 연산 ➡️ 모터 최종 듀티 출력(`MotorCtrl_SetOutput`)을 순차적으로 수행합니다.
+- 가이드라인에 따라 `Control_SystemOperation()` 함수를 통해 다음의 7단계 파이프라인으로 엄격히 순차 실행됩니다:
+  1. **아날로그 신호 입력 및 연산** (`CalcAdcData`)
+  2. **이산신호 입력** (`Dio_UpdateInput`)
+  3. **위치(각도) 정보 획득** (`Encoder_UpdatePosition`)
+  4. **모터 드라이버 상태 획득** (`MotorDriver_UpdateStatus`)
+  5. **주기 점검** (`Bit_RunCBIT`)
+  6. **모터 구동 제어** (`MotorCtrl_Run`)
+  7. **데이터 저장** (`Control_SaveDataToFram`)
 
 ---
 
@@ -206,6 +236,7 @@
 | **`xRcvSciPcMsg1`**| `stRcvSciPcMsg1` | PC 또는 체계로부터 수신된 메시지 버퍼 및 파싱 구조체 |
 | **`xXmtSciPcMsg1`**| `stXmtSciPcMsg1` | PC 또는 체계로 송신할 SCI 메시지 버퍼 구조체 |
 | **`xLed`** | `stLedStatus` | 시스템 상태 표시용 LED(점멸 패턴 등) 제어 상태 |
+| **`xEthCtrl`** | `stEthControl` | 이더넷 통신망 가입 상태 머신, 재전송 타이머, CBIT/IBIT 제어 구조체 |
 
 ### 6.2 HAL (Hardware Abstraction Layer) 계층
 
@@ -223,9 +254,8 @@
 
 | 구분 | 상세 내용 |
 | :--- | :--- |
-| **이더넷 통신 규격** | 이더넷(`W6100`) 송/수신 메시지의 세부 패킷 규격 및 내용이 정해지지 않아 실 데이터 파싱 및 응용 로직 미구현 |
 | **리미트 센서 로직** | 리미트 센서(`nLIMIT1`, `nLIMIT2`) 값을 읽어들이고 있으나, 이 상태를 모터 운전 및 시스템 제어에 어떻게 반영할지 시퀀스 로직 미구현 |
-| **LED 및 제동 조건** | 어떠한 시스템 상태(정상/오류/구동 등)에서 **LED 점등 및 점멸**을 수행하고, 어느 시점에 **모터 브레이크**를 동작(체결/해제)할지에 대한 명확한 조건 미구현 |
+| **LED 표시 로직** | 어떠한 시스템 상태(정상/오류/구동 등)에서 **LED 점등 및 점멸**을 수행할지에 대한 명확한 조건 미구현 |
 | **홀센서 안전 제어** | 모터 상태 모니터링을 위한 홀센서 3상(A/B/C) 입력이 `xDio`로 수집되고 있으나, 이를 통한 구속(Stall) 감지 및 회전 방향 교차 검증 로직은 미구현 |
 
 ---

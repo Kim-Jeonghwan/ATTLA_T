@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : main.c
-    Version          : 00.03
+    Version          : 00.04
     Description      : 메인 백그라운드 루프 및 주기적 태스크 실행
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (CM 및 IPC 관련 주석 제거)
+    Last Updated     : 2026. 06. 16. (이더넷 상태머신 초기화 및 호출 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 16. - 이더넷 프로토콜 연동 통제안에 따른 상태머신(csu_Ethernet_StateMachine) 호출 로직 추가
  * 2026. 06. 12. - CM 및 IPC 관련 주석 제거
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 전역 변수를 상태 구조체(xSysCtrl 등)로 통합 적용
@@ -64,14 +65,29 @@ void main(void)
 	EDIS;
 	Interrupt_enable(INT_EPWM1);
 
-	// 이더넷 (W6100) 초기화 및 통신 인터럽트 활성화
-	Ethernet_Init();
-	Interrupt_enable(INT_XINT1);
-
     // [CRITICAL BUG FIX]: 전역 인터럽트(INTM) 및 실시간 디버깅(DBGM) 활성화
     // 이 두 줄이 없으면 C28x 코어는 PIE 인터럽트를 무시하므로 어떠한 ISR(타이머, EPWM 등)도 발생하지 않습니다.
     EINT;
     ERTM;
+
+    // PBIT 완료 대기 (이더넷 초기화 및 통신은 초기 점검(PBIT) 통과 후 안전하게 수행)
+    while (xSysCtrl.isPbitComplete == 0U)
+    {
+        // 100us 인터럽트(csu_Offset_Isr -> csu_Pbit_Isr) 체인이 완료될 때까지 백그라운드 대기
+    }
+
+	// 이더넷 (W6100) 하드웨어 초기화
+	Ethernet_Init();
+	
+	// 이더넷 상태 머신 초기화 (CSU)
+	csu_Ethernet_Init();
+	
+	// 외부 통신 인터럽트(W6100) 활성화
+	Interrupt_enable(INT_XINT1);
+
+    // 이더넷 및 외부 통신 인터럽트 초기화가 완료되었으므로,
+    // PBIT 완료 시 일시 중지되었던 EPWM1 인터럽트를 재활성화하여 메인 컨트롤 ISR 구동을 시작함.
+    Interrupt_enable(INT_EPWM1);
 
 	// 백그라운드 유휴 루프 (Background Loop)
 	while(1u)
@@ -148,6 +164,9 @@ static void cycle_10ms(void)
 static void cycle_100ms(void)
 {
     updateLedStatus();
+    
+    // 이더넷 망 가입 및 Heartbeat 상태 머신 (100ms 주기 동작)
+    csu_Ethernet_StateMachine();
 }
 
 

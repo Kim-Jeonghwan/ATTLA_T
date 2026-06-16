@@ -10,6 +10,7 @@
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 16. - 브레이크 핀 (Active High) 정방향 제어 로직 모드에 연동 적용
  * 2026. 06. 12. - 10U 및 4U 매직넘버를 DECIMATION_SPEED_CTRL, DECIMATION_POS_CTRL 매크로로 치환
  * 2026. 06. 12. - PID 파라미터, 모터 한도, 스케일 상수 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 11. - 위치 제한 클램핑 로직 및 속도/전류 PID 한계치(Soft Limit) 적용
@@ -133,6 +134,9 @@ void MotorCtrl_Run(void)
 
     if (xMotorCtrl.mode == MOTOR_MODE_STOP)
     {
+        // 브레이크 잠금 (Active High 방식이므로 기본 0U 출력으로 기계적 잠금 상태 유지)
+        GPIO_writePin(35U, 0U);
+        
         MotorCtrl_SetOutput(0.0f);
         currPid.integral = 0.0f;
         speedPid.integral = 0.0f;
@@ -140,6 +144,9 @@ void MotorCtrl_Run(void)
     }
     else
     {
+        // 브레이크 해제 (Active High 방식이므로 1U 출력으로 모터 구동 전 잠금 해제)
+        GPIO_writePin(35U, 1U);
+        
         static float32_t currentCmd = 0.0f;
         static float32_t speedCmd = 0.0f;
         static Uint16 loop1msCnt = 0U;

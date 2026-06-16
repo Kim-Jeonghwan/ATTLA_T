@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : main.h
-    Version          : 00.03
+    Version          : 00.04
     Description      : 전역 헤더 관리 파일
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 15. (hal_Led.h 참조 삭제)
+    Last Updated     : 2026. 06. 16. (csu_Ethernet.h 인클루드 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 16. - 이더넷 프로토콜 추가에 따른 csu_Ethernet.h 인클루드 추가
  * 2026. 06. 15. - 리팩토링에 따라 삭제된 hal_Led.h 인클루드 제거
  * 2026. 06. 12. - csu_Dio.h 인클루드 추가
  * 2026. 06. 12. - CM 및 IPC 관련 매크로 제거
@@ -71,6 +72,7 @@
 #include "csu_PID.h"
 #include "csu_Bit.h"
 #include "csu_SciPc.h"
+#include "csu_Ethernet.h"
 
 
 /* ************************** [[   define   ]]  *********************************************************** */
