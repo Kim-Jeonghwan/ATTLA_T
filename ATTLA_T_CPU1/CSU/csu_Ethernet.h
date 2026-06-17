@@ -1,14 +1,15 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : csu_Ethernet.h
- Version          : 00.00
+ Version          : 00.01
  Description      : 이더넷(W6100) 연동통제안 프로토콜 및 상태 머신 정의
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 16. (이더넷 통신 프로토콜 및 상태 머신 신규 작성)
+ Last Updated     : 2026. 06. 17. (명명 규칙 위반 리팩토링 및 헤더 인클루드 수정)
 **********************************************************************/
 
 /*
  * Modification History
+ * 2026. 06. 17. - 명명 규칙 위반 리팩토링 및 헤더 인클루드 수정
  * 2026. 06. 16. - 체계 연동 통제안(Heartbeat 전송, 270V 파싱, IBIT) 상세 구현
  * 2026. 06. 16. - 이더넷 통신 프로토콜 규격 구조체 및 상태 머신 신규 작성
  */
@@ -117,7 +118,7 @@ extern stEthControl xEthCtrl;
 /**
  * @brief  이더넷 파이프라인(상태머신) 초기화
  */
-void csu_Ethernet_Init(void);
+void Ethernet_ProtocolInit(void);
 
 /**
  * @brief  체크섬 계산 함수
@@ -125,24 +126,24 @@ void csu_Ethernet_Init(void);
  * @param  length   전체 길이 (마지막 체크섬 2바이트 포함 길이)
  * @return uint16_t 계산된 하위 2바이트 체크섬 반환
  */
-uint16_t csu_Ethernet_CalculateChecksum(const uint8_t *pData, uint16_t length);
+uint16_t Ethernet_CalculateChecksum(const uint8_t *pData, uint16_t length);
 
 /**
  * @brief  이더넷 100ms 주기 상태 머신 (망 가입 및 Heartbeat)
  */
-void csu_Ethernet_StateMachine(void);
+void Ethernet_StateMachine(void);
 
 /**
  * @brief  수신된 UDP 패킷 파싱
  * @param  pRxBuf   수신된 패킷 버퍼 포인터
  * @param  length   수신된 패킷 전체 길이
  */
-void csu_Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length);
+void Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length);
 
 /**
  * @brief  기본 메시지 전송 (ACK 재전송 연동)
  */
-void csu_Ethernet_SendMessage(uint8_t code, uint8_t reqAck, uint8_t *pData, uint16_t dataLen);
+void Ethernet_SendMessage(uint8_t code, uint8_t reqAck, uint8_t *pData, uint16_t dataLen);
 
 
 #endif // CSU_ETHERNET_H

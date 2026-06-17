@@ -1,39 +1,44 @@
-# ATTLA_T 체계 연동 통제안 및 소프트웨어 아키텍처 반영 계획
+# 구현 계획 (Implementation Plan)
 
-본 문서는 명세서 상 '미구현'으로 분류된 이더넷 체계 연동 규격(UDP 프로토콜 및 상태 머신)과 100us 핵심 제어 루프의 CSU 실행 흐름을 코드에 반영하기 위한 상세 구현 계획입니다.
+## 1. 개요
+본 문서는 `GEMINI.md` 코딩 규칙 위반 사항을 바로잡기 위한 코드 수정 계획입니다.
+사용자 요청에 따라 WIZnet 라이브러리(`w6100.c` 등) 및 `easy28x_driverlib` 관련 파일들은 수정 대상에서 제외하거나 접두어 없이 현 상태를 유지하며, 그 외 `csu_` 접두어 오용 및 중복 인클루드 문제를 해결합니다.
 
-## 사용자 확인 필요
-> **100us 핵심 제어 루프 (EPWM1 ISR) 변경 사항**
-> 기존 `csu_MainControl_Isr()` 내에 포함되어 있던 주기점검(`Bit_RunCBIT`) 및 FRAM 저장 로직을 ISR에서 분리하여 백그라운드(`main.c`)로 이동시킵니다.
-> 인터럽트 내에서의 무한 블로킹을 방지하기 위해 `Encoder_UpdatePosition()`과 `updateMotorDriverStatus()`는 비동기 처리 또는 타임아웃을 적용하여 실행 순서 3번, 4번에 배치합니다.
+## 2. 세부 수정 계획
 
-## 상세 변경 계획 (Proposed Changes)
+### 2.1. `csu_Ethernet.h` 및 `csu_Ethernet.c` 수정
+- **헤더 인클루드 수정**
+  - `csu_Ethernet.c` 파일 내에 불필요하게 선언된 `#include "hal_Ethernet.h"`를 제거합니다. (의존성은 `csu_Ethernet.h` -> `main.h` -> `hal_Ethernet.h`를 통해 자동 해결됨)
+- **함수명 접두어(`csu_`) 제거** (함수 선언, 정의 및 내부 호출 모두 수정)
+  - `csu_Ethernet_Init()` -> `Ethernet_ProtocolInit()` (HAL 계층의 `Ethernet_Init()`과의 이름 충돌을 피하기 위해 변경)
+  - `csu_Ethernet_CalculateChecksum()` -> `Ethernet_CalculateChecksum()`
+  - `csu_Ethernet_SendAck()` -> `Ethernet_SendAck()` (내부 static 함수)
+  - `csu_Ethernet_SendMessage()` -> `Ethernet_SendMessage()`
+  - `csu_Ethernet_StateMachine()` -> `Ethernet_StateMachine()`
+  - `csu_Ethernet_ParsePacket()` -> `Ethernet_ParsePacket()`
 
-### 1. 100us 핵심 제어 루프(ISR) 실행 순서 재배치 (`csu_Control.c`, `main.c`)
-- **[MODIFY] `csu_Control.c`**:
-  `csu_MainControl_Isr()` 함수의 내부 로직을 가이드에 명시된 6단계로 엄격히 재배치합니다.
-  1. 아날로그 신호 입력 및 연산 CSU: `CalcAdcData();`
-  2. 이산신호 입력 CSU: `Dio_UpdateInput();`
-  3. 위치(각도) 정보 획득 및 처리 CSU: 주석 처리된 `Encoder_UpdatePosition();` 활성화.
-  4. 모터 드라이버 상태 정보 획득 및 처리 CSU: DRV8343 폴트 확인 함수 호출 배치.
-  5. 모터 구동 제어 CSU: `MotorCtrl_Run();`
-  6. 시스템 운용 CSU: 전체 로직 판단을 위한 `Control_SystemOperation()` 배치.
-  ※ 기존 포함되어 있던 `Bit_RunCBIT()` 및 `Control_SaveDataToFram()`은 제거.
-- **[MODIFY] `main.c`**:
-  제거된 `Bit_RunCBIT()`, `Control_SaveDataToFram()`, 그리고 `csu_Ethernet_StateMachine()`을 메인 백그라운드 유휴 루프(예: `cycle_100ms` 등)에서 비동기적으로 실행하도록 이관.
+### 2.2. `csu_Control.h` 및 `csu_Control.c` 수정
+- **인터럽트 서비스 루틴(ISR) 함수명 접두어(`csu_`) 제거**
+  - `csu_Offset_Isr()` -> `Offset_Isr()`
+  - `csu_Pbit_Isr()` -> `Pbit_Isr()`
+  - `csu_MainControl_Isr()` -> `MainControl_Isr()`
+- **연관 코드 수정**
+  - `#pragma CODE_SECTION`에 명시된 함수명 변경 적용
+  - `PieVectTable.EPWM1_INT`에 ISR 함수 포인터를 할당하는 부분의 이름 변경 적용
 
-### 2. 브레이크 핀 제어 로직 보완 (`csu_MotorCtrl.c` 등)
-- 브레이크 핀(GPIO 35)이 **Active High(High 출력 시 잠금 해제)**임을 코드에 명확히 반영합니다. `hal_DspInit.c`의 초기화(Low로 잠금 유지)는 정상이므로, 모터 제어 시작(모드 변경) 시 브레이크를 `High`로 출력하여 해제하는 로직을 모터 구동 모드 제어부(`csu_MotorCtrl.c` 또는 시스템 운용 제어부)에 추가합니다.
+### 2.3. `hal_Ethernet.c` 연동 수정
+- 변경된 함수명 호출 반영: `csu_Ethernet_ParsePacket(...)` -> `Ethernet_ParsePacket(...)`
 
-### 3. 체계 연동 통신망 상태 머신 및 전원 시퀀스 구현 (`csu_Ethernet.c/h`)
-- **[MODIFY] `csu_Ethernet.c` / `csu_Ethernet.h`**:
-  - 망 가입: 부팅 완료 시 `Boot Done` (500ms 주기) 전송 및 ACK 수신 대기 로직 완성.
-  - Heartbeat: 망 가입 완료 시 100ms 주기로 상태정보(`ETH_CODE_HEARTBEAT`) 요청/응답 개시 및 무한 반복 통신 추가.
-  - 통신 두절 예외 처리: 100ms 메시지가 연속 50회 미응답 시 소켓 리셋 후 망 가입 단계로 롤백하는 로직 검증.
-  - 전원 시퀀스 제어: 270VDC 구동 전원 인가 메시지 수신 파싱 및 ACK 처리 후 상태 갱신.
-  - IBIT / CBIT 연동: IBIT 요청 수신 시 CBIT를 중단하고, N초 간 IBIT 수행 후 IBIT Done 결과를 전송한 뒤 CBIT를 재개하는 시퀀스 로직 구현.
+### 2.4. `main.c` 연동 수정
+- 변경된 함수명 호출 및 ISR 등록 반영
+  - `csu_Ethernet_Init()` -> `Ethernet_ProtocolInit()`
+  - `csu_Ethernet_StateMachine()` -> `Ethernet_StateMachine()`
+  - `Interrupt_register(INT_EPWM1, &csu_Offset_Isr);` -> `Interrupt_register(INT_EPWM1, &Offset_Isr);`
 
-## 검증 계획 (Verification Plan)
-1. **정적 분석 및 빌드**: TI Clang 컴파일러 에러 유무 확인, DAPA 무기체계 소프트웨어 코딩규칙 준수 검증.
-2. **ISR 사이클 검증**: 100us 인터럽트 내부에서 지연(Blocking) 발생 여부와 순차적 실행 흐름 확인.
-3. **UDP 상태 머신 로직 검증**: 망 가입(Boot Done) -> Heartbeat 지속 -> 타임아웃 발생 -> 망 가입 롤백의 State Transition Flow 정합성 검토.
+### 2.5. 파일 공통 적용 사항
+- 수정되는 모든 파일(`.c`, `.h`)의 최상단 헤더 주석에서 **Version**을 `00.01`씩 증가시킵니다.
+- **Modification History** 섹션에 금일 날짜로 수정 사항(명명 규칙 위반 리팩토링 및 헤더 인클루드 수정)을 한 줄로 기록합니다.
+
+---
+
+**사용자님, 위 계획(plan.md)을 검토해 주시고, 승인해 주시면 실제 코드 수정을 진행하겠습니다. 추가하실 제약 조건이나 수정할 이름이 있다면 메모를 남겨주세요.**

@@ -1,20 +1,23 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : csu_Ethernet.c
- Version          : 00.00
+ Version          : 00.03
  Description      : 이더넷(W6100) 연동통제안 프로토콜 및 상태 머신 구현
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 16. (이더넷 통신 상태 머신 및 파싱 로직 구현)
+ Last Updated     : 2026. 06. 17. (하드웨어 미연결 시 상태 머신 동작 중지 예외 처리)
 **********************************************************************/
 
 /*
  * Modification History
+ * --------------------
+ * 2026. 06. 17. - 하드웨어 미연결 시 sendto_W6x00 내부 무한 루프(Stuck) 방지를 위해 Ethernet_StateMachine 동작 중지(return) 예외 처리
+ * 2026. 06. 17. - 하드웨어 미연결 시 무한 루프(Stuck) 방지를 위해 Ethernet_ProtocolInit 내 중복 socket() 호출 제거
+ * 2026. 06. 17. - 명명 규칙 위반 리팩토링 및 헤더 인클루드 수정
  * 2026. 06. 16. - 체계 연동 통제안 상세 로직(Heartbeat 전송, 270V 구동전원 파싱, 소켓 오픈) 반영
  * 2026. 06. 16. - 초기 구현 (체크섬, 파싱, 상태머신 1~5단계, CBIT/IBIT 통합)
  */
 
 #include "csu_Ethernet.h"
-#include "hal_Ethernet.h" // 소켓 제어 함수 및 매크로 사용
 
 /* 글로벌 상태 구조체 인스턴스 */
 stEthControl xEthCtrl;
@@ -25,13 +28,13 @@ static uint16_t fc_port = PORT_UDP_COM;
 static uint8_t fc_addrlen = 4;
 
 /*
-@function   csu_Ethernet_Init(void)
+@function   Ethernet_ProtocolInit(void)
 @brief      이더넷 상태머신 초기화
 */
-void csu_Ethernet_Init(void)
+void Ethernet_ProtocolInit(void)
 {
-    // 초기 소켓 개방 (UDP 모드, 포트 5001)
-    socket(SOCK_UDP_COM, Sn_MR_UDP, PORT_UDP_COM, 0x00);
+    // 소켓 개방은 hal_Ethernet.c의 Ethernet_Init()에서 하드웨어 정상일 때만 수행함
+    // 중복 소켓 개방(socket) 호출 제거 - 하드웨어 미연결 시 무한 루프(Stuck) 방지
     
     xEthCtrl.State = ETH_STATE_INIT;
     xEthCtrl.LastRecvTimestamp = 0;
@@ -48,10 +51,10 @@ void csu_Ethernet_Init(void)
 }
 
 /*
-@function   csu_Ethernet_CalculateChecksum(const uint8_t *pData, uint16_t length)
+@function   Ethernet_CalculateChecksum(const uint8_t *pData, uint16_t length)
 @brief      마지막 2바이트를 제외한 모든 바이트를 합산하여 하위 2바이트 반환
 */
-uint16_t csu_Ethernet_CalculateChecksum(const uint8_t *pData, uint16_t length)
+uint16_t Ethernet_CalculateChecksum(const uint8_t *pData, uint16_t length)
 {
     uint32_t sum = 0;
     uint16_t i;
@@ -68,10 +71,10 @@ uint16_t csu_Ethernet_CalculateChecksum(const uint8_t *pData, uint16_t length)
 }
 
 /*
-@function   csu_Ethernet_SendAck(uint16_t codeInfo, uint16_t ackInfo, uint8_t reqAck)
+@function   Ethernet_SendAck(uint16_t codeInfo, uint16_t ackInfo, uint8_t reqAck)
 @brief      ACK 전용 패킷 전송
 */
-static void csu_Ethernet_SendAck(uint16_t codeInfo, uint16_t ackInfo, uint8_t reqAck)
+static void Ethernet_SendAck(uint16_t codeInfo, uint16_t ackInfo, uint8_t reqAck)
 {
     stEthAckMessage ackMsg;
     
@@ -87,16 +90,16 @@ static void csu_Ethernet_SendAck(uint16_t codeInfo, uint16_t ackInfo, uint8_t re
     ackMsg.Code_Info = codeInfo;
     ackMsg.Ack_Info = ackInfo;
     
-    ackMsg.Checksum = csu_Ethernet_CalculateChecksum((uint8_t*)&ackMsg, sizeof(stEthAckMessage));
+    ackMsg.Checksum = Ethernet_CalculateChecksum((uint8_t*)&ackMsg, sizeof(stEthAckMessage));
     
     sendto_W6x00(SOCK_UDP_COM, (uint8_t*)&ackMsg, sizeof(stEthAckMessage), fc_ip, fc_port, fc_addrlen);
 }
 
 /*
-@function   csu_Ethernet_SendMessage(uint8_t code, uint8_t reqAck, uint8_t *pData, uint16_t dataLen)
+@function   Ethernet_SendMessage(uint8_t code, uint8_t reqAck, uint8_t *pData, uint16_t dataLen)
 @brief      일반 페이로드 패킷 조립 및 전송 (ACK 재전송 보관)
 */
-void csu_Ethernet_SendMessage(uint8_t code, uint8_t reqAck, uint8_t *pData, uint16_t dataLen)
+void Ethernet_SendMessage(uint8_t code, uint8_t reqAck, uint8_t *pData, uint16_t dataLen)
 {
     stEthHeader header;
     uint16_t totalLen = sizeof(stEthHeader) + dataLen + 2; // Header + Data + Checksum
@@ -131,7 +134,7 @@ void csu_Ethernet_SendMessage(uint8_t code, uint8_t reqAck, uint8_t *pData, uint
     }
     
     // 체크섬 계산 및 추가
-    checksum = csu_Ethernet_CalculateChecksum(xEthCtrl.TxBuffer, totalLen);
+    checksum = Ethernet_CalculateChecksum(xEthCtrl.TxBuffer, totalLen);
     memcpy(&xEthCtrl.TxBuffer[offset], &checksum, 2);
     offset += 2;
     
@@ -151,11 +154,16 @@ void csu_Ethernet_SendMessage(uint8_t code, uint8_t reqAck, uint8_t *pData, uint
 }
 
 /*
-@function   csu_Ethernet_StateMachine(void)
+@function   Ethernet_StateMachine(void)
 @brief      메인 제어 루프 등에서 100ms 주기로 호출되는 망 가입 상태 머신
 */
-void csu_Ethernet_StateMachine(void)
+void Ethernet_StateMachine(void)
 {
+    // 하드웨어(W6100)가 연결되지 않은 경우 상태 머신을 동작시키지 않아 무한 루프(Stuck) 방지
+    if (g_isW6100Connected == 0) {
+        return;
+    }
+
     xEthCtrl.TickCount100ms++;
     
     // [1] 재전송 및 타임아웃 감시 로직 (ACK 대기 중일 때)
@@ -186,7 +194,7 @@ void csu_Ethernet_StateMachine(void)
                     pHeader->Send_Count = (uint8_t)xEthCtrl.RetryCount;
                     
                     // 체크섬 재계산
-                    uint16_t cs = csu_Ethernet_CalculateChecksum(xEthCtrl.TxBuffer, xEthCtrl.TxSize);
+                    uint16_t cs = Ethernet_CalculateChecksum(xEthCtrl.TxBuffer, xEthCtrl.TxSize);
                     memcpy(&xEthCtrl.TxBuffer[xEthCtrl.TxSize - 2], &cs, 2);
                     
                     sendto_W6x00(SOCK_UDP_COM, xEthCtrl.TxBuffer, xEthCtrl.TxSize, fc_ip, fc_port, fc_addrlen);
@@ -204,7 +212,7 @@ void csu_Ethernet_StateMachine(void)
             if ((xEthCtrl.TickCount100ms % ETH_BOOTDONE_PERIOD) == 0 && xEthCtrl.WaitAckCode == 0)
             {
                 // Boot Done은 ACK를 요청함
-                csu_Ethernet_SendMessage(ETH_CODE_BOOT_DONE, ETH_ACK_REQ, NULL, 0);
+                Ethernet_SendMessage(ETH_CODE_BOOT_DONE, ETH_ACK_REQ, NULL, 0);
                 xEthCtrl.State = ETH_STATE_BOOT_DONE;
             }
             break;
@@ -222,7 +230,7 @@ void csu_Ethernet_StateMachine(void)
                 uint8_t statusPayload[1];
                 statusPayload[0] = xEthCtrl.Power270VStatus;
                 
-                csu_Ethernet_SendMessage(ETH_CODE_HEARTBEAT, ETH_ACK_NOT_REQ, statusPayload, 1);
+                Ethernet_SendMessage(ETH_CODE_HEARTBEAT, ETH_ACK_NOT_REQ, statusPayload, 1);
             }
             
             // 통신 두절 감시 (100ms * 50회 = 5초간 수신 없으면 리셋)
@@ -244,7 +252,7 @@ void csu_Ethernet_StateMachine(void)
                 {
                     xEthCtrl.CbitTimer100ms = 0;
                     // CBIT 결과 전송 (ACK 미요청)
-                    csu_Ethernet_SendMessage(ETH_CODE_CBIT_REP, ETH_ACK_NOT_REQ, NULL, 0);
+                    Ethernet_SendMessage(ETH_CODE_CBIT_REP, ETH_ACK_NOT_REQ, NULL, 0);
                 }
             }
             break;
@@ -252,10 +260,10 @@ void csu_Ethernet_StateMachine(void)
 }
 
 /*
-@function   csu_Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length)
+@function   Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length)
 @brief      수신 패킷 파싱 및 명령 수행
 */
-void csu_Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length)
+void Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length)
 {
     // 최소 길이 (Header 12 + Checksum 2) 검증
     if (length < 14) return;
@@ -264,7 +272,7 @@ void csu_Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length)
     uint16_t recvChecksum;
     memcpy(&recvChecksum, &pRxBuf[length - 2], 2);
     
-    uint16_t calcChecksum = csu_Ethernet_CalculateChecksum(pRxBuf, length);
+    uint16_t calcChecksum = Ethernet_CalculateChecksum(pRxBuf, length);
     
     stEthHeader *pHeader = (stEthHeader *)pRxBuf;
     
@@ -275,7 +283,7 @@ void csu_Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length)
         {
             // 수신 패킷의 Timestamp는 일단 적용 후 NACK 전송
             xEthCtrl.LastRecvTimestamp = pHeader->Timestamp;
-            csu_Ethernet_SendAck(pHeader->Code, ETH_ACK_INFO_CS_ERR, ETH_ACK_NACK);
+            Ethernet_SendAck(pHeader->Code, ETH_ACK_INFO_CS_ERR, ETH_ACK_NACK);
         }
         return; 
     }
@@ -287,7 +295,7 @@ void csu_Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length)
     // 정상 ACK 응답 처리
     if (pHeader->Request_ACK == ETH_ACK_REQ && pHeader->Code != ETH_CODE_ACK)
     {
-        csu_Ethernet_SendAck(pHeader->Code, ETH_ACK_INFO_OK, ETH_ACK_NORMAL);
+        Ethernet_SendAck(pHeader->Code, ETH_ACK_INFO_OK, ETH_ACK_NORMAL);
     }
     
     // 메시지 Code 분석 및 동작
@@ -316,14 +324,14 @@ void csu_Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length)
             
         case ETH_CODE_PBIT_REQ:
             // PBIT 결과 전송
-            csu_Ethernet_SendMessage(ETH_CODE_PBIT_REP, ETH_ACK_NOT_REQ, NULL, 0);
+            Ethernet_SendMessage(ETH_CODE_PBIT_REP, ETH_ACK_NOT_REQ, NULL, 0);
             break;
             
         case ETH_CODE_IBIT_REQ:
             xEthCtrl.IbitInProgress = 1;
             // TODO: 실제 IBIT 검증 함수 연동 필요. (수행 완료 후 결과 전송)
             // 임시로 바로 완료되었다고 가정하고 IBIT_REP 전송
-            csu_Ethernet_SendMessage(ETH_CODE_IBIT_REP, ETH_ACK_NOT_REQ, NULL, 0);
+            Ethernet_SendMessage(ETH_CODE_IBIT_REP, ETH_ACK_NOT_REQ, NULL, 0);
             xEthCtrl.IbitInProgress = 0;
             break;
             
@@ -348,7 +356,7 @@ void csu_Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length)
             {
                 uint8_t statusPayload[1];
                 statusPayload[0] = xEthCtrl.Power270VStatus;
-                csu_Ethernet_SendMessage(ETH_CODE_HEARTBEAT, ETH_ACK_NOT_REQ, statusPayload, 1);
+                Ethernet_SendMessage(ETH_CODE_HEARTBEAT, ETH_ACK_NOT_REQ, statusPayload, 1);
             }
             break;
             

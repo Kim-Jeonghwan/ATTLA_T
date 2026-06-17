@@ -1,16 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Ethernet.c
-    Version          : 00.05
+    Version          : 00.06
     Description      : 이더넷(W6100) 하드웨어 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 16. (수신 패킷 파싱 로직 연결)
+    Last Updated     : 2026. 06. 17. (명명 규칙 위반 리팩토링 연동)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
- * 2026. 06. 16. - 수신 패킷을 csu_Ethernet_ParsePacket()로 전달하고 기존 임시 응답 코드 제거
+ * 2026. 06. 17. - 명명 규칙 위반 리팩토링 연동 (Ethernet_ParsePacket -> Ethernet_ParsePacket)
+ * 2026. 06. 16. - 수신 패킷을 Ethernet_ParsePacket()로 전달하고 기존 임시 응답 코드 제거
  * 2026. 06. 16. - socket.h의 오버로딩 매크로 삭제에 맞춰 sendto/recvfrom을 sendto_W6x00/recvfrom_W6x00으로 변경
  * 2026. 06. 15. - W6100용 SPI 통신 콜백 함수 이름을 spia_ 접두어를 포함한 이름으로 수정 반영
  * 2026. 06. 15. - Initial_W6100 반환값 처리 추가로 하드웨어 미연결 시 소켓 개방 스킵(무한루프 방지) 구현
@@ -73,6 +74,9 @@ int8_t Initial_W6100(void)
     return 0; // 초기화 성공
 }
 
+// 하드웨어 연결 상태 플래그 (1: 정상 연결, 0: 미연결)
+uint8_t g_isW6100Connected = 0;
+
 /*
 @function    void Ethernet_Init(void)
 @brief      이더넷 통신망, 소켓 개방 및 W6100 외부 인터럽트 등록
@@ -86,8 +90,10 @@ void Ethernet_Init(void)
     {
         // 하드웨어가 연결되어 있지 않으면 이후의 소켓 개방 루틴을 무시하고 빠져나갑니다.
         // 이를 통해 WIZnet 드라이버 내부의 무한 루프 블로킹을 근본적으로 방지합니다.
+        g_isW6100Connected = 0;
         return; 
     }
+    g_isW6100Connected = 1;
     
     // 2. UDP 소켓 개방
     socket(SOCK_UDP_COM, Sn_MR_UDP, PORT_UDP_COM, 0x00);
@@ -153,7 +159,7 @@ void Ethernet_Process(void)
             setSn_IR(SOCK_UDP_COM, 0xFF);
             
             // 수신된 패킷 파싱 로직 호출 (CSU 계층으로 전달)
-            csu_Ethernet_ParsePacket(rx_buf, rx_size);
+            Ethernet_ParsePacket(rx_buf, rx_size);
         }
     } 
     else if (sn_sr == SOCK_CLOSED) 

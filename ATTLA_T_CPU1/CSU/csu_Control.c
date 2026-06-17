@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.08
+    Version          : 00.09
     Description      : 시스템 제어 모듈 (동적 인터럽트 스위칭 및 ADC 폴링) 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 15. (ADC 폴링 타임아웃 추가)
+    Last Updated     : 2026. 06. 17. (명명 규칙 위반 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 17. - 명명 규칙 위반 리팩토링 및 헤더 인클루드 수정
  * 2026. 06. 16. - 100us 핵심 제어 루프(ISR) 실행 순서 가이드에 맞게 재배치 (CBIT/FRAM 유지)
  * 2026. 06. 15. - ADC 인터럽트 폴링 무한루프 방지용 타임아웃 적용 (하드웨어 미연결 보드 대응)
  */
@@ -18,9 +19,9 @@
 #include "csu_Control.h"
 volatile stControlState xSysCtrl;
 
-#pragma CODE_SECTION(csu_Offset_Isr, ".TI.ramfunc");
-#pragma CODE_SECTION(csu_Pbit_Isr, ".TI.ramfunc");
-#pragma CODE_SECTION(csu_MainControl_Isr, ".TI.ramfunc");
+#pragma CODE_SECTION(Offset_Isr, ".TI.ramfunc");
+#pragma CODE_SECTION(Pbit_Isr, ".TI.ramfunc");
+#pragma CODE_SECTION(MainControl_Isr, ".TI.ramfunc");
 
 /**
  * @function Control_Init
@@ -69,7 +70,7 @@ void Control_SaveDataToFram(void)
     // 추후 데이터 저장 조건(주기적 로깅 또는 고장 발생 시 에러 코드 기록) 구현 예정
 }
 
-// 기존의 PWM 인터럽트 내에서 처리하던 오프셋 로직은 제거되고 csu_Offset_Isr 로 이동됨
+// 기존의 PWM 인터럽트 내에서 처리하던 오프셋 로직은 제거되고 Offset_Isr 로 이동됨
 
 /*
 @function    void Bit_RunPBIT(void)
@@ -146,12 +147,12 @@ void Control_SystemOperation(void)
 // ==============================================================================
 
 /*
-@function    __interrupt void csu_Offset_Isr(void)
+@function    __interrupt void Offset_Isr(void)
 @brief      최초 1초 대기 및 10,000회 전류 센서 오프셋 측정 인터럽트
 @param      void
 @return     __interrupt void
 */
-__interrupt void csu_Offset_Isr(void)
+__interrupt void Offset_Isr(void)
 {
     // ADC 변환 완료 대기 (폴링 블로킹 타임아웃 적용)
     uint16_t adcTimeout = 100U;
@@ -184,7 +185,7 @@ __interrupt void csu_Offset_Isr(void)
 
         // PBIT 인터럽트로 스위칭
         EALLOW;
-        PieVectTable.EPWM1_INT = &csu_Pbit_Isr;
+        PieVectTable.EPWM1_INT = &Pbit_Isr;
         EDIS;
 
         // FRAM에 오프셋 저장 래퍼 함수 호출 (인터럽트 교체 후 지연 처리)
@@ -196,12 +197,12 @@ __interrupt void csu_Offset_Isr(void)
 }
 
 /*
-@function    __interrupt void csu_Pbit_Isr(void)
+@function    __interrupt void Pbit_Isr(void)
 @brief      초기 점검 수행 및 메인 제어루프 전환 인터럽트
 @param      void
 @return     __interrupt void
 */
-__interrupt void csu_Pbit_Isr(void)
+__interrupt void Pbit_Isr(void)
 {
     // ADC 폴링 대기 (타임아웃 적용)
     uint16_t adcTimeout = 100U;
@@ -227,7 +228,7 @@ __interrupt void csu_Pbit_Isr(void)
         Interrupt_disable(INT_EPWM1);
         
         EALLOW;
-        PieVectTable.EPWM1_INT = &csu_MainControl_Isr;
+        PieVectTable.EPWM1_INT = &MainControl_Isr;
         EDIS;
     }
 
@@ -236,12 +237,12 @@ __interrupt void csu_Pbit_Isr(void)
 }
 
 /*
-@function    __interrupt void csu_MainControl_Isr(void)
+@function    __interrupt void MainControl_Isr(void)
 @brief      시스템 메인 파이프라인 인터럽트
 @param      void
 @return     __interrupt void
 */
-__interrupt void csu_MainControl_Isr(void)
+__interrupt void MainControl_Isr(void)
 {
     // ADC 폴링 대기 (타임아웃 적용 - 메인루프 기아 방지를 위해 100U로 대폭 축소)
     uint16_t adcTimeout = 100U;

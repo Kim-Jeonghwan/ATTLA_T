@@ -1,16 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : main.c
-    Version          : 00.04
+    Version          : 00.05
     Description      : 메인 백그라운드 루프 및 주기적 태스크 실행
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 16. (이더넷 상태머신 초기화 및 호출 추가)
+    Last Updated     : 2026. 06. 17. (명명 규칙 위반 리팩토링 연동)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
- * 2026. 06. 16. - 이더넷 프로토콜 연동 통제안에 따른 상태머신(csu_Ethernet_StateMachine) 호출 로직 추가
+ * 2026. 06. 17. - 명명 규칙 위반 리팩토링 연동
+ * 2026. 06. 16. - 이더넷 프로토콜 연동 통제안에 따른 상태머신(Ethernet_StateMachine) 호출 로직 추가
  * 2026. 06. 12. - CM 및 IPC 관련 주석 제거
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 전역 변수를 상태 구조체(xSysCtrl 등)로 통합 적용
@@ -61,7 +62,7 @@ void main(void)
 	// 동적 인터럽트 스위칭의 시작점 (Offset -> PBIT -> Main 순차 진행)
 	// EPWM1(100us) 타이머 인터럽트에 최초 오프셋 조정 ISR을 매핑하고 활성화합니다.
 	EALLOW;
-	Interrupt_register(INT_EPWM1, &csu_Offset_Isr);
+	Interrupt_register(INT_EPWM1, &Offset_Isr);
 	EDIS;
 	Interrupt_enable(INT_EPWM1);
 
@@ -73,14 +74,14 @@ void main(void)
     // PBIT 완료 대기 (이더넷 초기화 및 통신은 초기 점검(PBIT) 통과 후 안전하게 수행)
     while (xSysCtrl.isPbitComplete == 0U)
     {
-        // 100us 인터럽트(csu_Offset_Isr -> csu_Pbit_Isr) 체인이 완료될 때까지 백그라운드 대기
+        // 100us 인터럽트(Offset_Isr -> Pbit_Isr) 체인이 완료될 때까지 백그라운드 대기
     }
 
 	// 이더넷 (W6100) 하드웨어 초기화
 	Ethernet_Init();
 	
 	// 이더넷 상태 머신 초기화 (CSU)
-	csu_Ethernet_Init();
+	Ethernet_ProtocolInit();
 	
 	// 외부 통신 인터럽트(W6100) 활성화
 	Interrupt_enable(INT_XINT1);
@@ -166,7 +167,7 @@ static void cycle_100ms(void)
     updateLedStatus();
     
     // 이더넷 망 가입 및 Heartbeat 상태 머신 (100ms 주기 동작)
-    csu_Ethernet_StateMachine();
+    Ethernet_StateMachine();
 }
 
 

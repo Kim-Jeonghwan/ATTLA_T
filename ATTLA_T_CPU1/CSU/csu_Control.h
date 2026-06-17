@@ -1,19 +1,20 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.h
-    Version          : 00.07
+    Version          : 00.08
     Description      : 시스템 제어 모듈 (PBIT, CBIT, 오프셋 조정 등) 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (매크로 상수명 추상화: ADC_SCALE_REF_VOLT)
+    Last Updated     : 2026. 06. 17. (명명 규칙 위반 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 17. - 명명 규칙 위반 리팩토링 및 헤더 인클루드 수정
  * 2026. 06. 12. - 매크로 상수명 추상화: ADC_SCALE_REF_VOLT
  * 2026. 06. 12. - 오프셋 보정 변수 및 ADC 상수 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 12. - DIO 디바운싱 필터 및 FRAM 저장 래퍼 연동
- * 2026. 06. 12. - 3단계 동적 인터럽트 ISR 선언 추가 (csu_Offset_Isr, csu_Pbit_Isr, csu_MainControl_Isr)
+ * 2026. 06. 12. - 3단계 동적 인터럽트 ISR 선언 추가 (Offset_Isr, Pbit_Isr, MainControl_Isr)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stControlState 구조체(xSysCtrl)로 통합
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -87,8 +88,8 @@ void Control_SaveOffsetToFram(void);
 void Control_SaveDataToFram(void);
 
 // 시스템 제어 시퀀스 ISR 체인 (EPWM1 인터럽트 발생)
-__interrupt void csu_Offset_Isr(void);
-__interrupt void csu_Pbit_Isr(void);
-__interrupt void csu_MainControl_Isr(void);
+__interrupt void Offset_Isr(void);
+__interrupt void Pbit_Isr(void);
+__interrupt void MainControl_Isr(void);
 
 #endif // CSU_CONTROL_H

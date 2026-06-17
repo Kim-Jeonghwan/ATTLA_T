@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Spi.c
-    Version          : 00.05
+    Version          : 00.06
     Description      : SPI 통신 하드웨어 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 15. (W6100 콜백 함수명 SPIA 명시)
+    Last Updated     : 2026. 06. 17. (수동 CS 오해로 인한 SPI_enableTriWire 설정 제거)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 17. - 수동 CS 오해로 인한 SPI_enableTriWire 설정 제거 (W6100 및 FRAM 수신 에러 해결)
  * 2026. 06. 15. - cs_sel, spi_read_byte 등 W6100 전용 외부 콜백 함수에 spia_ 접두어 추가
  * 2026. 06. 15. - 가독성을 위해 InitSpia, InitSpib, InitSpic, InitSpid 및 관련 래퍼 함수들을 알파벳 순으로 재배치
  * 2026. 06. 15. - SPIC(엔코더) 및 SPID(FRAM)의 SOMI(RX) 핀 및 수동 CS 핀에 GPIO_PIN_TYPE_PULLUP 적용하여 플로팅 현상 방지
@@ -101,7 +102,6 @@ static void InitSpia(void)
 					SPI_MODE_MASTER, 
 					SPIA_W6100_BAUDRATE,
 					SPIA_W6100_DATA_WIDTH);
-    SPI_enableTriWire(SPIA_BASE); // 수동 CS(GPIO) 사용 시 3-Wire 모드 필수
     SPI_disableFIFO(SPIA_BASE);
     SPI_setEmulationMode(SPIA_BASE, SPI_EMULATION_FREE_RUN);
     SPI_enableModule(SPIA_BASE);
@@ -332,7 +332,6 @@ static void InitSpid(void)
     // Spi Init. Mode-3(POL1PHA0 in C2000)
     SPI_disableModule(SPID_BASE);
     SPI_setConfig(SPID_BASE, DEVICE_LSPCLK_FREQ, SPI_PROT_POL1PHA0, SPI_MODE_MASTER, SPID_FRAM_BAUDRATE, SPID_FRAM_DATA_WIDTH);
-    SPI_enableTriWire(SPID_BASE); // 수동 CS(GPIO) 사용 시 3-Wire 모드 필수
     SPI_disableFIFO(SPID_BASE);
     SPI_setEmulationMode(SPID_BASE, SPI_EMULATION_STOP_AFTER_TRANSMIT);
     SPI_enableModule(SPID_BASE);

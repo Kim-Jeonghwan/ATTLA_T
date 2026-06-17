@@ -29,16 +29,16 @@
 /* ************************** [[  function  ]] *********************************************************** */
 
 /**
- * @brief      W6100 하드웨어 초기화 및 IP/MAC 설정
- * @param      void
- * @return     int8_t (성공 시 0, 하드웨어 미연결 또는 초기화 실패 시 -1)
+ * @brief  W6100 초기화 (칩 설정 및 IP/MAC 바인딩)
+ * @return 0: 성공, -1: 실패(하드웨어 없음)
  */
 int8_t Initial_W6100(void);
 
+// 하드웨어 연결 상태를 외부 모듈(csu_Ethernet 등)에서 참조하기 위한 플래그
+extern uint8_t g_isW6100Connected;
+
 /**
- * @brief      이더넷 통신망, 소켓 개방 및 W6100 외부 인터럽트 등록
- * @param      void
- * @return     void
+ * @brief  이더넷 기본 망 설정 및 W6100 외부 인터럽트 PIE 등록
  */
 void Ethernet_Init(void);
 
