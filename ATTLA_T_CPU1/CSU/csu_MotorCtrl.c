@@ -130,8 +130,8 @@ void MotorCtrl_SetOutput(float32_t outputDuty)
 */
 void MotorCtrl_Run(void)
 {
-    MotorCtrl_UpdateFeedback();
-
+    MotorCtrl_UpdateFeedback(); 
+    
     if (xMotorCtrl.mode == MOTOR_MODE_STOP)
     {
         // 브레이크 잠금 (Active High 방식이므로 기본 0U 출력으로 기계적 잠금 상태 유지)
