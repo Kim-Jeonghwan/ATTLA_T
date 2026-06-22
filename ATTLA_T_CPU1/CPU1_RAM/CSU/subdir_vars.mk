@@ -15,7 +15,7 @@ C_SRCS += \
 ../CSU/csu_Led.c \
 ../CSU/csu_MotorCtrl.c \
 ../CSU/csu_MotorDriver.c \
-../CSU/csu_PID.c \
+../CSU/csu_Pid.c \
 ../CSU/csu_SciPc.c 
 
 C_DEPS += \
@@ -28,7 +28,7 @@ C_DEPS += \
 ./CSU/csu_Led.d \
 ./CSU/csu_MotorCtrl.d \
 ./CSU/csu_MotorDriver.d \
-./CSU/csu_PID.d \
+./CSU/csu_Pid.d \
 ./CSU/csu_SciPc.d 
 
 OBJS += \
@@ -41,7 +41,7 @@ OBJS += \
 ./CSU/csu_Led.obj \
 ./CSU/csu_MotorCtrl.obj \
 ./CSU/csu_MotorDriver.obj \
-./CSU/csu_PID.obj \
+./CSU/csu_Pid.obj \
 ./CSU/csu_SciPc.obj 
 
 OBJS__QUOTED += \
@@ -54,7 +54,7 @@ OBJS__QUOTED += \
 "CSU\csu_Led.obj" \
 "CSU\csu_MotorCtrl.obj" \
 "CSU\csu_MotorDriver.obj" \
-"CSU\csu_PID.obj" \
+"CSU\csu_Pid.obj" \
 "CSU\csu_SciPc.obj" 
 
 C_DEPS__QUOTED += \
@@ -67,7 +67,7 @@ C_DEPS__QUOTED += \
 "CSU\csu_Led.d" \
 "CSU\csu_MotorCtrl.d" \
 "CSU\csu_MotorDriver.d" \
-"CSU\csu_PID.d" \
+"CSU\csu_Pid.d" \
 "CSU\csu_SciPc.d" 
 
 C_SRCS__QUOTED += \
@@ -80,7 +80,7 @@ C_SRCS__QUOTED += \
 "../CSU/csu_Led.c" \
 "../CSU/csu_MotorCtrl.c" \
 "../CSU/csu_MotorDriver.c" \
-"../CSU/csu_PID.c" \
+"../CSU/csu_Pid.c" \
 "../CSU/csu_SciPc.c" 
 
 

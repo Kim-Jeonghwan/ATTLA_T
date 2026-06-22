@@ -8,7 +8,7 @@
 "./CSU/csu_Led.obj"
 "./CSU/csu_MotorCtrl.obj"
 "./CSU/csu_MotorDriver.obj"
-"./CSU/csu_PID.obj"
+"./CSU/csu_Pid.obj"
 "./CSU/csu_SciPc.obj"
 "./HAL/easy28x_driverlib_v12.2.obj"
 "./HAL/hal_Adc.obj"

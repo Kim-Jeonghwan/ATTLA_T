@@ -71,11 +71,12 @@
   - **정밀 속도 피드백 연산 (`xMotorCtrl.currentSpeedRpm`)**:
     - 기존 100us 미분 시 발생하는 이산 노이즈를 억제하기 위해 **1ms 분주(Decimation)** 로직 적용 (`DECIMATION_SPEED_CTRL`).
     - 연산식: `posDiff * MOTOR_SCALE_SPEED_RPM` (166.6667f, (1/0.001)*60/360)
-  - **PID 제어 루프 (3-Stage Cascade) 및 제약 (Soft Limit)**:
+  - **PID 제어 루프 (3-Stage Cascade) 및 제약 (Soft Limit)** (`csu_Pid` 범용 제어기 적용):
     - **위치 지령 클램핑**: 체계 명령 또는 목표 위치(`targetPosition`)는 `LIMIT_POS_MIN` (0.0f) ~ `LIMIT_POS_MAX` (15840.0f, 44바퀴 × 360°) 범위 내로 강제 제한됨.
-    - **위치 제어기 (`posPid`)**: Kp(`PID_POS_KP`: 1.0f), Ki(`PID_POS_KI`: 0.0f) / dt=0.004s (`PID_POS_DT`, 4ms 분주 `DECIMATION_POS_CTRL`: 4U, 4ms / 1ms) / 출력 제한 `LIMIT_SPEED_MAX` (±3240.0 RPM)
-    - **속도 제어기 (`speedPid`)**: Kp(`PID_SPD_KP`: 0.5f), Ki(`PID_SPD_KI`: 0.01f) / dt=0.001s (`PID_SPD_DT`, 1ms 분주 `DECIMATION_SPEED_CTRL`: 10U, 1ms / 100us) / 출력 제한 `LIMIT_CURRENT_MAX` (±9.34 A)
-    - **전류 제어기 (`currPid`)**: Kp(`PID_CURR_KP`: 2.0f), Ki(`PID_CURR_KI`: 0.05f) / dt=0.0001s (`PID_CURR_DT`) / 출력 제한 0.0 ~ `MOTOR_DUTY_MAX` (100.0f %) (크기 기반 제어)
+    - **위치 제어기 (`posPid`)**: **PD 제어** 적용. dt=0.005s (`PID_POS_DT`, 5ms 분주 `DECIMATION_POS_CTRL`: 5U, 5ms / 1ms) / 출력 제한 `LIMIT_SPEED_MAX` (±3240.0 RPM)
+    - **속도 제어기 (`speedPid`)**: **PI-IP 혼합 제어** 적용(`Ks` 계수 연동). dt=0.001s (`PID_SPD_DT`, 1ms 분주 `DECIMATION_SPEED_CTRL`: 10U, 1ms / 100us) / 출력 제한 `LIMIT_CURRENT_MAX` (±9.34 A)
+    - **전류 제어기 (`currPid`)**: **PI 제어** 적용. dt=0.0001s (`PID_CURR_DT`) / 출력 제한 0.0 ~ `MOTOR_DUTY_MAX` (100.0f %) (크기 기반 제어)
+    - **제어 파라미터 전역 튜닝 (`xPidGain`)**: 실시간 제어 튜닝을 위해 3단 제어기의 파라미터(Kp, Ki, Kd, Ks)가 매크로 하드코딩에서 벗어나 `xPidGain` 전역 구조체(`xPidGain.pos.Kp`, `xPidGain.spd.Ki` 등)로 통합 관리되어 매 제어 루프 반영됨.
     - **제어 순서**: 위치 지령 ➡️ `posPid` ➡️ 목표 속도 ➡️ `speedPid` ➡️ 목표 전류량 ➡️ `currPid` ➡️ 최종 목표 Duty 도출.
   - **출력 인가 (`Epwm_SetMotorDuty_1x`)**:
   - `duty` 값(-100.0% ~ 100.0%)의 부호에 따라 `DRV_DIR` 방향 핀 제어(`MotorDriver_SetDir`).
@@ -232,6 +233,7 @@
 | **`xDio`** | `volatile stDioState` | 디바운싱 필터가 적용된 이산신호(리미트 스위치, 시스템 감시, 홀센서 상태 등) 상태 |
 | **`xEncoder`** | `stEncoderState` | 모터/기구부 앱솔루트 엔코더(SSI) 상태. (위치, 360도 환산 각도, 에러 상태 등) |
 | **`xMotorCtrl`** | `stMotorCtrlState` | 모터 제어기의 현재 상태. (운전 모드, 목표/현재 속도(RPM), 목표/현재 위치 등) |
+| **`xPidGain`** | `stPidGain` | 실시간 튜닝용 3단 계단식(위치/속도/전류) PID 제어기의 파라미터 게인 (Kp, Ki, Kd, Ks) 모음 |
 | **`xMotorDriver`**| `stMotorDriverState` | DRV8343 모터 드라이버 IC의 하드웨어 결함(Fault) 상태 저장 |
 | **`xRcvSciPcMsg1`**| `stRcvSciPcMsg1` | PC 또는 체계로부터 수신된 메시지 버퍼 및 파싱 구조체 |
 | **`xXmtSciPcMsg1`**| `stXmtSciPcMsg1` | PC 또는 체계로 송신할 SCI 메시지 버퍼 구조체 |

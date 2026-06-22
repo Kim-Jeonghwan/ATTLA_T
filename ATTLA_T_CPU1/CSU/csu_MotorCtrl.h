@@ -1,15 +1,18 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.h
-    Version          : 00.05
+    Version          : 00.06
     Description      : 1x PWM 모드 기반 모터 제어 모듈 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (전류 제어 한계치를 모터 연속 정격 전류 9.34A로 하향 조정)
+    Last Updated     : 2026. 06. 22. (PID 파라미터 전역 변수화 및 제어 주기 변경)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 22. - PID 계수를 xPidGain 구조체로 묶어 관리하도록 변경
+ * 2026. 06. 22. - PID 계수 하드코딩 매크로 제거 및 전역 변수화 적용
+ * 2026. 06. 22. - 위치 제어 분주비를 5ms 로 갱신
  * 2026. 06. 12. - 전류 제어 한계치를 모터 정격과 동일한 9.34A로 하향 조정 (Fault 임계값 10A와 차별화)
  * 2026. 06. 12. - 최대 동작 속도 제한(Soft Limit)을 정격과 동일한 3240 RPM으로 수정
  * 2026. 06. 12. - 제어 루프 분주비 매크로 추가 (이름에 숫자를 배제하고 개념적 명칭 적용)
@@ -46,26 +49,33 @@
 
 // --- 제어 루프 분주비 (Decimation Ratios) ---
 #define DECIMATION_SPEED_CTRL  10U     // 100us -> 속도 제어기용 분주 (1ms 루프)
-#define DECIMATION_POS_CTRL    4U      // 속도 루프 -> 위치 제어기용 분주 (4ms 루프)
+#define DECIMATION_POS_CTRL    5U      // 속도 루프 -> 위치 제어기용 분주 (5ms 루프)
 
-// --- PID 제어기 게인 및 주기 파라미터 ---
+// --- PID 제어 주기 파라미터 ---
 // 전류 제어기 (100us)
-#define PID_CURR_KP 2.0f
-#define PID_CURR_KI 0.05f
-#define PID_CURR_KD 0.0f
 #define PID_CURR_DT 0.0001f
 
 // 속도 제어기 (1ms)
-#define PID_SPD_KP  0.5f
-#define PID_SPD_KI  0.01f
-#define PID_SPD_KD  0.0f
 #define PID_SPD_DT  0.001f
 
-// 위치 제어기 (4ms)
-#define PID_POS_KP  1.0f
-#define PID_POS_KI  0.0f
-#define PID_POS_KD  0.0f
-#define PID_POS_DT  0.004f
+// 위치 제어기 (5ms)
+#define PID_POS_DT  0.005f
+
+// --- PID 파라미터 전역 변수 구조체 (디버거 실시간 튜닝용) ---
+typedef struct {
+    float32_t Kp;
+    float32_t Ki;
+    float32_t Kd;
+    float32_t Ks;
+} stPidParam;
+
+typedef struct {
+    stPidParam pos;     // 위치 제어 (PD)
+    stPidParam spd;     // 속도 제어 (PI-IP)
+    stPidParam curr;    // 전류 제어 (PI)
+} stPidGain;
+
+extern stPidGain xPidGain;
 
 
 // 목표 구동 모드

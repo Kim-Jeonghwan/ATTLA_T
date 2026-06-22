@@ -1,15 +1,18 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.c
-    Version          : 00.07
+    Version          : 00.08
     Description      : 1x PWM 모드 기반 모터 제어 모듈
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (제어 루프 분주비 매크로 반영)
+    Last Updated     : 2026. 06. 22. (PID 파라미터 전역 변수 적용 및 루프 갱신 로직 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 22. - PID 계수를 xPidGain 구조체로 묶어 관리하도록 변경
+ * 2026. 06. 22. - PID 파라미터 전역 변수 초기화 및 제어 루프 내 실시간 반영 로직 추가
+ * 2026. 06. 22. - 속도 제어기 PI-IP 혼합 계수(Ks) 초기화 연동
  * 2026. 06. 16. - 브레이크 핀 (Active High) 정방향 제어 로직 모드에 연동 적용
  * 2026. 06. 12. - 10U 및 4U 매직넘버를 DECIMATION_SPEED_CTRL, DECIMATION_POS_CTRL 매크로로 치환
  * 2026. 06. 12. - PID 파라미터, 모터 한도, 스케일 상수 헤더(.h)로 이동 (글로벌 룰 적용)
@@ -26,6 +29,14 @@
 
 
 #include "csu_MotorCtrl.h"
+
+// --- 실시간 튜닝용 전역 변수 초기화 ---
+stPidGain xPidGain = {
+    { 1.0f, 0.0f, 0.0f, 1.0f },     // pos (Kp, Ki, Kd, Ks)
+    { 0.5f, 0.01f, 0.0f, 0.25f },   // spd (Kp, Ki, Kd, Ks)
+    { 2.0f, 0.05f, 0.0f, 1.0f }     // curr (Kp, Ki, Kd, Ks)
+};
+// -------------------------------------
 
 // 모터 제어 모듈의 전체 상태
 stMotorCtrlState xMotorCtrl;
@@ -54,15 +65,15 @@ void MotorCtrl_Init(void)
     // 하위 Driver 상태 초기화
     MotorDriver_Init();
     
-    // PID 초기화 (Kp, Ki, Kd, dt, max_out, min_out)
-    // 전류 제어기는 100us (0.0001s) 루프에서 동작
-    PID_Init(&currPid, PID_CURR_KP, PID_CURR_KI, PID_CURR_KD, PID_CURR_DT, MOTOR_DUTY_MAX, 0.0f);     // Current 출력은 절대 Duty 크기
+    // PID 초기화 (Kp, Ki, Kd, Ks, dt, max_out, min_out)
+    // 전류 제어기는 100us (0.0001s) 루프에서 동작 (표준 PI)
+    PID_Init(&currPid, xPidGain.curr.Kp, xPidGain.curr.Ki, xPidGain.curr.Kd, xPidGain.curr.Ks, PID_CURR_DT, MOTOR_DUTY_MAX, 0.0f);     // Current 출력은 절대 Duty 크기
     
-    // 속도 제어기는 1ms (0.001s) 루프에서 동작
-    PID_Init(&speedPid, PID_SPD_KP, PID_SPD_KI, PID_SPD_KD, PID_SPD_DT, LIMIT_CURRENT_MAX, LIMIT_CURRENT_MIN);    // Speed 출력은 타겟 전류량 (최대 ±10.0A)
+    // 속도 제어기는 1ms (0.001s) 루프에서 동작 (PI-IP 혼합 제어)
+    PID_Init(&speedPid, xPidGain.spd.Kp, xPidGain.spd.Ki, xPidGain.spd.Kd, xPidGain.spd.Ks, PID_SPD_DT, LIMIT_CURRENT_MAX, LIMIT_CURRENT_MIN);    // Speed 출력은 타겟 전류량 (최대 ±10.0A)
     
-    // 위치 제어기는 기계적 관성을 고려하여 4ms (0.004s) 루프에서 동작
-    PID_Init(&posPid, PID_POS_KP, PID_POS_KI, PID_POS_KD, PID_POS_DT, LIMIT_SPEED_MAX, LIMIT_SPEED_MIN);           // Position 출력은 Speed 명령
+    // 위치 제어기는 기계적 관성을 고려하여 5ms (0.005s) 루프에서 동작 (표준 PD)
+    PID_Init(&posPid, xPidGain.pos.Kp, xPidGain.pos.Ki, xPidGain.pos.Kd, xPidGain.pos.Ks, PID_POS_DT, LIMIT_SPEED_MAX, LIMIT_SPEED_MIN);           // Position 출력은 Speed 명령
     
     // 방향 핀(INHC)은 hal_DspInit.c 의 Init_GpioDout() 에서 이미 초기화 완료됨
 }
@@ -147,6 +158,17 @@ void MotorCtrl_Run(void)
         // 브레이크 해제 (Active High 방식이므로 1U 출력으로 모터 구동 전 잠금 해제)
         GPIO_writePin(35U, 1U);
         
+        // 전역 변수 튜닝 파라미터 실시간 반영
+        posPid.Kp = xPidGain.pos.Kp;
+        posPid.Kd = xPidGain.pos.Kd;
+        
+        speedPid.Kp = xPidGain.spd.Kp;
+        speedPid.Ki = xPidGain.spd.Ki;
+        speedPid.Ks = xPidGain.spd.Ks;
+        
+        currPid.Kp = xPidGain.curr.Kp;
+        currPid.Ki = xPidGain.curr.Ki;
+
         static float32_t currentCmd = 0.0f;
         static float32_t speedCmd = 0.0f;
         static Uint16 loop1msCnt = 0U;

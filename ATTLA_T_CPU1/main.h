@@ -69,7 +69,7 @@
 #include "csu_Control.h"
 #include "csu_MotorDriver.h"
 #include "csu_MotorCtrl.h"
-#include "csu_PID.h"
+#include "csu_Pid.h"
 #include "csu_Bit.h"
 #include "csu_SciPc.h"
 #include "csu_Ethernet.h"
