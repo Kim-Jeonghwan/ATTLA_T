@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.09
+    Version          : 00.10
     Description      : 시스템 제어 모듈 (동적 인터럽트 스위칭 및 ADC 폴링) 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 17. (명명 규칙 위반 리팩토링)
+    Last Updated     : 2026. 06. 22. (리미트 스위치 모듈 초기화 호출 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 22. - 리미트 스위치 모듈 초기화(LimitSwitch_Init) 호출 추가
  * 2026. 06. 17. - 명명 규칙 위반 리팩토링 및 헤더 인클루드 수정
  * 2026. 06. 16. - 100us 핵심 제어 루프(ISR) 실행 순서 가이드에 맞게 재배치 (CBIT/FRAM 유지)
  * 2026. 06. 15. - ADC 인터럽트 폴링 무한루프 방지용 타임아웃 적용 (하드웨어 미연결 보드 대응)
@@ -33,6 +34,7 @@ void Control_Init(void)
 {
     // 구조체 명시적 초기화
     Dio_Init();
+    LimitSwitch_Init();
     xSysCtrl.isOffsetCalibrated = 0U;
     xSysCtrl.isPbitComplete = 0U;
     xSysCtrl.offsetCount = 0U;

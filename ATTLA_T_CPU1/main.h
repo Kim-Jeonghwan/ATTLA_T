@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : main.h
-    Version          : 00.04
+    Version          : 00.05
     Description      : 전역 헤더 관리 파일
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 16. (csu_Ethernet.h 인클루드 추가)
+    Last Updated     : 2026. 06. 22. (csu_LimitSwitch.h 인클루드 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 22. - 리미트 스위치 로직 처리를 위한 csu_LimitSwitch.h 인클루드 추가
  * 2026. 06. 16. - 이더넷 프로토콜 추가에 따른 csu_Ethernet.h 인클루드 추가
  * 2026. 06. 15. - 리팩토링에 따라 삭제된 hal_Led.h 인클루드 제거
  * 2026. 06. 12. - csu_Dio.h 인클루드 추가
@@ -73,6 +74,7 @@
 #include "csu_Bit.h"
 #include "csu_SciPc.h"
 #include "csu_Ethernet.h"
+#include "csu_LimitSwitch.h"
 
 
 /* ************************** [[   define   ]]  *********************************************************** */

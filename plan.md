@@ -1,86 +1,51 @@
-# ATTLA_T 모터 제어 PID 및 주기 변경 구현 계획서
+# 리미트 스위치 로직 및 고장 판단 구현 계획 (Implementation Plan)
 
-사용자님의 지시에 따라, **[옵션 A: 범용 모듈 `csu_PID` 코어 확장]** 방식을 기반으로 구현 계획을 수립하였습니다. 특히, **"위치/속도/전류 각 제어기의 변수를 다르게 독립된 전역변수로 분리하여 구현"**하라는 추가 지시사항을 반영하였습니다.
+## 1. 목표 (Goal Description)
+이전에 조사한 리서치 내용을 바탕으로, `csu_LimitSwitch` 모듈을 신규 추가하여 리미트 스위치의 설정 데이터(오차 범위, 매핑 등)와 상태 판단 로직을 캡슐화합니다. 제어 루프 중 즉시 고장을 판단하고 모터 제어 모드를 에러 상태(`MOTOR_MODE_FAULT_STOP`)로 전환하도록 시스템을 구현합니다.
 
-## 1. 구현 목표
-- 범용 `csu_PID` 모듈을 수정하여 PI-IP 혼합 제어(Ks)를 지원하도록 확장합니다.
-- 기존에 하드코딩 되어 있던 PID 계수들을, 위치, 속도, 전류 각각 독립된 `float32_t` 전역변수로 분리 선언합니다.
-- 실시간 디버거(CCS/easyDSP)에서 변수값을 변경하면 즉시 제어기에 반영되도록 업데이트 로직을 추가합니다.
-- 위치 제어 주기를 기존 4ms에서 **5ms**로 변경합니다.
+## 2. 제안되는 변경 사항 (Proposed Changes)
 
 ---
 
-## 2. 파일별 상세 수정 계획
+### 모터 제어 및 고장 감지 로직 분리 (CSU 계층)
 
-### 2.1. `csu_MotorCtrl.h`
-- 기존 `#define` 으로 선언된 Kp, Ki, Kd 매크로들을 삭제합니다.
-- 위치 제어 분주비 매크로를 수정합니다: `#define DECIMATION_POS_CTRL 5U` (4ms -> 5ms)
-- 5ms 주기에 맞춰 `#define PID_POS_DT 0.005f` 로 수정합니다.
-- 제어기별 독립 전역변수를 `extern`으로 선언합니다:
-  ```c
-  // --- PID 파라미터 전역 변수 선언 ---
-  // 위치 제어 (PD)
-  extern float32_t M1_PosCtrl_Kp;
-  extern float32_t M1_PosCtrl_Kd;
+#### [NEW] `ATTLA_T_CPU1/CSU/csu_LimitSwitch.h`
+- `LimitSwitchFaultCode_t` 열거형 정의 (단선 및 위치 불일치 등 4가지 에러 코드)
+- `stLimitSwitchConfig` 구조체 정의 (목표 1/2 위치, 오차 허용치, 스위치 매핑 번호)
+- `stLimitSwitchState` 구조체 정의 (에러 유무 플래그 및 현재 발생한 에러 코드)
+- `LimitSwitch_Init()`, `LimitSwitch_CheckFaults()` 함수 원형 선언
 
-  // 속도 제어 (PI-IP)
-  extern float32_t M1_SpdCtrl_Kp;
-  extern float32_t M1_SpdCtrl_Ki;
-  extern float32_t M1_SpdCtrl_Ks; // 0.0: IP, 1.0: PI, 0~1 사이 혼합
+#### [NEW] `ATTLA_T_CPU1/CSU/csu_LimitSwitch.c`
+- `xLimitSwitchConfig`, `xLimitSwitch` 전역 인스턴스 할당 및 초기화
+- `LimitSwitch_Init()` 구현: 임의의 기본값으로 위치 및 공차, 매핑 변수 초기화
+- `LimitSwitch_CheckFaults()` 구현:
+  1. `xDio.limit1No == xDio.limit1Nc` 단선 고장 판별
+  2. `xDio.limit2No == xDio.limit2Nc` 단선 고장 판별
+  3. `xMotorCtrl.currentPosition`을 바탕으로 Target 1/2 근처(`nearTolerance` 이내) 판별 후, 스위치 1/2 매핑에 맞춰 NO 신호와 논리적 일치 여부 비교 (위치 불일치 에러 세팅)
 
-  // 전류 제어 (PI)
-  extern float32_t M1_CurCtrl_Kp;
-  extern float32_t M1_CurCtrl_Ki;
-  ```
+#### [MODIFY] `ATTLA_T_CPU1/CSU/csu_MotorCtrl.h`
+- `MotorControlMode_t` 열거형에 `MOTOR_MODE_FAULT_STOP` 추가
 
-### 2.2. `csu_MotorCtrl.c`
-- 최상단에 실제 전역변수를 선언하고 초기값을 할당합니다.
-  ```c
-  float32_t M1_PosCtrl_Kp = 1.0f;
-  float32_t M1_PosCtrl_Kd = 0.0f;     // PD 제어의 D 요소
+#### [MODIFY] `ATTLA_T_CPU1/CSU/csu_MotorCtrl.c`
+- 최상단에서 `csu_LimitSwitch.h`의 전역 상태를 참조.
+- `MotorCtrl_Run()` 내부:
+  - 위치 피드백(`MotorCtrl_UpdateFeedback()`) 갱신 직후, `LimitSwitch_CheckFaults()` 호출.
+  - 리턴된 상태가 `isFaultActive == true` 라면, 강제로 `xMotorCtrl.mode = MOTOR_MODE_FAULT_STOP` 으로 모드 덮어쓰기.
+  - `else if (xMotorCtrl.mode == MOTOR_MODE_FAULT_STOP)` 블록 추가하여, 안전 정지 시퀀스(듀티 0.0f, 브레이크 핀 0U 출력) 실행 (현재 `MOTOR_MODE_STOP`과 동일하나 추후 시퀀스 추가를 위한 공간 확보).
 
-  float32_t M1_SpdCtrl_Kp = 0.5f;
-  float32_t M1_SpdCtrl_Ki = 0.01f;
-  float32_t M1_SpdCtrl_Ks = 0.25f;    // 기본 혼합 비율 (필요 시 수정 가능)
+#### [MODIFY] `ATTLA_T_CPU1/CSU/csu_Control.c`
+- `Control_Init()` 내부에서 `LimitSwitch_Init()` 호출 추가.
 
-  float32_t M1_CurCtrl_Kp = 2.0f;
-  float32_t M1_CurCtrl_Ki = 0.05f;
-  ```
-- `MotorCtrl_Init()` 함수에서 변경된 `PID_Init` 시그니처에 맞추어 `Ks` 값을 포함해 초기화를 수행합니다. (위치와 전류는 Ks=1.0f 고정으로 일반 PD/PI로 동작하게 함)
-- `MotorCtrl_Run()` 함수의 최상단(제어 연산 직전)에, 디버거에서 값을 변경했을 때 즉각 반영되도록 파라미터 업데이트 코드를 삽입합니다:
-  ```c
-  // 디버거 실시간 튜닝 파라미터 갱신
-  posPid.Kp = M1_PosCtrl_Kp;
-  posPid.Kd = M1_PosCtrl_Kd;
-
-  speedPid.Kp = M1_SpdCtrl_Kp;
-  speedPid.Ki = M1_SpdCtrl_Ki;
-  speedPid.Ks = M1_SpdCtrl_Ks;
-
-  currPid.Kp = M1_CurCtrl_Kp;
-  currPid.Ki = M1_CurCtrl_Ki;
-  ```
-
-### 2.3. `csu_PID.h`
-- `PID_Controller_t` 구조체에 `float32_t Ks;` 멤버를 추가합니다.
-- `PID_Init` 함수의 매개변수 리스트에 `ks` 를 추가합니다.
-
-### 2.4. `csu_PID.c`
-- `PID_Init()` 함수에서 `pid->Ks = ks;` 초기화 코드를 추가합니다.
-- `PID_Calculate()` 함수 내부의 비례(P) 항 수식을, 사용자님의 코드를 일반화한 PI-IP 혼합 수식으로 덮어씌웁니다.
-  ```c
-  // [수정 전]
-  // pOut = pid->Kp * error;
-  
-  // [수정 후 - PI/IP 혼합 일반화 식]
-  // Ks = 1.0 (PI 제어): Kp * (setpoint - feedback) = Kp * error 로 기존과 동일.
-  // Ks = 0.0 (IP 제어): Kp * (0 - feedback) = -Kp * feedback
-  float32_t pOut = (error * pid->Kp * pid->Ks) - (feedback * pid->Kp * (1.0f - pid->Ks));
-  ```
-- 적분 항과 미분 항 로직, 그리고 안티와인드업(출력 클램핑 시 적분값 복원) 로직은 그대로 유지하여 완전한 범용성을 보존합니다.
+#### [MODIFY] `ATTLA_T_CPU1/main.h`
+- 하단 `#include` 영역에 `#include "csu_LimitSwitch.h"` 추가.
 
 ---
 
-**보고 및 대기:**
-본 계획은 사용자님의 요구사항을 100% 충족하며 코드베이스의 안정성과 튜닝 편의성을 극대화합니다.
-내용을 검토하신 후 **"계획대로 구현해 줘"** 라고 지시해 주시면, 즉시 소스 코드 파일들의 실제 수정을 진행하겠습니다!
+## 3. 검토 요청 사항 (User Review Required)
+
+> [!IMPORTANT]
+> **초기 위치 설정 데이터 확인**  
+> `LimitSwitch_Init()` 내에서 설정될 임시 타겟 위치(`targetPos1`, `targetPos2`)와 범위(`nearTolerance1`, `nearTolerance2`) 값의 권장 초기값이 있다면 피드백 부탁드립니다. (없으면 기본값 0, 15840 및 오차 100 등으로 임의 초기화합니다.)
+
+> [!NOTE]
+> `plan.md` 파일을 통해 수정 방향을 확인하시고, **승인(또는 추가 메모)** 해 주시면 즉시 코드 수정을 시작하겠습니다.

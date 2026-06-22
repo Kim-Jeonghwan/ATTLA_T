@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.c
-    Version          : 00.08
+    Version          : 00.09
     Description      : 1x PWM 모드 기반 모터 제어 모듈
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 22. (PID 파라미터 전역 변수 적용 및 루프 갱신 로직 추가)
+    Last Updated     : 2026. 06. 22. (리미트 스위치 감지 호출 및 고장 시 정지 로직 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 22. - 리미트 스위치 감지 호출 및 고장 시 정지 로직 추가
  * 2026. 06. 22. - PID 계수를 xPidGain 구조체로 묶어 관리하도록 변경
  * 2026. 06. 22. - PID 파라미터 전역 변수 초기화 및 제어 루프 내 실시간 반영 로직 추가
  * 2026. 06. 22. - 속도 제어기 PI-IP 혼합 계수(Ks) 초기화 연동
@@ -143,9 +144,28 @@ void MotorCtrl_Run(void)
 {
     MotorCtrl_UpdateFeedback(); 
     
+    // 리미트 스위치 상태 점검 및 고장 판단
+    LimitSwitch_CheckFaults();
+    if (xLimitSwitch.isFaultActive == true)
+    {
+        // 고장 감지 시 즉시 정지 모드로 강제 전환
+        xMotorCtrl.mode = MOTOR_MODE_FAULT_STOP;
+    }
+    
     if (xMotorCtrl.mode == MOTOR_MODE_STOP)
     {
         // 브레이크 잠금 (Active High 방식이므로 기본 0U 출력으로 기계적 잠금 상태 유지)
+        GPIO_writePin(35U, 0U);
+        
+        MotorCtrl_SetOutput(0.0f);
+        currPid.integral = 0.0f;
+        speedPid.integral = 0.0f;
+        posPid.integral = 0.0f;
+    }
+    else if (xMotorCtrl.mode == MOTOR_MODE_FAULT_STOP)
+    {
+        // 고장 정지 시퀀스 (현재는 기본 STOP과 동일하게 즉시 0 출력 및 브레이크 잠금)
+        // 추후 상세한 시퀀스(타이밍 딜레이 등) 요구사항이 확정되면 여기에 반영합니다.
         GPIO_writePin(35U, 0U);
         
         MotorCtrl_SetOutput(0.0f);

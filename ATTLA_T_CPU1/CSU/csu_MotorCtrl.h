@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.h
-    Version          : 00.06
+    Version          : 00.07
     Description      : 1x PWM 모드 기반 모터 제어 모듈 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 22. (PID 파라미터 전역 변수화 및 제어 주기 변경)
+    Last Updated     : 2026. 06. 22. (리미트 스위치 고장 정지 모드 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 22. - 리미트 스위치 감지를 위한 MOTOR_MODE_FAULT_STOP 열거형 추가
  * 2026. 06. 22. - PID 계수를 xPidGain 구조체로 묶어 관리하도록 변경
  * 2026. 06. 22. - PID 계수 하드코딩 매크로 제거 및 전역 변수화 적용
  * 2026. 06. 22. - 위치 제어 분주비를 5ms 로 갱신
@@ -82,7 +83,8 @@ extern stPidGain xPidGain;
 typedef enum {
     MOTOR_MODE_STOP = 0,
     MOTOR_MODE_SPEED_CTRL,
-    MOTOR_MODE_POS_CTRL
+    MOTOR_MODE_POS_CTRL,
+    MOTOR_MODE_FAULT_STOP
 } MotorControlMode_t;
 
 // 상태 변수 구조체

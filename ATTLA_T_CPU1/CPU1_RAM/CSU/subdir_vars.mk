@@ -13,6 +13,7 @@ C_SRCS += \
 ../CSU/csu_Encoder.c \
 ../CSU/csu_Ethernet.c \
 ../CSU/csu_Led.c \
+../CSU/csu_LimitSwitch.c \
 ../CSU/csu_MotorCtrl.c \
 ../CSU/csu_MotorDriver.c \
 ../CSU/csu_Pid.c \
@@ -26,6 +27,7 @@ C_DEPS += \
 ./CSU/csu_Encoder.d \
 ./CSU/csu_Ethernet.d \
 ./CSU/csu_Led.d \
+./CSU/csu_LimitSwitch.d \
 ./CSU/csu_MotorCtrl.d \
 ./CSU/csu_MotorDriver.d \
 ./CSU/csu_Pid.d \
@@ -39,6 +41,7 @@ OBJS += \
 ./CSU/csu_Encoder.obj \
 ./CSU/csu_Ethernet.obj \
 ./CSU/csu_Led.obj \
+./CSU/csu_LimitSwitch.obj \
 ./CSU/csu_MotorCtrl.obj \
 ./CSU/csu_MotorDriver.obj \
 ./CSU/csu_Pid.obj \
@@ -52,6 +55,7 @@ OBJS__QUOTED += \
 "CSU\csu_Encoder.obj" \
 "CSU\csu_Ethernet.obj" \
 "CSU\csu_Led.obj" \
+"CSU\csu_LimitSwitch.obj" \
 "CSU\csu_MotorCtrl.obj" \
 "CSU\csu_MotorDriver.obj" \
 "CSU\csu_Pid.obj" \
@@ -65,6 +69,7 @@ C_DEPS__QUOTED += \
 "CSU\csu_Encoder.d" \
 "CSU\csu_Ethernet.d" \
 "CSU\csu_Led.d" \
+"CSU\csu_LimitSwitch.d" \
 "CSU\csu_MotorCtrl.d" \
 "CSU\csu_MotorDriver.d" \
 "CSU\csu_Pid.d" \
@@ -78,6 +83,7 @@ C_SRCS__QUOTED += \
 "../CSU/csu_Encoder.c" \
 "../CSU/csu_Ethernet.c" \
 "../CSU/csu_Led.c" \
+"../CSU/csu_LimitSwitch.c" \
 "../CSU/csu_MotorCtrl.c" \
 "../CSU/csu_MotorDriver.c" \
 "../CSU/csu_Pid.c" \
