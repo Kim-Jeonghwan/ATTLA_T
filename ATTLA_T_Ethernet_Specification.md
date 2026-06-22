@@ -21,9 +21,12 @@
 
 ---
 
-## 2. 이더넷 프로토콜 패킷 (UDP Payload) 규격
-
-모든 Payload 데이터 필드(Header + Data)는 구조체 패킹을 사용하며, **Little Endian** 데이터 규격을 따릅니다.
+## 2. 메시지 패킷 기본 구조 (직렬화/역직렬화 적용)
+- **Endianness**: Little Endian 준수
+- **메모리 패킹 제약 및 해결방안**:
+  - TI C28x (DSP) 코어는 최소 주소 단위가 16비트이므로 `#pragma pack(1)` 지원 불가.
+  - 이를 해결하기 위해 `memcpy` 대신 송/수신 버퍼 배열에 8비트 Shift 연산을 수행하는 **직접 바이트 직렬화(Serialization)** 로직 적용.
+  - 네트워크 회선 상으로는 정확히 12바이트 헤더 규격을 보장함.
 
 ### 2.1 공통 MSG Header 구조 (12 Bytes)
 화포통제컴퓨터 $\leftrightarrow$ ATTLA-T 간 모든 UDP 패킷의 최상단 12바이트는 공통 헤더 규격을 사용합니다.
@@ -69,13 +72,14 @@
 
 ## 3. 이더넷 상태 머신 파이프라인 (State Machine)
 
-`csu_Ethernet.c` 내의 `Ethernet_StateMachine()` 함수에 의해 **100ms(10Hz) 주기**로 폴링 구동됩니다.
+`csu_Ethernet.c` 내의 `Ethernet_StateMachine()` 함수에 의해 **100ms(10Hz) 주기**로 백그라운드 태스크에서 폴링 구동됩니다.
+> Rx 파싱의 경우, 100us 모터 제어 주기와의 간섭을 막기 위해 W6100 `INTn` 외부 인터럽트(XINT1)를 통해 비동기로 파싱 및 ACK 리턴(`csu_Ethernet_Rx_ISR` 성격)을 즉각 수행합니다.
 
 | 상태 명칭 | 100ms 단위 상태 머신 동작 요약 |
 | :--- | :--- |
-| `ETH_STATE_INIT` | W6100 소켓 정상 개방 완료 후 망 가입 대기 단계. **500ms 단위**로 화포통제컴퓨터로 `ETH_CODE_BOOT_DONE` 패킷을 전송하여 망 가입을 요청함. |
-| `ETH_STATE_BOOT_DONE`| `BOOT_DONE` 송신 후 대상 장치로부터의 `ETH_CODE_ACK` 응답 대기 상태. 정상 수신 시 `ETH_STATE_LINKED`로 천이. |
-| `ETH_STATE_LINKED` | 망 가입 완료 및 운용 단계. **100ms 단위**로 `ETH_CODE_HEARTBEAT` 패킷을 자발적으로 교환. 이때 270V 구동 전원 인가 상태(`Power270VStatus`)를 Payload 첫 바이트에 실어 전송. |
+| `STATE_BOOTING` | 28V 제어전원 인가 및 초기화 후 망 가입 대기 단계. 즉시 다음 상태로 천이함. |
+| `STATE_WAIT_BOOT_ACK`| 망 가입을 위해 **500ms 단위**로 화포통제컴퓨터로 `ETH_CODE_BOOT_DONE` 패킷을 전송하고, ACK 응답 대기 상태. 정상 수신 시 `STATE_JOINED`로 천이. |
+| `STATE_JOINED` | 망 가입 완료 및 운용 단계. **100ms 단위**로 `ETH_CODE_HEARTBEAT` 패킷을 자발적으로 교환. 이때 270V 구동 전원 인가 상태(`Power270VStatus`)를 Payload 첫 바이트에 실어 전송. |
 
 ### 3.1 타임아웃 및 재전송 (Fail-Safe) 로직
 1. **ACK 대기 타임아웃**:
@@ -83,8 +87,8 @@
    - 이때 패킷 헤더의 `Send_Count`를 1씩 증가시킴.
 2. **망 이탈(통신 두절) 롤백 규칙**:
    - 한 패킷의 최대 전송 횟수는 **총 4회** (최초 1회 + 재전송 3회).
-   - 4회까지 재전송했음에도 응답이 없거나, 링크 상태(`ETH_STATE_LINKED`)에서 100ms Heartbeat 패킷을 **연속 50회(5초)** 수신하지 못한 경우.
-   - **조치**: W6100 소켓(0번)을 강제 리셋(닫고 재오픈)하고, 즉시 `ETH_STATE_INIT` 모드로 상태를 롤백하여 망 가입 단계부터 재개함.
+   - 4회까지 재전송했음에도 응답이 없거나, 링크 상태(`STATE_JOINED`)에서 100ms Heartbeat 패킷을 **연속 50회(5초)** 수신하지 못한 경우 통신 두절(`STATE_COMM_LOSS`) 조건 충족.
+   - **조치**: W6100 소켓(0번)을 강제 리셋(닫고 재오픈)하고, 즉시 `STATE_WAIT_BOOT_ACK` 모드로 상태를 롤백하여 망 가입 단계부터 재개함.
 
 ---
 
@@ -94,7 +98,7 @@
 
 ```c
 typedef struct {
-    EthState_e  State;              // 현재 망 가입 상태 (0: INIT, 1: BOOT_DONE, 2: LINKED)
+    EthState_e  State;              // 현재 망 가입 상태 (0: BOOTING, 1: WAIT_BOOT_ACK, 2: JOINED, 3: COMM_LOSS)
     uint32_t    LastRecvTimestamp;  // 화포통제컴퓨터가 보낸 최신 Timestamp 백업
     uint16_t    TickCount100ms;     // 100ms 틱 카운터
     uint16_t    TimeoutCount;       // 미수신 통신 두절 카운터 (Max 50)

@@ -1,15 +1,18 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.c
-    Version          : 00.09
+    Version          : 00.12
     Description      : 1x PWM 모드 기반 모터 제어 모듈
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 22. (리미트 스위치 감지 호출 및 고장 시 정지 로직 추가)
+    Last Updated     : 2026. 06. 22. (전류 제어 루프 절댓값 로직 제거 및 4상한 제어 개선)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 22. - 전류 제어 루프 절댓값 로직 제거 및 4상한 제어 개선
+ * 2026. 06. 22. - 위치 제어 루프 변수명 및 주석의 특정 주기(4ms/5ms) 표기 제거
+ * 2026. 06. 22. - BIT 결함 플래그(xBit.faultFlagSet) 기반 모터 Fail-Safe 정지 로직 추가
  * 2026. 06. 22. - 리미트 스위치 감지 호출 및 고장 시 정지 로직 추가
  * 2026. 06. 22. - PID 계수를 xPidGain 구조체로 묶어 관리하도록 변경
  * 2026. 06. 22. - PID 파라미터 전역 변수 초기화 및 제어 루프 내 실시간 반영 로직 추가
@@ -68,12 +71,12 @@ void MotorCtrl_Init(void)
     
     // PID 초기화 (Kp, Ki, Kd, Ks, dt, max_out, min_out)
     // 전류 제어기는 100us (0.0001s) 루프에서 동작 (표준 PI)
-    PID_Init(&currPid, xPidGain.curr.Kp, xPidGain.curr.Ki, xPidGain.curr.Kd, xPidGain.curr.Ks, PID_CURR_DT, MOTOR_DUTY_MAX, 0.0f);     // Current 출력은 절대 Duty 크기
+    PID_Init(&currPid, xPidGain.curr.Kp, xPidGain.curr.Ki, xPidGain.curr.Kd, xPidGain.curr.Ks, PID_CURR_DT, MOTOR_DUTY_MAX, -MOTOR_DUTY_MAX);     // Current 출력은 부호가 포함된 Duty
     
-    // 속도 제어기는 1ms (0.001s) 루프에서 동작 (PI-IP 혼합 제어)
+    // 속도 제어기는 속도 루프 주기(PID_SPD_DT)에서 동작 (PI-IP 혼합 제어)
     PID_Init(&speedPid, xPidGain.spd.Kp, xPidGain.spd.Ki, xPidGain.spd.Kd, xPidGain.spd.Ks, PID_SPD_DT, LIMIT_CURRENT_MAX, LIMIT_CURRENT_MIN);    // Speed 출력은 타겟 전류량 (최대 ±10.0A)
     
-    // 위치 제어기는 기계적 관성을 고려하여 5ms (0.005s) 루프에서 동작 (표준 PD)
+    // 위치 제어기는 기계적 관성을 고려하여 위치 루프 주기(PID_POS_DT)에서 동작 (표준 PD)
     PID_Init(&posPid, xPidGain.pos.Kp, xPidGain.pos.Ki, xPidGain.pos.Kd, xPidGain.pos.Ks, PID_POS_DT, LIMIT_SPEED_MAX, LIMIT_SPEED_MIN);           // Position 출력은 Speed 명령
     
     // 방향 핀(INHC)은 hal_DspInit.c 의 Init_GpioDout() 에서 이미 초기화 완료됨
@@ -151,6 +154,13 @@ void MotorCtrl_Run(void)
         // 고장 감지 시 즉시 정지 모드로 강제 전환
         xMotorCtrl.mode = MOTOR_MODE_FAULT_STOP;
     }
+
+    // BIT 결함 플래그 상태 점검 및 고장 판단 (과전류, 과열, 과전압, Stall, 과속 등)
+    if (xBit.faultFlagSet == 1U)
+    {
+        // 결함 감지 시 즉시 정지 모드로 강제 전환
+        xMotorCtrl.mode = MOTOR_MODE_FAULT_STOP;
+    }
     
     if (xMotorCtrl.mode == MOTOR_MODE_STOP)
     {
@@ -192,14 +202,14 @@ void MotorCtrl_Run(void)
         static float32_t currentCmd = 0.0f;
         static float32_t speedCmd = 0.0f;
         static Uint16 loop1msCnt = 0U;
-        static Uint16 loop4msDivider = 0U;
+        static Uint16 loopPosCtrlDivider = 0U;
         
         loop1msCnt++;
         if (loop1msCnt >= DECIMATION_SPEED_CTRL)
         {
-            // [4ms 제어 루프] 최외곽 루프: 위치 제어 연산
-            loop4msDivider++;
-            if (loop4msDivider >= DECIMATION_POS_CTRL)
+            // [위치 제어 루프] 최외곽 루프: 위치 제어 연산
+            loopPosCtrlDivider++;
+            if (loopPosCtrlDivider >= DECIMATION_POS_CTRL)
             {
                 if (xMotorCtrl.mode == MOTOR_MODE_POS_CTRL)
                 {
@@ -207,7 +217,7 @@ void MotorCtrl_Run(void)
                     xMotorCtrl.targetPosition = CLAMP_F32(xMotorCtrl.targetPosition, LIMIT_POS_MIN, LIMIT_POS_MAX);
                     speedCmd = PID_Calculate(&posPid, xMotorCtrl.targetPosition, xMotorCtrl.currentPosition);
                 }
-                loop4msDivider = 0U;
+                loopPosCtrlDivider = 0U;
             }
 
             // [1ms 제어 루프] 중간 루프: 속도 제어 연산
@@ -223,11 +233,7 @@ void MotorCtrl_Run(void)
         }
 
         // [100us 제어 루프] 내부 루프: 실시간 하드웨어 전류 제어 연산
-        float32_t currentCmdAbs = (currentCmd >= 0.0f) ? currentCmd : -currentCmd;
-        float32_t currentFdbkAbs = (xAdc.isenMotLpf >= 0.0f) ? xAdc.isenMotLpf : -xAdc.isenMotLpf;
-        
-        float32_t dutyAbs = PID_Calculate(&currPid, currentCmdAbs, currentFdbkAbs);
-        float32_t duty = (currentCmd >= 0.0f) ? dutyAbs : -dutyAbs;
+        float32_t duty = PID_Calculate(&currPid, currentCmd, xAdc.isenMotLpf);
         
         MotorCtrl_SetOutput(duty);
     }

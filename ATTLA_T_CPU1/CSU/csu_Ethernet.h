@@ -9,8 +9,9 @@
 
 /*
  * Modification History
+ * 2026. 06. 22. - 체계 연동통제안(ICD) 반영: 메모리 패킹 추가 및 상태 머신 Enum 동기화
  * 2026. 06. 17. - 명명 규칙 위반 리팩토링 및 헤더 인클루드 수정
- * 2026. 06. 16. - 체계 연동 통제안(Heartbeat 전송, 270V 파싱, IBIT) 상세 구현
+ * 2026. 06. 16. - 체계 연동통제안(Heartbeat 전송, 270V 파싱, IBIT) 상세 구현
  * 2026. 06. 16. - 이더넷 통신 프로토콜 규격 구조체 및 상태 머신 신규 작성
  */
 
@@ -59,9 +60,10 @@
 
 /* 패킷 통신 상태 머신 (Enum) */
 typedef enum {
-    ETH_STATE_INIT = 0,     // W6100 소켓 초기화 후 망 가입 대기 (Step 1)
-    ETH_STATE_BOOT_DONE,    // 망 가입 요청 (Boot Done) 전송 중 (Step 2)
-    ETH_STATE_LINKED        // 망 가입 완료, Heartbeat 정상 교환 상태 (Step 3, 4)
+    STATE_BOOTING = 0,      // 28V 제어전원 인가 후 망 가입 초기화
+    STATE_WAIT_BOOT_ACK,    // Boot Done 500ms 주기 반복 전송 및 ACK 대기
+    STATE_JOINED,           // 통신망 가입 완료 (Heartbeat 교환 및 CBIT 수행)
+    STATE_COMM_LOSS         // 통신 두절 상태
 } EthState_e;
 
 /* 패킷 헤더 (12 Bytes) */

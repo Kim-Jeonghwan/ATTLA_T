@@ -64,7 +64,10 @@
 
 - **모터 구동 및 제어 연산 방식 (`csu_MotorCtrl`)**:
   - **제어 주기**: 100us (EPWM1 인터럽트 기반 동적 Heartbeat)
-  - **제어 모드 (`MotorControlMode_t`)**: `MOTOR_MODE_STOP`, `MOTOR_MODE_SPEED_CTRL`, `MOTOR_MODE_POS_CTRL`
+  - **제어 모드 (`MotorControlMode_t`)**: `MOTOR_MODE_STOP`, `MOTOR_MODE_SPEED_CTRL`, `MOTOR_MODE_POS_CTRL`, `MOTOR_MODE_FAULT_STOP` (고장 정지 모드 추가)
+  - **고장 감지 연동 (Fail-Safe)**: 
+    - 리미트 스위치 결함 감지(`LimitSwitch_CheckFaults()`) 또는 내장 테스트(BIT) 결함 플래그(`xBit.faultFlagSet == 1U`) 발생 시 즉각 `MOTOR_MODE_FAULT_STOP` 모드로 강제 전환.
+    - 고장 정지 모드 진입 시, 모터 출력(PWM) 즉시 0.0f 차단, 기계적 브레이크 잠금 유지, 그리고 모든 제어기(위치/속도/전류)의 PID 적분항(`integral`)을 0으로 완전 초기화하여 에러 해제 후 재구동 시 Windup(급발진) 현상을 원천 방지함.
   - **상태 관리 구조체**: `stMotorCtrlState xMotorCtrl` (내부에 목표/현재 위치 및 속도 변수 포함)
   - **위치 피드백 연산 (`xMotorCtrl.currentPosition`)**:
     - `xEncoder.position` (34비트 오프셋 보정 완료 위치) × `MOTOR_SCALE_POS_DEG` (0.001373291f, 360/2^18) = 기계각(Degree)
@@ -75,12 +78,12 @@
     - **위치 지령 클램핑**: 체계 명령 또는 목표 위치(`targetPosition`)는 `LIMIT_POS_MIN` (0.0f) ~ `LIMIT_POS_MAX` (15840.0f, 44바퀴 × 360°) 범위 내로 강제 제한됨.
     - **위치 제어기 (`posPid`)**: **PD 제어** 적용. dt=0.005s (`PID_POS_DT`, 5ms 분주 `DECIMATION_POS_CTRL`: 5U, 5ms / 1ms) / 출력 제한 `LIMIT_SPEED_MAX` (±3240.0 RPM)
     - **속도 제어기 (`speedPid`)**: **PI-IP 혼합 제어** 적용(`Ks` 계수 연동). dt=0.001s (`PID_SPD_DT`, 1ms 분주 `DECIMATION_SPEED_CTRL`: 10U, 1ms / 100us) / 출력 제한 `LIMIT_CURRENT_MAX` (±9.34 A)
-    - **전류 제어기 (`currPid`)**: **PI 제어** 적용. dt=0.0001s (`PID_CURR_DT`) / 출력 제한 0.0 ~ `MOTOR_DUTY_MAX` (100.0f %) (크기 기반 제어)
+    - **전류 제어기 (`currPid`)**: **PI 제어** 적용. dt=0.0001s (`PID_CURR_DT`) / 출력 제한 `-MOTOR_DUTY_MAX` ~ `+MOTOR_DUTY_MAX` (±100.0f %) (**부호 연산 기반 4상한 제어**)
     - **제어 파라미터 전역 튜닝 (`xPidGain`)**: 실시간 제어 튜닝을 위해 3단 제어기의 파라미터(Kp, Ki, Kd, Ks)가 매크로 하드코딩에서 벗어나 `xPidGain` 전역 구조체(`xPidGain.pos.Kp`, `xPidGain.spd.Ki` 등)로 통합 관리되어 매 제어 루프 반영됨.
-    - **제어 순서**: 위치 지령 ➡️ `posPid` ➡️ 목표 속도 ➡️ `speedPid` ➡️ 목표 전류량 ➡️ `currPid` ➡️ 최종 목표 Duty 도출.
-  - **출력 인가 (`Epwm_SetMotorDuty_1x`)**:
-  - `duty` 값(-100.0% ~ 100.0%)의 부호에 따라 `DRV_DIR` 방향 핀 제어(`MotorDriver_SetDir`).
-  - 절대값 Duty는 1x PWM 하위 계층인 `Epwm_SetMotorDuty_1x(outputDuty)`로 전달되어 모터 구동.
+    - **제어 순서**: 위치 지령 ➡️ `posPid` ➡️ 목표 속도 ➡️ `speedPid` ➡️ 목표 전류량 ➡️ `currPid` (절댓값 변환 없이 부호 유지) ➡️ 최종 목표 Duty 도출.
+  - **출력 인가 및 영점 교차 처리 (`MotorCtrl_SetOutput`)**:
+    - 전류 제어기를 통해 도출된 최종 부호 있는 `duty` 값(-100.0% ~ 100.0%)은 분리 없이 출력 함수로 인가됨.
+    - 함수 내부에서 부호(+/-)를 판별하여 `DRV_DIR` 방향 핀을 전환(`MotorDriver_SetDir`)하고, 하드웨어 PWM 레지스터에만 절댓값으로 변환 인가(`Epwm_SetMotorDuty_1x`)함. 이를 통해 모터의 역방향 제동 및 영점 교차(Zero-Crossing) 구간에서 오차 왜곡이나 꺾임 현상(Fold-back) 없는 매끄러운 제어를 실현.
 
 ---
 
@@ -118,12 +121,15 @@
 | **Reference 전압** | ADCB SOC1 (B1) | REF3040 기반 2.048V 검증용. 변환 계수: `1.0f` |
 | **보드 온도** | ADCB SOC3 (B3) | MAX6605 내부 온도 센서. -55℃ ~ +125℃. 수식: `(V_in * 84.033613f) - 55.0f` |
 
-### 3.3 내장 테스트 (BIT) 결함 임계치 (Fault Limits)
+### 3.3 내장 테스트 (BIT) 결함 임계치 및 Fail-Safe (Fault Limits)
 - **모터 과전류 (OVC_MOT)**: `10.0 A` 임계치.
 - **브레이크 과전류 (OVC_BRK)**: `1.5 A` 임계치.
 - **28V 과전압 (OVV_28V)**: `32.0 V` 임계치.
 - **보드 과열 (OVT_BD)**: `80.0 ℃` 임계치.
-  > 💡 **참고**: 각 고장 판정에는 100ms 누적 지연 필터(`BIT_CNT_FILTER_REF`)를 공통으로 적용하여 일시적 노이즈에 의한 오탐지를 방지합니다.
+- **모터 과속 (OVS_MOT)**: 모터 정격과 동일한 `3240.0 RPM` 임계치. (100ms 지연 필터)
+- **모터 구속 (STALL)**: 전류가 `5.0 A` 초과이면서 속도가 `10 RPM` 미만으로 유지될 때. (기구적 끼임 사고 대비, 1.0초 지연 필터)
+- **엔코더 및 드라이버 결함**: 통신 에러 및 DRV8343 하드웨어 폴트 감지 (디바운싱 후 즉각 반영).
+  > 💡 **참고**: 각 고장 판정에는 일시적 노이즈에 의한 오탐지를 방지하기 위해 누적 지연 필터 카운터(예: `BIT_CNT_FILTER_REF` 100ms)가 적용되어 있으며, 최종 결함 확정 시 `xBit.faultFlagSet`이 세트되어 구동기가 즉시 차단(Fail-Safe)됩니다.
 
 ---
 
@@ -137,20 +143,21 @@
   - **드라이버 경량화**: 정적 시험 복잡도 및 메모리 최적화를 위해 TCP, IPv6, MACRAW 등 미사용 통신 기능 코드를 전면 제거한 UDP 전용 드라이버 아키텍처 적용 완료.
   - 모든 데이터는 **Little Endian** 형식 준수
   - **체크섬 (Checksum)**: 메시지 맨 끝 2 Bytes 할당. 체크섬 필드를 제외한 모든 필드의 바이트(Byte) 단위 합산 결과 중 최하위 2 Bytes 적용.
-- **메시지 패킷 구조 (`__attribute__((packed))` 적용)**:
-  - **일반 Payload 메시지**: Header(12 Bytes) + Data(가변, 최대 1010 Bytes) + Checksum(2 Bytes)
-    - `Header`: Timestamp(4B), Source_ID(1B), Dest_ID(1B), Code(1B), Request_ACK(1B), Priority(1B), Send_Count(1B), Data_Length(2B)
+- **메시지 패킷 구조 (직렬화/역직렬화 적용)**:
+  - C28x 아키텍처의 1바이트=16비트 한계를 극복하기 위해 `sizeof()` 및 `memcpy` 대신 명시적인 바이트 직렬화(Serialization) 적용.
+  - 패킷 송신 시 배열(TxBuffer)에 8비트씩 Shift 연산하여 `12 Bytes`의 헤더 규격 강제 준수.
+  - **헤더부(12 Bytes)**: Timestamp(4), Source_ID(1), Dest_ID(1), Code(1), Request_ACK(1), Priority(1), Send_Count(1), Data_Length(2).
   - **ACK 응답 메시지 (18 Bytes 고정)**: Header(12 Bytes) + Data(4 Bytes) + Checksum(2 Bytes)
     - `ACK Data`: Code_Info(2B), Ack_Info(2B, 정상:0x00, 체크섬오류:0x01 등)
 - **응답(ACK) 및 타임아웃/재전송 로직**:
   - ACK를 요청받은 경우 수신 후 100ms 이내에 리턴 (체크섬 오류 시 NACK 0x11 리턴)
   - 송신 후 100ms 이내 응답 없을 시 재전송 수행. 최초 1회 포함 **총 4회** (재전송 3회) 시도 (`Send_Count` 반영).
   - 4회 시도에도 응답이 없으면 통신 두절로 판단하고 소켓 리셋.
-- **상태 머신 (통신망 가입 및 BIT 절차, `csu_Ethernet.c` 통합 구현 완료)**:
-  - **Step 1 (초기화)**: 부팅 및 PBIT 완료 후 W6100 소켓(UDP, Port 5001) 개방.
-  - **Step 2 (망 가입)**: 화포통제컴퓨터로 Boot Done 전송. ACK 수신 전까지 **500ms 주기** 무한 반복.
-  - **Step 3/4 (Heartbeat)**: 망 가입 완료 후, 100ms 주기로 상태정보(`ETH_CODE_HEARTBEAT`) 송수신 영구 수행. 이때 Payload의 첫 번째 바이트에 270V 전원 상태(`Power270VStatus`)를 실어 보냄.
-  - **Step 5 (두절 예외 처리)**: 100ms 주기 상태 메시지가 **연속 50회(5초) 이상** 미응답 시 소켓 리셋하고 Step 2로 롤백.
+- **상태 머신 (통신망 가입 및 연동통제안 규격, `csu_Ethernet.c` 백그라운드 태스크 구현 완료)**:
+  - **STATE_BOOTING**: 28V 제어전원 인가 및 초기화 후 즉각 망 가입 절차로 천이.
+  - **STATE_WAIT_BOOT_ACK**: 망 가입을 위해 화포통제컴퓨터로 `BOOT_DONE` 500ms 주기 전송 및 응답 대기.
+  - **STATE_JOINED**: 망 가입 완료 후, 100ms 주기로 상태정보(`ETH_CODE_HEARTBEAT`) 송수신 영구 수행. 이때 Payload의 첫 번째 바이트에 270V 전원 상태(`Power270VStatus`)를 실어 보냄.
+  - **STATE_COMM_LOSS (통신 두절 롤백)**: 100ms 주기 상태 메시지가 **연속 50회(5초) 이상** 미응답 시 소켓을 닫고 리셋한 뒤 `STATE_WAIT_BOOT_ACK` 단계로 롤백.
 - **270VDC 구동 전원 시퀀스**:
   - 망 가입 후 270V 구동 전원 인가 메시지(`ETH_CODE_POWER_270V`) 수신 시 전원 상태 변수 갱신 후 Heartbeat를 통해 응답.
 - **CBIT / IBIT 제어 로직**:
@@ -231,6 +238,8 @@
 | **`xBit`** | `stBitState` | 시스템 내장 테스트(BIT) 결과. 각 모듈의 고장(Fault), 경고(Warning) 플래그 통합 |
 | **`xSysCtrl`** | `volatile stControlState` | 전체 시스템의 제어 상태(오프셋 캘리브레이션 완료 여부, PBIT 완료 여부 등) 플래그 관리 |
 | **`xDio`** | `volatile stDioState` | 디바운싱 필터가 적용된 이산신호(리미트 스위치, 시스템 감시, 홀센서 상태 등) 상태 |
+| **`xLimitSwitchConfig`**| `stLimitSwitchConfig`| 리미트 스위치 매핑, 타겟 위치 및 오차 허용치(Tolerance) 설정 데이터 |
+| **`xLimitSwitch`** | `stLimitSwitchState` | 리미트 스위치 고장 판단(단선, 위치 불일치) 상태 및 에러 플래그 관리 |
 | **`xEncoder`** | `stEncoderState` | 모터/기구부 앱솔루트 엔코더(SSI) 상태. (위치, 360도 환산 각도, 에러 상태 등) |
 | **`xMotorCtrl`** | `stMotorCtrlState` | 모터 제어기의 현재 상태. (운전 모드, 목표/현재 속도(RPM), 목표/현재 위치 등) |
 | **`xPidGain`** | `stPidGain` | 실시간 튜닝용 3단 계단식(위치/속도/전류) PID 제어기의 파라미터 게인 (Kp, Ki, Kd, Ks) 모음 |
@@ -256,7 +265,6 @@
 
 | 구분 | 상세 내용 |
 | :--- | :--- |
-| **리미트 센서 로직** | 리미트 센서(`nLIMIT1`, `nLIMIT2`) 값을 읽어들이고 있으나, 이 상태를 모터 운전 및 시스템 제어에 어떻게 반영할지 시퀀스 로직 미구현 |
 | **LED 표시 로직** | 어떠한 시스템 상태(정상/오류/구동 등)에서 **LED 점등 및 점멸**을 수행할지에 대한 명확한 조건 미구현 |
 | **홀센서 안전 제어** | 모터 상태 모니터링을 위한 홀센서 3상(A/B/C) 입력이 `xDio`로 수집되고 있으나, 이를 통한 구속(Stall) 감지 및 회전 방향 교차 검증 로직은 미구현 |
 

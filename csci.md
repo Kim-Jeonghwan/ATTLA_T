@@ -135,18 +135,36 @@
   - `PID_Calculate(PID_Controller_t* pid, float32_t setpoint, float32_t feedback)`: PID 및 안티와인드업 알고리즘 수행.
 - **주요 변수**:
   - `currPid`, `speedPid`, `posPid` (`PID_Controller_t` 구조체 인스턴스): 적분기(`integral`), 에러(`prevError`) 등을 보존하는 제어기.
-  - 카운터 분주 변수: `loop1msCnt`, `loop4msDivider` (각각 1ms, 4ms 데시메이션 달성용).
+  - `xPidGain` (`stPidGain` 전역 구조체): Kp, Ki, Kd, Ks 등 튜닝 파라미터를 통합하여 실시간으로 반영하는 구조체.
+  - 카운터 분주 변수: `loop1msCnt`, `loopPosCtrlDivider` (동적 데시메이션 달성용).
 - **동작 상세**:
-  - **위치 루프(4ms)**: `posPid`가 `xMotorCtrl.targetPosition`과 `currentPosition`의 편차를 계산해 목표 속도(`speedCmd`)를 출력합니다.
-  - **속도 루프(1ms)**: `speedPid`가 1ms마다 분주 연산된 RPM을 피드백받아 목표 전류(`currentCmd`)를 출력합니다.
-  - **전류 루프(100us)**: 매 인터럽트마다 `currPid`가 목표 전류와 ADC의 `isenMotLpf`를 비교하여 최종 PWM `duty`를 출력합니다.
+  - **Fail-Safe 연동**: `LimitSwitch_CheckFaults()` 결함이나 `xBit.faultFlagSet` 발생 시, 즉시 `MOTOR_MODE_FAULT_STOP` 모드로 강제 전환하여 출력을 0으로 차단하고 기계적 브레이크 잠금을 수행합니다.
+  - **위치 루프(분주 제어)**: `posPid`가 `xMotorCtrl.targetPosition`과 `currentPosition`의 편차를 계산해 목표 속도(`speedCmd`)를 출력합니다. (`DECIMATION_POS_CTRL` 매크로 주기 활용)
+  - **속도 루프(1ms)**: `speedPid`가 1ms(`DECIMATION_SPEED_CTRL`)마다 분주 연산된 RPM을 피드백받아 목표 전류(`currentCmd`)를 출력합니다. (`Ks` 파라미터를 활용한 PI-IP 혼합 제어 지원)
+  - **전류 루프(100us)**: 매 인터럽트마다 `currPid`가 목표 전류와 ADC의 `isenMotLpf`를 비교하여 최종 부호가 포함된 PWM `duty`(-100.0f ~ 100.0f)를 출력합니다. (절댓값 변환 없이 4상한 제어 달성)
   - 각 제어기는 `PID_Calculate` 내부에서 출력 범위를 클램핑하고, 오버플로우 초과분 만큼 `integral`을 차감하는 Anti-Windup 처리가 엄격히 적용되어 있습니다.
 
-### 3.7 시스템 운용 CSU
+### 3.7 리미트 스위치 감시 및 안전 로직 CSU
+- **관련 파일**: `csu_LimitSwitch.c`, `csu_LimitSwitch.h`
+- **핵심 함수**:
+  - `LimitSwitch_Init()`: 리미트 스위치 매핑 및 목표값 구조체 초기화.
+  - `LimitSwitch_CheckFaults()`: 매 주기 스위치의 하드웨어적, 논리적 결함을 판별.
+- **주요 변수**:
+  - `xLimitSwitchConfig`: 각 스위치의 목표 위치(Target) 및 오차 허용치(Tolerance) 매핑 정보 보관.
+  - `xLimitSwitch`: 스위치의 에러 여부(`isFaultActive`) 및 고장 코드(`faultCode`) 보관.
+- **동작 상세**:
+  - 1차적으로 `xDio.limit1No`와 `xDio.limit1Nc` 값을 비교하여 단선이나 하드웨어적 결함을 검출합니다.
+  - 2차적으로 현재 모터 위치(`xMotorCtrl.currentPosition`)가 설정된 범위(Tolerance) 안에 진입했을 때, 매핑된 스위치가 정상적으로 닫혔는지(논리적 정합성)를 교차 검증하여 에러 플래그를 생성합니다.
+
+### 3.8 시스템 운용 CSU
 - **관련 파일**: `csu_Control.c`
 - **핵심 함수**:
   - `MainControl_Isr()`: 100us 최상위 인터럽트 함수.
   - `Control_SystemOperation()`: 메인 제어 파이프라인.
+- **설계 제약사항 및 해결방안 (C28x 16-bit 아키텍처 지원)**:
+  - TI C28x 계열 DSP는 1 Byte가 16-bit 공간을 차지하여 `#pragma pack`을 통한 1바이트 구조체 패킹이 물리적으로 지원되지 않음.
+  - 이를 해결하기 위해 네트워크 송/수신 시 `memcpy`를 배제하고 바이트 단위 비트 시프트 연산을 수행하는 **직렬화(Serialization)/역직렬화(Deserialization)** 헬퍼 함수를 자체 구현.
+  - W6100 하드웨어로 데이터를 넘길 때 오차 없는 `12바이트(Header) + Payload` 형태의 정확한 패킷 전송을 보장.
 - **주요 변수**:
   - `adcTimeout`: 무한루프(Stuck) 방지를 위한 100U 타임아웃 락 변수.
   - `isrAliveCounter`: 인터럽트 생존 검증용 카운터 변수 (5000 카운트 도달 시 토글).
@@ -154,7 +172,7 @@
   - `MainControl_Isr`에 진입하면 `ADC_getInterruptStatus()`를 타임아웃 기반으로 기다려 신뢰성을 확보한 뒤, 모든 센싱 데이터를 일괄 취득(`ADC_readResult`)합니다.
   - 이후 `Control_SystemOperation()`을 호출하여 `CalcAdcData -> Dio_UpdateInput -> Encoder_UpdatePosition -> MotorDriver_UpdateStatus -> Bit_RunCBIT -> MotorCtrl_Run` 순서의 결정론적(Deterministic) 제어 파이프라인을 실행합니다.
 
-### 3.8 데이터 저장 CSU
+### 3.9 데이터 저장 CSU
 - **관련 파일**: `csu_Control.c`, `csu_Encoder.c`
 - **핵심 함수**:
   - `Encoder_SetZero()`, `Encoder_LoadOffset()`: 엔코더 영점 기록 및 호출.
@@ -176,12 +194,12 @@
   - `Ethernet_SendMessage()`: 헤더 및 페이로드 조립, 센드카운트 적용, 송신.
   - `Ethernet_ParsePacket()`: 수신 버퍼 언패킹, 체크섬 및 ACK 로직.
 - **주요 변수**:
-  - `xEthCtrl.State`: 상태 머신 노드 관리 (`ETH_STATE_INIT`, `BOOT_DONE`, `LINKED`).
+  - `xEthCtrl.State`: 상태 머신 노드 관리 (`STATE_BOOTING`, `STATE_WAIT_BOOT_ACK`, `STATE_JOINED`).
   - `xEthCtrl.WaitAckCode`, `xEthCtrl.RetryCount`, `xEthCtrl.WaitAckTimer`: ACK 대기 및 재전송(최대 4회) 파라미터.
   - `xEthCtrl.Power270VStatus`: 체계로부터 270V 인가 메시지 수신 시 갱신되는 전원 플래그.
   - `g_isW6100Connected`: 하드웨어 링크 상태를 대변하는 글로벌 변수.
 - **동작 상세**:
-  - 100ms 주기로 동작하며 `g_isW6100Connected == 0`일 경우 함수를 즉시 `return`시켜 미연결 시 무한 락업 현상을 방어합니다.
-  - 상태가 `INIT`일 때 500ms 주기로 `ETH_CODE_BOOT_DONE`을 전송하며 `WaitAckCode`를 세팅합니다.
-  - 상대방으로부터 `ETH_CODE_ACK` 메시지를 파싱하여 `Code_Info`와 내가 기다리는 코드가 일치하면 `State`를 `LINKED`로 천이시킵니다.
-  - 송수신되는 모든 패킷(Header+Data)에 대해 맨 뒷단 2바이트를 제외한 모든 바이트를 더하는 방식의 `Ethernet_CalculateChecksum()` 연산을 수행하여 통신 무결성을 상호 검증합니다. 통신 두절(Timeout Limit 초과) 발생 시 Socket을 닫고 재오픈(`socket()`)하여 초기 망 가입 모드로 롤백합니다.
+  - 100ms 주기로 백그라운드 태스크에서 동작하며 `g_isW6100Connected == 0`일 경우 함수를 즉시 `return`시켜 미연결 시 무한 락업 현상을 방어합니다.
+  - 상태가 `STATE_WAIT_BOOT_ACK`일 때 500ms 주기로 `ETH_CODE_BOOT_DONE`을 전송하며 `WaitAckCode`를 세팅합니다.
+  - 수신 ISR에서 `ETH_CODE_ACK` 메시지를 파싱하여 `Code_Info`와 내가 기다리는 코드가 일치하면 `State`를 `STATE_JOINED`로 천이시킵니다.
+  - 송수신되는 모든 패킷(Header+Data)에 대해 맨 뒷단 2바이트를 제외한 모든 바이트를 더하는 방식의 `Ethernet_CalculateChecksum()` 연산을 수행하여 통신 무결성을 상호 검증합니다. 통신 두절(Timeout Limit 50회 연속 미수신 초과) 발생 시 Socket을 닫고 재오픈(`socket()`)하여 초기 망 가입 모드(`STATE_WAIT_BOOT_ACK`)로 롤백합니다.
