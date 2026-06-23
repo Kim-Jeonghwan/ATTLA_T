@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Pid.c
-    Version          : 00.01
+    Version          : 00.02
     Description      : 표준 PID 제어기 (안티와인드업 및 PI-IP 혼합 제어 포함)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 22. (PI-IP 혼합 제어 지원 로직 추가)
+    Last Updated     : 2026. 06. 23. (코딩 규칙 및 구조 불일치 사항 리팩토링 반영)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
  * 2026. 06. 22. - PI-IP 혼합 제어 지원 로직 추가 (Ks 파라미터 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -30,17 +31,20 @@
 */
 void PID_Init(PID_Controller_t* pid, float32_t kp, float32_t ki, float32_t kd, float32_t ks, float32_t dt, float32_t max_out, float32_t min_out)
 {
-    pid->Kp = kp;
-    pid->Ki = ki;
-    pid->Kd = kd;
-    pid->Ks = ks;
-    pid->dt = dt;
-    pid->maxOutput = max_out;
-    pid->minOutput = min_out;
-    
-    pid->integral = 0.0f;
-    pid->prevError = 0.0f;
-    pid->output = 0.0f;
+    if (pid != NULL)
+    {
+        pid->Kp = kp;
+        pid->Ki = ki;
+        pid->Kd = kd;
+        pid->Ks = ks;
+        pid->dt = dt;
+        pid->maxOutput = max_out;
+        pid->minOutput = min_out;
+        
+        pid->integral = 0.0f;
+        pid->prevError = 0.0f;
+        pid->output = 0.0f;
+    }
 }
 
 /*
@@ -53,38 +57,50 @@ void PID_Init(PID_Controller_t* pid, float32_t kp, float32_t ki, float32_t kd, f
 */
 float32_t PID_Calculate(PID_Controller_t* pid, float32_t setpoint, float32_t feedback)
 {
-    float32_t error = setpoint - feedback;
-    float32_t pOut, iOut, dOut;
+    float32_t retVal = 0.0f;
 
-    // P Control (PI-IP 혼합식 적용)
-    // Ks = 1.0 (PI 제어): Kp * (setpoint - feedback) = Kp * error
-    // Ks = 0.0 (IP 제어): Kp * (0 - feedback) = -Kp * feedback
-    pOut = (error * pid->Kp * pid->Ks) - (feedback * pid->Kp * (1.0f - pid->Ks));
-
-    // I Control (Anti-windup 적용)
-    pid->integral += error * pid->dt;
-    iOut = pid->Ki * pid->integral;
-
-    // D Control
-    dOut = pid->Kd * ((error - pid->prevError) / pid->dt);
-    pid->prevError = error;
-
-    // Total Output
-    pid->output = pOut + iOut + dOut;
-
-    // 출력 제한 (Saturation) & Anti-windup
-    if (pid->output > pid->maxOutput)
+    if (pid != NULL)
     {
-        pid->output = pid->maxOutput;
-        // Anti-windup (Clamping)
-        pid->integral -= error * pid->dt;
-    }
-    else if (pid->output < pid->minOutput)
-    {
-        pid->output = pid->minOutput;
-        // Anti-windup (Clamping)
-        pid->integral -= error * pid->dt;
+        float32_t error = setpoint - feedback;
+        float32_t pOut;
+        float32_t iOut;
+        float32_t dOut = 0.0f;
+
+        // P Control (PI-IP 혼합식 적용)
+        // Ks = 1.0 (PI 제어): Kp * (setpoint - feedback) = Kp * error
+        // Ks = 0.0 (IP 제어): Kp * (0 - feedback) = -Kp * feedback
+        pOut = (error * pid->Kp * pid->Ks) - (feedback * pid->Kp * (1.0f - pid->Ks));
+
+        // I Control (Anti-windup 적용)
+        pid->integral += error * pid->dt;
+        iOut = pid->Ki * pid->integral;
+
+        // D Control (Divide by Zero 방어 적용)
+        if (pid->dt > 1.0e-6f)
+        {
+            dOut = pid->Kd * ((error - pid->prevError) / pid->dt);
+        }
+        pid->prevError = error;
+
+        // Total Output
+        pid->output = pOut + iOut + dOut;
+
+        // 출력 제한 (Saturation) & Anti-windup
+        if (pid->output > pid->maxOutput)
+        {
+            pid->output = pid->maxOutput;
+            // Anti-windup (Clamping)
+            pid->integral -= error * pid->dt;
+        }
+        else if (pid->output < pid->minOutput)
+        {
+            pid->output = pid->minOutput;
+            // Anti-windup (Clamping)
+            pid->integral -= error * pid->dt;
+        }
+
+        retVal = pid->output;
     }
 
-    return pid->output;
+    return retVal;
 }

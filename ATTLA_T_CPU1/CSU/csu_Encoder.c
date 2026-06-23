@@ -1,10 +1,10 @@
 /**********************************************************************
- Nexcom Co., Ltd.
- Filename         : csu_Encoder.c
- Version          : 00.06
- Description      : AksIM-2 엔코더 어플리케이션 기능 처리 모듈
- Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 12. (매크로 상수 헤더로 이동)
+    Nexcom Co., Ltd.
+    Filename         : csu_Encoder.c
+    Version          : 00.06
+    Description      : AksIM-2 엔코더 어플리케이션 기능 처리 모듈
+    Programmer       : Kim Jeonghwan
+    Last Updated     : 2026. 06. 12. (매크로 상수 헤더로 이동)
 **********************************************************************/
 
 /*

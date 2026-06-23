@@ -51,6 +51,8 @@
                                     <listOptionValue value="${CG_TOOL_ROOT}/include"/>
                                     <listOptionValue value="${PROJECT_ROOT}/HAL"/>
                                     <listOptionValue value="${PROJECT_ROOT}/CSU"/>
+                                    <listOptionValue value="${PROJECT_ROOT}/SDK/easydsp"/>
+                                    <listOptionValue value="${PROJECT_ROOT}/HAL/W6100"/>
                                 </option>
                                 <option id="com.ti.ccstudio.buildDefinitions.C2000_25.11.compilerID.DEFINE.703316785" superClass="com.ti.ccstudio.buildDefinitions.C2000_25.11.compilerID.DEFINE" valueType="definedSymbols">
                                     <listOptionValue value="${SYSCONFIG_TOOL_SYMBOLS}"/>

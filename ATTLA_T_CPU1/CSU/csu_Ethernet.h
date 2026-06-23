@@ -1,10 +1,10 @@
 /**********************************************************************
- Nexcom Co., Ltd.
- Filename         : csu_Ethernet.h
- Version          : 00.01
- Description      : 이더넷(W6100) 연동통제안 프로토콜 및 상태 머신 정의
- Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 17. (명명 규칙 위반 리팩토링 및 헤더 인클루드 수정)
+    Nexcom Co., Ltd.
+    Filename         : csu_Ethernet.h
+    Version          : 00.01
+    Description      : 이더넷(W6100) 연동통제안 프로토콜 및 상태 머신 정의
+    Programmer       : Kim Jeonghwan
+    Last Updated     : 2026. 06. 17. (명명 규칙 위반 리팩토링 및 헤더 인클루드 수정)
 **********************************************************************/
 
 /*

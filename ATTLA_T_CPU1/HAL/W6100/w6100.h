@@ -1,10 +1,10 @@
 /**********************************************************************
- Nexcom Co., Ltd.
- Filename         : w6100.h
- Version          : 00.05
- Description      : WIZnet 이더넷 라이브러리 파일
- Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 16. (중복된 #endif 제거하여 컴파일 오류 수정)
+    Nexcom Co., Ltd.
+    Filename         : w6100.h
+    Version          : 00.05
+    Description      : WIZnet 이더넷 라이브러리 파일
+    Programmer       : Kim Jeonghwan
+    Last Updated     : 2026. 06. 16. (중복된 #endif 제거하여 컴파일 오류 수정)
 **********************************************************************/
 
 /*

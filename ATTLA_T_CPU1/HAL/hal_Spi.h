@@ -1,10 +1,10 @@
 /**********************************************************************
- Nexcom Co., Ltd.
- Filename         : hal_Spi.h
- Version          : 00.06
- Description      : SPI 하드웨어 제어 헤더
- Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 15. (SPI-A 통신 속도 10MHz로 변경)
+    Nexcom Co., Ltd.
+    Filename         : hal_Spi.h
+    Version          : 00.06
+    Description      : SPI 하드웨어 제어 헤더
+    Programmer       : Kim Jeonghwan
+    Last Updated     : 2026. 06. 15. (SPI-A 통신 속도 10MHz로 변경)
 **********************************************************************/
 
 /*

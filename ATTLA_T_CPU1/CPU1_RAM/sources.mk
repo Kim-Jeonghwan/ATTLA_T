@@ -120,11 +120,13 @@ GEN_OPTS__QUOTED :=
 SUBDIRS := \
 . \
 CSU \
+HAL/W6100 \
 HAL \
 SDK/common/source \
 SDK/driverlib \
 SDK/driverlib/ccs/Debug \
 SDK/driverlib/ccs/Release \
+SDK/easydsp \
 SDK/headers/cmd \
 SDK/headers/source \
 

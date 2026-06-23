@@ -1,10 +1,10 @@
 /**********************************************************************
- Nexcom Co., Ltd.
- Filename         : wizchip_conf.c
- Version          : 00.02
- Description      : WIZnet 이더넷 라이브러리 파일
- Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 16. (IPv6 및 미사용 I/O 인터페이스 관련 오류 수정)
+    Nexcom Co., Ltd.
+    Filename         : wizchip_conf.c
+    Version          : 00.02
+    Description      : WIZnet 이더넷 라이브러리 파일
+    Programmer       : Kim Jeonghwan
+    Last Updated     : 2026. 06. 16. (IPv6 및 미사용 I/O 인터페이스 관련 오류 수정)
 **********************************************************************/
 
 /*

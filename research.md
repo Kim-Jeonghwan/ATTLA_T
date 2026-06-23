@@ -1,121 +1,79 @@
-# 🌐 ATTLA-T 통신 및 인터페이스 명세서 (Ethernet 연동통제안)
+# 🌐 ATTLA-T 프로젝트 코딩 규칙 및 구조(CSU/HAL) 불일치 조사 보고서
 
-본 문서는 초장사정 자동선회잠금장치(ATTLA-T) 프로젝트의 **TMS320F28388D (CPU1)** 코어 기반에서 동작하는 **이더넷(UDP) 프로토콜** 및 화포통제컴퓨터와의 **연동통제안 상태 머신**에 대한 모든 설정과 데이터 규격을 통합 정리한 스펙 문서입니다.
-
----
-
-## 1. 이더넷 (UDP) 네트워크 하드웨어 및 기본 설정
-
-| 항목 | DSP (ATTLA-T) | 체계 / PC (화포통제컴퓨터) |
-| :--- | :--- | :--- |
-| **IP 주소** | `192.168.200.10` | `192.168.200.1` (추정치/고정) |
-| **MAC 주소** | `00:08:DC:11:22:33` | Auto-Learning |
-| **Subnet Mask** | `255.255.255.0` | `255.255.255.0` |
-| **Gateway** | `192.168.200.1` | - |
-| **수신/송신 포트** | `5001` (`PORT_UDP_COM`) 고정 | `5001` (대상 포트 고정) |
-| **프로토콜** | IPv4, UDP (Little Endian Payload) | IPv4, UDP |
-| **물리 계층(칩셋)**| **W6100** (SPI-A, 10MHz 통신) | - |
-| **인터럽트** | `INTn` ➡️ GPIO 20 (`XINT1`, 하강 에지) | - |
-
-> 💡 **비고**: SPI 클럭은 시스템 LSPCLK 최대 한계 초과 에러를 방지하기 위해 10MHz(`POL0PHA0`)로 최적화되어 있습니다. 하드웨어 미연결 또는 SPI 통신 불량 시 무한 루프 락업(Stuck) 방지를 위해 `g_isW6100Connected = 0` 처리되어 상태 머신이 동작하지 않습니다.
+본 문서는 ATTLA-T 프로젝트의 `CSU`, `HAL`, `main` 디렉토리 내 소스 및 헤더 파일을 전수 조사하여, 명시된 코딩 규칙 및 CSU/HAL 3계층 구조 원칙과 일관되지 않거나 어긋나는 항목들을 정리한 보고서입니다.
 
 ---
 
-## 2. 이더넷 프로토콜 패킷 (UDP Payload) 규격
+## 1. 매크로 상수 및 전역 변수 정의 위치 위반 (Macro Constants & Declarations Rule)
+> [!IMPORTANT]
+> **준수 규칙**: 모든 매크로 상수(`#define`), 전역 변수, 스케일 팩터 등의 선언은 `.c` 소스 파일 내부가 아닌, 반드시 해당 모듈의 헤더 파일(`.h`)에 작성해야 합니다. 매직 넘버 사용을 지양하고 상수를 직관적인 이름으로 정의하여 유지보수성을 극대화하십시오.
 
-모든 Payload 데이터 필드(Header + Data)는 구조체 패킹을 사용하며, **Little Endian** 데이터 규격을 따릅니다.
+### 1.1 `main.c` 내 전역 변수 누락 및 독단 정의
+* **위치**: [main.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/main.c#L31)
+* **코드 내용**: `uint16_t FramTest = 0u;`
+* **위반 세부사항**: `main.h` 등 헤더 파일에 `extern uint16_t FramTest;` 선언이 누락된 상태로 소스 파일 내부에 전역 변수가 정의되어 있습니다.
 
-### 2.1 공통 MSG Header 구조 (12 Bytes)
-화포통제컴퓨터 $\leftrightarrow$ ATTLA-T 간 모든 UDP 패킷의 최상단 12바이트는 공통 헤더 규격을 사용합니다.
-
-| Byte Offset | 필드명 | 크기 (Bytes) | 설명 |
-| :--- | :--- | :--- | :--- |
-| `[0~3]` | **Timestamp** | 4 | 화포통제컴퓨터 Tickcount (응답 시 그대로 복사 반환). 자발적 송신 시 `0x00000000` |
-| `[4]` | **Source ID** | 1 | 송신 장치 ID. (ATTLA-T: `0x02`, 화포통제컴퓨터: `0x01` 임시) |
-| `[5]` | **Dest ID** | 1 | 수신 목적지 장치 ID |
-| `[6]` | **Code** | 1 | 메시지 명령어 코드 (하단 Code 테이블 참조) |
-| `[7]` | **Request ACK** | 1 | `0xFF` (미요청), `0x01` (요청함). ACK 응답 시 `0x10`(정상), `0x11`(NACK) |
-| `[8]` | **Priority** | 1 | 우선순위 (기본 `0x00`) |
-| `[9]` | **Send Count** | 1 | 패킷 전송 횟수 (`1` ~ `4`). 재전송 시마다 카운트 1씩 증가 |
-| `[10~11]`| **Data Length** | 2 | 뒤이어 오는 순수 Payload(Data)의 바이트 단위 길이 (Header 12B 및 Checksum 2B 제외) |
-
-### 2.2 메시지 Code (명령어) 테이블
-| Code 값 | 매크로 명칭 | 설명 및 페이로드 데이터 |
-| :--- | :--- | :--- |
-| `0x10` | `ETH_CODE_BOOT_DONE` | 망 가입 요청 (부팅 완료 보고) |
-| `0x11` | `ETH_CODE_HEARTBEAT` | 상태 정보 (100ms 주기 교환). Payload[0]: 270V 전원 인가 상태 |
-| `0x12` | `ETH_CODE_PBIT_REQ` | PBIT(초기점검) 수행 요청 |
-| `0x13` | `ETH_CODE_PBIT_REP` | PBIT 결과 응답 전송 |
-| `0x14` | `ETH_CODE_IBIT_REQ` | IBIT(임의점검) 수행 요청 |
-| `0x15` | `ETH_CODE_IBIT_REP` | IBIT 결과 응답 전송 |
-| `0x16` | `ETH_CODE_CBIT_SET` | CBIT 전송주기 설정 요청. Payload[0~1]: N초 (주기) |
-| `0x17` | `ETH_CODE_CBIT_REP` | CBIT 주기 점검 결과 송신 (설정된 N초 주기 발송) |
-| `0x18` | `ETH_CODE_POWER_270V`| 270VDC 구동 전원 인가 통보 |
-| `0xFF` | `ETH_CODE_ACK` | ACK(수신 확인) 응답 메시지 |
-
-### 2.3 Checksum (체크섬) 생성 규칙
-- **위치**: 전체 패킷(Header + Data)의 맨 마지막에 위치 (크기: 2 Bytes).
-- **연산식**: Checksum 2바이트 공간을 제외한 앞선 모든 바이트 배열 데이터를 덧셈 연산하여 누적합을 구한 뒤, 그 결과의 **최하위 2바이트 (Little Endian)** 값을 사용.
-- **검증**: 수신 시 계산된 체크섬과 일치하지 않으면 NACK(`ETH_ACK_INFO_CS_ERR`, `0x0001`)를 전송함.
-
-### 2.4 ACK (응답 / NACK) 패킷 규격
-패킷 수신 성공/실패 여부를 응답하는 전용 메시지.
-- **총 길이**: 18 Bytes (Header 12 + Data 4 + Checksum 2)
-- **Data 필드 상세 (4B)**:
-  - `[12~13]` **Code Info** (2B) : 수신한 원본 메시지의 대상 Code 값
-  - `[14~15]` **Ack Info** (2B) : `0x0000` (정상/OK), `0x0001` (Checksum Error)
+### 1.2 `csu_SciPc.c` 내 매크로 상수 `#define` 정의
+* **위치**: [csu_SciPc.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_SciPc.c#L23-L25)
+* **코드 내용**:
+  ```c
+  #define SCI_PC_SOF    0x7Eu
+  #define SCI_PC_EOT    0x0Du
+  #define SCI_PC_MSG1   0x10u
+  ```
+* **위반 세부사항**: PC 통신 프로토콜 관련 프레임 제어 매크로 상수가 `.c` 소스 파일 내부에 정의되어 은폐되어 있습니다. 해당 상수 정의는 모듈 헤더 파일인 [csu_SciPc.h](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_SciPc.h)로 이관해야 합니다.
 
 ---
 
-## 3. 이더넷 상태 머신 파이프라인 (State Machine)
+## 2. 변수 명명 규칙 일관성 결여 및 네임스페이스 이탈 (Naming Convention Rule)
+> [!IMPORTANT]
+> **준수 규칙**: `HAL` 계층 모듈 및 파일명에만 소문자 `hal_` 접두어를 사용하며, 구조체 이름, 변수명, 함수명 등 어떠한 코드 내부 식별자에도 접두어(`hal_`, `csu_`)를 절대 사용해서는 안 됩니다.
 
-`csu_Ethernet.c` 내의 `Ethernet_StateMachine()` 함수에 의해 **100ms(10Hz) 주기**로 폴링 구동됩니다.
-
-| 상태 명칭 | 100ms 단위 상태 머신 동작 요약 |
-| :--- | :--- |
-| `ETH_STATE_INIT` | W6100 소켓 정상 개방 완료 후 망 가입 대기 단계. **500ms 단위**로 화포통제컴퓨터로 `ETH_CODE_BOOT_DONE` 패킷을 전송하여 망 가입을 요청함. |
-| `ETH_STATE_BOOT_DONE`| `BOOT_DONE` 송신 후 대상 장치로부터의 `ETH_CODE_ACK` 응답 대기 상태. 정상 수신 시 `ETH_STATE_LINKED`로 천이. |
-| `ETH_STATE_LINKED` | 망 가입 완료 및 운용 단계. **100ms 단위**로 `ETH_CODE_HEARTBEAT` 패킷을 자발적으로 교환. 이때 270V 구동 전원 인가 상태(`Power270VStatus`)를 Payload 첫 바이트에 실어 전송. |
-
-### 3.1 타임아웃 및 재전송 (Fail-Safe) 로직
-1. **ACK 대기 타임아웃**:
-   - ACK를 요청한 패킷을 전송한 후, 100ms 이내에 응답이 없으면 즉각 재전송을 시도함.
-   - 이때 패킷 헤더의 `Send_Count`를 1씩 증가시킴.
-2. **망 이탈(통신 두절) 롤백 규칙**:
-   - 한 패킷의 최대 전송 횟수는 **총 4회** (최초 1회 + 재전송 3회).
-   - 4회까지 재전송했음에도 응답이 없거나, 링크 상태(`ETH_STATE_LINKED`)에서 100ms Heartbeat 패킷을 **연속 50회(5초)** 수신하지 못한 경우.
-   - **조치**: W6100 소켓(0번)을 강제 리셋(닫고 재오픈)하고, 즉시 `ETH_STATE_INIT` 모드로 상태를 롤백하여 망 가입 단계부터 재개함.
+### 2.1 `hal_Ethernet.h` 내 전역 변수 `g_isW6100Connected`
+* **위치**: [hal_Ethernet.h](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/HAL/hal_Ethernet.h#L38)
+* **코드 내용**: `extern uint8_t g_isW6100Connected;`
+* **위반 세부사항**: 
+  - 타 모듈들(`xTimer`, `xLed`, `xAdc`, `xSysCtrl` 등)의 경우 상태를 나타내는 구조체 접두어 `x`를 붙여 정밀 제어되거나, 카멜케이스 단독(`adcRawData`)으로 선언되는 반면, 본 변수는 유일하게 헝가리안 표기법 접두어 `g_`가 붙어 있어 프로젝트 전반의 명명 일관성을 깨뜨립니다.
+  - **개선 제안**: 이더넷 상태 구조체인 `xEthCtrl` 내의 멤버 변수로 편입시키거나, `isW6100Connected` 형태의 표준 카멜케이스 구조로 변경할 것을 권장합니다.
 
 ---
 
-## 4. 제어 변수 및 데이터 구조 (`csu_Ethernet.h`)
+## 3. 외부 라이브러리 및 SDK 파일의 물리적 배치 (Project Architecture & Layering)
+> [!IMPORTANT]
+> **준수 규칙**: MCU의 주변장치와 맞닿아 제어하는 `HAL` 추상화 계층과 TI 제조사 혹은 칩셋 제조사에서 공식 제공하는 라이브러리(`SDK` 계층)는 명확히 물리적/논리적으로 분리 보존되어야 합니다.
 
-체계 통신 상태 모니터링을 위해 디버그 창(CCS Expressions)에서 활용되는 주요 글로벌 변수 구조체(`xEthCtrl`) 정보입니다.
+### 3.1 `HAL` 디렉토리 내 외부 드라이버 라이브러리 혼재
+* **위치**: `ATTLA_T_CPU1/HAL/` 디렉토리 하위
+* **대상 파일**:
+  - easyDSP 통신 드라이버: [easy28x_driverlib_v12.2.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/HAL/easy28x_driverlib_v12.2.c), [easy28x_driverlib_v12.2.h](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/HAL/easy28x_driverlib_v12.2.h)
+  - Wiznet W6100 칩셋 드라이버: `socket.c/.h`, `w6100.c/.h`, `wizchip_conf.c/.h`
+* **위반 세부사항**: 
+  - 해당 파일들은 하드웨어 제어권을 통제하기 위해 외부 제조사(Wiznet, easyDSP)에서 제공하는 순수 라이브러리 및 드라이버 코드로, 논리상 **SDK 계층**에 속합니다. 
+  - 그럼에도 불구하고 현재 하드웨어 추상화 계층인 `HAL` 디렉토리에 물리적으로 혼재되어 있어 계층 분리 원칙에 어긋납니다.
+  - 또한, `hal_` 파일명 접두어 규칙(HAL 디렉토리 내 커스텀 파일은 반드시 접두어 사용)도 적용되지 않아 파일명 일관성이 저해됩니다.
+  - **개선 제안**: [SDK](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK) 디렉토리 하위 또는 `External_Library` 폴더를 별도로 구성하여 이관 배치하는 것이 타당합니다.
 
-```c
-typedef struct {
-    EthState_e  State;              // 현재 망 가입 상태 (0: INIT, 1: BOOT_DONE, 2: LINKED)
-    uint32_t    LastRecvTimestamp;  // 화포통제컴퓨터가 보낸 최신 Timestamp 백업
-    uint16_t    TickCount100ms;     // 100ms 틱 카운터
-    uint16_t    TimeoutCount;       // 미수신 통신 두절 카운터 (Max 50)
-    uint16_t    RetryCount;         // 패킷 재전송 횟수 (Max 4)
-    uint16_t    WaitAckTimer;       // ACK 수신 대기 타이머 카운터
-    
-    uint16_t    CbitPeriodSec;      // 수신된 CBIT N초 전송 주기
-    uint16_t    CbitTimer100ms;     // CBIT 주기 확인용 타이머
-    uint8_t     IbitInProgress;     // IBIT 수행 진행 상태
-    uint8_t     Power270VStatus;    // 270V 구동 전원 유무 상태 플래그
-    
-    uint8_t     WaitAckCode;        // 현재 ACK를 대기 중인 명령어 Code 기록
-    uint8_t     TxBuffer[256];      // 재전송용 패킷 버퍼
-    uint16_t    TxSize;             // 재전송용 패킷 크기
-} stEthControl;
+---
 
-extern stEthControl xEthCtrl;
-extern uint8_t g_isW6100Connected;  // 하드웨어 미연결 시 예외 처리 플래그 (1: 정상)
-```
+## 4. 정적 시험 기준 및 보안 취약점 보완 항목 (Static Analysis Standards)
+> [!IMPORTANT]
+> **준수 규칙**: 신뢰성과 안전성을 보장하기 위해 방위사업청 무기체계 소프트웨어 코딩규칙(DAPA SCR-G) 및 CWE-658 C 언어 보안 취약점 기준(Divide by Zero 방지, Null Pointer 역참조 방지 등)을 전수 준수해야 합니다.
 
-> **💡 개발자 및 Antigravity 가이드**
-> - 본 명세서는 ATTLA-T(초장사정 자동선회잠금장치) 체계의 최신 이더넷 및 연동통제안 로직을 포괄합니다.
-> - PC 시뮬레이터(C# 등) 또는 제어 소프트웨어 제작 시 1, 2장의 규격에 맞춰 UDP 소켓 통신 모듈을 작성하고 패킷 구조체를 동일하게 패킹(Packing)하여 사용하십시오.
-> - CBIT의 점검 결과 데이터가 추가로 정의되면 `Ethernet_SendMessage(ETH_CODE_CBIT_REP, ...)` 함수의 매개변수에 관련 상태 데이터 페이로드를 조립해 주어야 합니다.
+### 4.1 CWE-369 (Divide by Zero) 취약점 위험
+* **위치**: [csu_Pid.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_Pid.c#L69)
+* **코드 내용**: `dOut = pid->Kd * ((error - prevError) / pid->dt);`
+* **위반 세부사항**: `dt`는 제어 주기를 나타내는 구조체 멤버 변수이나, 제어기 초기화 또는 변경 도중 실수로 `0.0f`가 입력되는 경우 **0으로 나누기(Divide by Zero)** 결함이 발생할 수 있는 취약성이 존재합니다. 
+* **개선 제안**: 연산 수행 전 분모인 `pid->dt`가 `0`보다 큰 값인지 사전에 체크하거나 임계값을 넘는지 확인하는 방어 로직이 필요합니다.
+
+### 4.2 CWE-476 (Null Pointer Dereference) 취약점 위험
+* **위치**: [csu_Pid.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_Pid.c#L31), [csu_Pid.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_Pid.c#L54)
+* **함수**: `PID_Init`, `PID_Calculate`
+* **위반 세부사항**: 전달받은 `PID_Controller_t* pid` 구조체 포인터 인자를 대상으로 `NULL` 검사 없이 즉각 역참조(`pid->Kp` 등)하여 대입 또는 연산에 활용하고 있어 Null Pointer 참조 버그에 노출되어 있습니다.
+* **개선 제안**: 함수 도입부에서 `if (pid == NULL)` 분기 처리를 통해 안전하게 리턴 처리하거나 방어하는 예외 처리 구문이 누락되어 있습니다.
+
+### 4.3 매직 넘버 하드코딩 (Magic Number Avoidance)
+* **위치**: 
+  - [csu_MotorCtrl.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_MotorCtrl.c#L168) (브레이크 잠금/해제 GPIO 핀 35번 하드코딩)
+  - [csu_Control.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_Control.c#L273) (동작 모니터링 토글 LED GPIO 핀 34번 하드코딩)
+* **위반 세부사항**: GPIO 제어 대상 핀 번호(`35U`, `34U`)가 소스 코드 내부에 상수가 아닌 매직 넘버로 직접 기술되어 있어 하드웨어 핀 맵이 변경되거나 튜닝 시 관리에 취약합니다.
+* **개선 제안**: [hal_Common.h](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/HAL/hal_Common.h) 또는 모듈 헤더 파일에 `#define GPIO_PIN_MOTOR_BRAKE 35U`, `#define GPIO_PIN_ALIVE_LED 34U` 등으로 추상화하여 사용해야 합니다.

@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.10
+    Version          : 00.11
     Description      : 시스템 제어 모듈 (동적 인터럽트 스위칭 및 ADC 폴링) 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 22. (리미트 스위치 모듈 초기화 호출 추가)
+    Last Updated     : 2026. 06. 23. (코딩 규칙 및 구조 불일치 사항 리팩토링 반영)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
  * 2026. 06. 22. - 리미트 스위치 모듈 초기화(LimitSwitch_Init) 호출 추가
  * 2026. 06. 17. - 명명 규칙 위반 리팩토링 및 헤더 인클루드 수정
  * 2026. 06. 16. - 100us 핵심 제어 루프(ISR) 실행 순서 가이드에 맞게 재배치 (CBIT/FRAM 유지)
@@ -270,7 +271,7 @@ __interrupt void MainControl_Isr(void)
     if (isrAliveCounter >= 5000U)
     {
         isrAliveCounter = 0;
-        GPIO_togglePin(34U);
+        GPIO_togglePin(GPIO_PIN_ALIVE_LED);
     }
     // ---------------------------------------------------------------------------------
 

@@ -1,10 +1,10 @@
 /**********************************************************************
- Nexcom Co., Ltd.
- Filename         : hal_Timer.h
- Version          : 00.01
- Description      : CPU 타이머 하드웨어 제어 헤더
- Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 15. (컴파일러 최적화 방지용 volatile 추가)
+    Nexcom Co., Ltd.
+    Filename         : hal_Timer.h
+    Version          : 00.01
+    Description      : CPU 타이머 하드웨어 제어 헤더
+    Programmer       : Kim Jeonghwan
+	Last Updated     : 2026. 06. 15. (컴파일러 최적화 방지용 volatile 추가)
 **********************************************************************/
 
 /*

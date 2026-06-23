@@ -1,10 +1,10 @@
 /**********************************************************************
- Nexcom Co., Ltd.
- Filename         : w6100.c
- Version          : 00.03
- Description      : WIZnet 이더넷 라이브러리 파일
- Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 16. (UDP 단일화 및 미사용 통신 로직 전면 삭제)
+    Nexcom Co., Ltd.
+    Filename         : w6100.c
+    Version          : 00.03
+    Description      : WIZnet 이더넷 라이브러리 파일
+    Programmer       : Kim Jeonghwan
+    Last Updated     : 2026. 06. 16. (UDP 단일화 및 미사용 통신 로직 전면 삭제)
 **********************************************************************/
 
 /*

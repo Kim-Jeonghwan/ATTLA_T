@@ -1,10 +1,10 @@
-/**********************************************************************
- Nexcom Co., Ltd.
- Filename         : wizchip_conf.h
- Version          : 00.07
- Description      : WIZnet 이더넷 라이브러리 파일
- Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 16. (컴파일 에러 해결을 위한 IPv6 Enum/함수 선언 제거)
+﻿/**********************************************************************
+    Nexcom Co., Ltd.
+    Filename         : wizchip_conf.h
+    Version          : 00.07
+    Description      : WIZnet 이더넷 라이브러리 파일
+    Programmer       : Kim Jeonghwan
+    Last Updated     : 2026. 06. 16. (컴파일 에러 해결을 위한 IPv6 Enum/함수 선언 제거)
 **********************************************************************/
 
 /*

@@ -1,10 +1,10 @@
 /**********************************************************************
- Nexcom Co., Ltd.
- Filename         : socket.c
- Version          : 00.05
- Description      : WIZnet 이더넷 라이브러리 파일
- Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 16. (미사용 변수 taddr 제거)
+    Nexcom Co., Ltd.
+    Filename         : socket.c
+    Version          : 00.05
+    Description      : WIZnet 이더넷 라이브러리 파일
+    Programmer       : Kim Jeonghwan
+    Last Updated     : 2026. 06. 16. (미사용 변수 taddr 제거)
 **********************************************************************/
 
 /*

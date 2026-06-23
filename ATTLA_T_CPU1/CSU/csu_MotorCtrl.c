@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.c
-    Version          : 00.12
+    Version          : 00.13
     Description      : 1x PWM 모드 기반 모터 제어 모듈
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 22. (전류 제어 루프 절댓값 로직 제거 및 4상한 제어 개선)
+    Last Updated     : 2026. 06. 23. (코딩 규칙 및 구조 불일치 사항 리팩토링 반영)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
  * 2026. 06. 22. - 전류 제어 루프 절댓값 로직 제거 및 4상한 제어 개선
  * 2026. 06. 22. - 위치 제어 루프 변수명 및 주석의 특정 주기(4ms/5ms) 표기 제거
  * 2026. 06. 22. - BIT 결함 플래그(xBit.faultFlagSet) 기반 모터 Fail-Safe 정지 로직 추가
@@ -165,7 +166,7 @@ void MotorCtrl_Run(void)
     if (xMotorCtrl.mode == MOTOR_MODE_STOP)
     {
         // 브레이크 잠금 (Active High 방식이므로 기본 0U 출력으로 기계적 잠금 상태 유지)
-        GPIO_writePin(35U, 0U);
+        GPIO_writePin(GPIO_PIN_MOTOR_BRAKE, 0U);
         
         MotorCtrl_SetOutput(0.0f);
         currPid.integral = 0.0f;
@@ -176,7 +177,7 @@ void MotorCtrl_Run(void)
     {
         // 고장 정지 시퀀스 (현재는 기본 STOP과 동일하게 즉시 0 출력 및 브레이크 잠금)
         // 추후 상세한 시퀀스(타이밍 딜레이 등) 요구사항이 확정되면 여기에 반영합니다.
-        GPIO_writePin(35U, 0U);
+        GPIO_writePin(GPIO_PIN_MOTOR_BRAKE, 0U);
         
         MotorCtrl_SetOutput(0.0f);
         currPid.integral = 0.0f;
@@ -186,7 +187,7 @@ void MotorCtrl_Run(void)
     else
     {
         // 브레이크 해제 (Active High 방식이므로 1U 출력으로 모터 구동 전 잠금 해제)
-        GPIO_writePin(35U, 1U);
+        GPIO_writePin(GPIO_PIN_MOTOR_BRAKE, 1U);
         
         // 전역 변수 튜닝 파라미터 실시간 반영
         posPid.Kp = xPidGain.pos.Kp;

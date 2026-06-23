@@ -1,15 +1,16 @@
 /**********************************************************************
- Nexcom Co., Ltd.
- Filename         : csu_Ethernet.c
- Version          : 00.03
- Description      : 이더넷(W6100) 연동통제안 프로토콜 및 상태 머신 구현
- Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 17. (하드웨어 미연결 시 상태 머신 동작 중지 예외 처리)
+    Nexcom Co., Ltd.
+    Filename         : csu_Ethernet.c
+    Version          : 00.04
+    Description      : 이더넷(W6100) 연동통제안 프로토콜 및 상태 머신 구현
+    Programmer       : Kim Jeonghwan
+    Last Updated     : 2026. 06. 23. (코딩 규칙 및 구조 불일치 사항 리팩토링 반영)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
  * 2026. 06. 22. - 체계 연동통제안(ICD) 반영: 상태 머신 이름 동기화 및 STATE_WAIT_BOOT_ACK 롤백 로직 적용
  * 2026. 06. 17. - 하드웨어 미연결 시 sendto_W6x00 내부 무한 루프(Stuck) 방지를 위해 Ethernet_StateMachine 동작 중지(return) 예외 처리
  * 2026. 06. 17. - 하드웨어 미연결 시 무한 루프(Stuck) 방지를 위해 Ethernet_ProtocolInit 내 중복 socket() 호출 제거
@@ -210,7 +211,7 @@ void Ethernet_SendMessage(uint8_t code, uint8_t reqAck, uint8_t *pData, uint16_t
 void Ethernet_StateMachine(void)
 {
     // 하드웨어(W6100)가 연결되지 않은 경우 상태 머신을 동작시키지 않아 무한 루프(Stuck) 방지
-    if (g_isW6100Connected == 0) {
+    if (isW6100Connected == 0) {
         return;
     }
 
