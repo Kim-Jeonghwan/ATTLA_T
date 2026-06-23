@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Concurrent;
 
-namespace TMDSCNCD28388D_T_PC
+namespace ATTLA_T_PC
 {
     public class LogForm : Form
     {

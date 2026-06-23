@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Bit.h
-    Version          : 00.07
+    Version          : 00.08
     Description      : 1x PWM 구조용 간소화된 BIT 로직 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (과속 판단 기준 3240 RPM으로 하향 조정)
+    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 12. - 과속 판단 기준을 모터 정격과 동일한 3240 RPM으로 하향 조정
  * 2026. 06. 12. - 매크로 상수명 추상화: BIT_CNT_FILTER_REF 반영
  * 2026. 06. 12. - csu_Bit.c 내부의 매크로 상수를 통합
@@ -23,7 +24,7 @@
 #ifndef CSU_BIT_H
 #define CSU_BIT_H
 
-#include "main.h"
+#include "main_cpu1.h"
 
 // 기존 임계값 및 신규 임계값 정의
 #define BIT_LIMIT_OVC_MOT_MAX       10.0f    // 모터 과전류 (10A)

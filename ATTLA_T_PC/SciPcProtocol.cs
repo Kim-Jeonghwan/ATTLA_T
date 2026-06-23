@@ -3,7 +3,7 @@ using System.IO.Ports;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace TMDSCNCD28388D_T_PC
+namespace ATTLA_T_PC
 {
     public class StatusMessageData
     {

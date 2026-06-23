@@ -1,7 +1,7 @@
 /*
  * File: MainForm.cs
  * Created: 2026-06-01 (Modified by Antigravity)
- * Description: TMDSCNCD28388D_T PC Monitoring Dashboard MainForm
+ * Description: ATTLA_T PC Monitoring Dashboard MainForm
  * Last Updated: 2026. 06. 01. (SCI/UDP 프로토콜 선택 RadioButton 및 통신 두절 UI 추가)
  */
 
@@ -15,7 +15,7 @@ using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace TMDSCNCD28388D_T_PC
+namespace ATTLA_T_PC
 {
     public class MainForm : Form
     {
@@ -62,7 +62,7 @@ namespace TMDSCNCD28388D_T_PC
 
         public MainForm()
         {
-            this.Text = "TMDSCNCD28388D_T Monitoring & Dashboard";
+            this.Text = "ATTLA_T Monitoring & Dashboard";
             this.Size = new Size(1100, 900); // Compact Size
             this.MinimumSize = new Size(800, 600);
             this.StartPosition = FormStartPosition.CenterScreen;
@@ -292,7 +292,7 @@ namespace TMDSCNCD28388D_T_PC
             helpMenu.DropDown.ForeColor = Color.White;
 
             ToolStripMenuItem aboutItem = new ToolStripMenuItem("About (&A)", null, (s, e) => {
-                MessageBox.Show("TMDSCNCD28388D_T Monitoring & Dashboard\n\n" +
+                MessageBox.Show("ATTLA_T Monitoring & Dashboard\n\n" +
                                 "Version: 1.1 (Simplified Protocol)\n" +
                                 "Date: 2026. 06. 01.\n" +
                                 "Developer: Kim Jeonghwan (Nexcom)", 

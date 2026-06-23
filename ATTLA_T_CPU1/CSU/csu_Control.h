@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.h
-    Version          : 00.08
+    Version          : 00.09
     Description      : 시스템 제어 모듈 (PBIT, CBIT, 오프셋 조정 등) 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 17. (명명 규칙 위반 리팩토링)
+    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 17. - 명명 규칙 위반 리팩토링 및 헤더 인클루드 수정
  * 2026. 06. 12. - 매크로 상수명 추상화: ADC_SCALE_REF_VOLT
  * 2026. 06. 12. - 오프셋 보정 변수 및 ADC 상수 헤더(.h)로 이동 (글로벌 룰 적용)
@@ -24,7 +25,7 @@
 #ifndef CSU_CONTROL_H
 #define CSU_CONTROL_H
 
-#include "main.h"
+#include "main_cpu1.h"
 
 #define ADC_SCALE_REF_VOLT (3.0f / 4096.0f) // 3V 레퍼런스 기준 변환 상수
 

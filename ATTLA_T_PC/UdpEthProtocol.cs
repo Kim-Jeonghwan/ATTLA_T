@@ -18,7 +18,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace TMDSCNCD28388D_T_PC
+namespace ATTLA_T_PC
 {
     /// <summary>UDP 이더넷 프로토콜 구현 클래스 (규격서 Payload/ACK MSG Format 준수)</summary>
     public class UdpEthProtocol : IProtocol

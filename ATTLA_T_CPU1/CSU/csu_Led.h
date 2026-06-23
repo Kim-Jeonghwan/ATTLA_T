@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Led.h
-    Version          : 00.04
+    Version          : 00.05
     Description      : 시스템 상태 표시 LED 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 15. (비트필드 제거 및 uint16_t 자료형 변경)
+    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 15. - stLed 구조체의 비트필드(총 24비트로 C2000 16비트 경계 초과 버그 유발) 제거 및 일반 자료형 변경
  * 2026. 06. 15. - PinMux 설정(GPIO_30_GPIO30)도 GPIO_LED_nG_PIN_CONFIG 매크로로 래핑하여 하드웨어 의존성 분리
  * 2026. 06. 15. - enum 정의 시 하드코딩된 30u 대신 매크로 상수(GPIO_LED_nG)를 활용하도록 수정
@@ -22,7 +23,7 @@
 #define CSU_LED_H
 
 /* ************************** [[   include  ]]  *********************************************************** */
-#include "main.h"
+#include "main_cpu1.h"
 
 
 

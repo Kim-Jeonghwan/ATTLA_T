@@ -1,22 +1,23 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_LimitSwitch.h
-    Version          : 00.00
+    Version          : 00.01
     Description      : 리미트 스위치 상태 감지 및 고장 진단 모듈 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 22. (최초 작성)
+    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 22. - 파일 생성 및 기본 구조 작성
  */
 
 #ifndef CSU_LIMITSWITCH_H
 #define CSU_LIMITSWITCH_H
 
-#include "main.h"
+#include "main_cpu1.h"
 
 // 리미트 스위치 고장 코드 열거형
 typedef enum {

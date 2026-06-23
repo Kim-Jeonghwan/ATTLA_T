@@ -1,10 +1,10 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_DspInit.c
-    Version          : 00.09
+    Version          : 00.10
     Description      : DSP 초기화 및 GPIO/인터럽트 기본 설정
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 15. (LED 핀 초기화 통합)
+    Last Updated     : 2026. 06. 23. (CM 기동 전 IPC 레지스터 클리어 호출 추가)
 **********************************************************************/
 
 /*
@@ -43,6 +43,8 @@ static void Init_GpioDin(void);
 static void Init_GpioDout(void);
 
 static void InitialPeripherals(void);
+static void initEmacGpioPins(void);   /* DP83822 이더넷 PHY MII 핀 MUX 설정 */
+static void Initial_CmCore(void);     /* CM 코어 클럭 인가 및 부팅 기동 */
 
 // 주변장치 초기화용 헬퍼 함수 (정적 시험 메트릭: 복잡도 감소 목적)
 static void initSystemAnalogAdc(void);
@@ -66,6 +68,9 @@ void System_Initialization(void)
     // 시스템 및 주변회로 클럭 설정
     Device_init();
 
+    /* --- [최우선 조치] 동기화 대기 전에 물리 이더넷 PHY부터 즉시 기상 --- */
+    initEmacGpioPins();
+
     /* --- W6100 제어 핀 및 SPI A 포트 초기화 --- */
     initW6100GpioPins();
 
@@ -79,6 +84,12 @@ void System_Initialization(void)
 
     // 주변 장치 하드웨어 초기화 미리 수행 (타이머 및 기타 통신망 셋업)
     InitialPeripherals();
+
+    /* --- CM 코어 기동 전 IPC 상태 사전 청소 --- */
+    Initial_IPC_Clear();
+
+    /* --- [정석 타이밍 적용] 모든 준비 완료 후 CM 코어 기동 --- */
+    Initial_CmCore();
 
     // 실시간 디버깅 활성화, 전역 인터럽트 스위치 ON
     ERTM;   // Debug Enable Mask 비트 설정 (실시간 디버깅이 가능하도록 ST1 레지스터의 /DBGM 비트를 0으로 클리어)
@@ -335,4 +346,77 @@ static void initW6100GpioPins(void)
     DEVICE_DELAY_US(10000U); // 10ms
     GPIO_writePin(21U, 1U);
     DEVICE_DELAY_US(50000U); // PLL 안정화 대기 50ms
+}
+
+/*
+@function    static void initEmacGpioPins(void)
+@brief      EMAC MII 모드 GPIO 핀 MUX 설정 (CPU1 마스터 권한 제어)
+@param      void
+@return     void
+@remark
+    - TBD: 이더넷 PHY 연결용 할당 핀 MUX 설정 및 클럭 공급
+*/
+static void initEmacGpioPins(void)
+{
+    /* --- 이더넷 모듈 클럭 공급 설정 (공식 예제 기준 100MHz 세팅) --- */
+    SysCtl_setEnetClk(SYSCTL_ENETCLKOUT_DIV_2, SYSCTL_SOURCE_SYSPLL);
+
+    /* --- TX 경로 --- */
+    GPIO_setPinConfig(GPIO_44_ENET_MII_TX_CLK);    /* TBD: TX 클럭 */
+    GPIO_setPinConfig(GPIO_118_ENET_MII_TX_EN);    /* TBD: TX Enable */
+    GPIO_setPinConfig(GPIO_75_ENET_MII_TX_DATA0);  /* TBD: TX Data bit0 */
+    GPIO_setPinConfig(GPIO_122_ENET_MII_TX_DATA1); /* TBD: TX Data bit1 */
+    GPIO_setPinConfig(GPIO_123_ENET_MII_TX_DATA2); /* TBD: TX Data bit2 */
+    GPIO_setPinConfig(GPIO_124_ENET_MII_TX_DATA3); /* TBD: TX Data bit3 */
+
+    /* --- RX 경로 --- */
+    GPIO_setPinConfig(GPIO_111_ENET_MII_RX_CLK);   /* TBD: RX 클럭 */
+    GPIO_setPinConfig(GPIO_112_ENET_MII_RX_DV);    /* TBD: RX Data Valid */
+    GPIO_setPinConfig(GPIO_113_ENET_MII_RX_ERR);   /* TBD: RX Error */
+    GPIO_setPinConfig(GPIO_114_ENET_MII_RX_DATA0); /* TBD: RX Data bit0 */
+    GPIO_setPinConfig(GPIO_115_ENET_MII_RX_DATA1); /* TBD: RX Data bit1 */
+    GPIO_setPinConfig(GPIO_116_ENET_MII_RX_DATA2); /* TBD: RX Data bit2 */
+    GPIO_setPinConfig(GPIO_117_ENET_MII_RX_DATA3); /* TBD: RX Data bit3 */
+
+    /* --- MDIO 관리 인터페이스 --- */
+    GPIO_setPinConfig(GPIO_105_ENET_MDIO_CLK);     /* TBD: MDC 클럭 */
+    GPIO_setPinConfig(GPIO_106_ENET_MDIO_DATA);    /* TBD: MDIO 데이터 */
+
+    /* --- CRS / COL 선택적 MII 신호 --- */
+    GPIO_setPinConfig(GPIO_109_ENET_MII_CRS);      /* TBD: CRS */
+    GPIO_setPinConfig(GPIO_110_ENET_MII_COL);      /* TBD: COL */
+
+    /* --- PWDN/INT 핀 (GPIO108): 일반 GPIO 입력 및 풀업 설정 --- */
+    GPIO_setPinConfig(GPIO_108_GPIO108);           /* TBD */
+    GPIO_setDirectionMode(GPIO_PIN_ENET_PHY_PWDN_INT, GPIO_DIR_MODE_IN);
+    GPIO_setPadConfig(GPIO_PIN_ENET_PHY_PWDN_INT, GPIO_PIN_TYPE_PULLUP);
+
+    /* --- PHY 하드웨어 리셋 (GPIO119, Active-Low) --- */
+    GPIO_setPinConfig(GPIO_119_GPIO119);           /* TBD */
+    GPIO_setDirectionMode(GPIO_PIN_ENET_PHY_RESET, GPIO_DIR_MODE_OUT);
+    GPIO_setPadConfig(GPIO_PIN_ENET_PHY_RESET, GPIO_PIN_TYPE_STD);
+    
+    GPIO_writePin(GPIO_PIN_ENET_PHY_RESET, 0U);    /* Active-Low 리셋 강제 인가 (0V) */
+    DEVICE_DELAY_US(10000U);                       /* 10ms 대기 */
+    GPIO_writePin(GPIO_PIN_ENET_PHY_RESET, 1U);    /* 리셋 해제 (3.3V) */
+}
+
+/*
+@function    static void Initial_CmCore(void)
+@brief      CM 코어 AuxPLL 클럭 인가 및 CM 기동
+@param      void
+@return     void
+*/
+static void Initial_CmCore(void)
+{
+    /* CM 클럭 활성화 (AUXPLL 기반 125MHz 설정) */
+    SysCtl_setCMClk(SYSCTL_CMCLKOUT_DIV_1, SYSCTL_SOURCE_AUXPLL);
+
+#ifdef _FLASH
+    /* Flash 부팅 모드로 CM 기동 */
+    Device_bootCM(BOOTMODE_BOOT_TO_FLASH_SECTOR0);
+#else
+    /* RAM 부팅 모드로 CM 기동 */
+    Device_bootCM(BOOTMODE_BOOT_TO_S0RAM);
+#endif
 }

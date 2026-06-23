@@ -1,15 +1,16 @@
 /**********************************************************************
   Nexcom Co., Ltd.
   Filename         : csu_MotorDriver.h
-  Version          : 00.02
+  Version          : 00.03
   Description      : DRV8343 모터 드라이버 제어 어플리케이션 계층
   Programmer       : Kim Jeonghwan
-  Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+  Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
  **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stMotorDriverState 구조체(xMotorDriver)로 통합
  * 2026. 06. 11. - hal_MotorDriver.h와 중복되는 DRV8343 레지스터 매크로 정의 제거
@@ -20,7 +21,7 @@
 #ifndef CSU_MOTORDRIVER_H_
 #define CSU_MOTORDRIVER_H_
 
-#include "main.h"
+#include "main_cpu1.h"
 
 #ifdef __cplusplus
 extern "C" {

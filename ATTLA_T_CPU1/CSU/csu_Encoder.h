@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Encoder.h
-    Version          : 00.05
+    Version          : 00.06
     Description      : AksIM-2 엔코더 어플리케이션 기능 처리 모듈
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (매크로 상수 헤더로 이동)
+    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 12. - 롤오버 및 스케일 매직넘버 상수화하여 헤더(.h)로 분리 (글로벌 룰 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 전역 변수를 stEncoderState 구조체(xEncoder)로 통합하여 네임스페이스 및 상태 관리 개선
@@ -22,7 +23,7 @@
 #ifndef CSU_ENCODER_H_
 #define CSU_ENCODER_H_
 
-#include "main.h"
+#include "main_cpu1.h"
 
 #ifdef __cplusplus
 extern "C" {

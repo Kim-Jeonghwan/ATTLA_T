@@ -1,6 +1,6 @@
 using System;
 
-namespace TMDSCNCD28388D_T_PC
+namespace ATTLA_T_PC
 {
     public interface IProtocol
     {

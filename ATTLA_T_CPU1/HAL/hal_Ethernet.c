@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Ethernet.c
-    Version          : 00.07
+    Version          : 00.08
     Description      : 이더넷(W6100) 하드웨어 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (코딩 규칙 및 구조 불일치 사항 리팩토링 반영)
+    Last Updated     : 2026. 06. 23. (모니터링 IP 변경: 192.168.200.11)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - 모니터링 IP 변경: 192.168.200.11
  * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
  * 2026. 06. 17. - 명명 규칙 위반 리팩토링 연동 (Ethernet_ParsePacket -> Ethernet_ParsePacket)
  * 2026. 06. 16. - 수신 패킷을 Ethernet_ParsePacket()로 전달하고 기존 임시 응답 코드 제거
@@ -50,7 +51,7 @@ int8_t Initial_W6100(void)
     // 3. MAC 주소 및 고정 IP 설정 (IPv4)
     wiz_NetInfo netinfo = {
         .mac = {0x00, 0x08, 0xDC, 0x11, 0x22, 0x33}, // WIZnet OUI MAC
-        .ip = {192, 168, 200, 10},
+        .ip = {192, 168, 200, 11},
         .sn = {255, 255, 255, 0},
         .gw = {192, 168, 200, 1},
         .dns = {8, 8, 8, 8},

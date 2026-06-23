@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.h
-    Version          : 00.07
+    Version          : 00.08
     Description      : 1x PWM 모드 기반 모터 제어 모듈 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 22. (리미트 스위치 고장 정지 모드 추가)
+    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 22. - 리미트 스위치 감지를 위한 MOTOR_MODE_FAULT_STOP 열거형 추가
  * 2026. 06. 22. - PID 계수를 xPidGain 구조체로 묶어 관리하도록 변경
  * 2026. 06. 22. - PID 계수 하드코딩 매크로 제거 및 전역 변수화 적용
@@ -28,7 +29,7 @@
 #ifndef CSU_MOTORCTRL_H
 #define CSU_MOTORCTRL_H
 
-#include "main.h"
+#include "main_cpu1.h"
 
 // --- 모터 제어 소프트 리미트 (Soft Limits) ---
 #define LIMIT_POS_MIN       0.0f        // 기구부 최소 각도 (0도)

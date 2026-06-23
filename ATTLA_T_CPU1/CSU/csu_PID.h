@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Pid.h
-    Version          : 00.02
+    Version          : 00.03
     Description      : 표준 PID 제어기 헤더 (PI-IP 혼합 제어 지원)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (코딩 규칙 및 구조 불일치 사항 리팩토링 반영)
+    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
  * 2026. 06. 22. - PI-IP 혼합 제어 지원을 위한 Ks 파라미터 추가
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
@@ -20,7 +21,7 @@
 #ifndef CSU_PID_H
 #define CSU_PID_H
 
-#include "main.h"
+#include "main_cpu1.h"
 
 typedef struct {
     // Gains

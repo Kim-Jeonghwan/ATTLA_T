@@ -1,15 +1,16 @@
 /**********************************************************************
  * Nexcom Co., Ltd.
  * Filename         : hal_Encoder.h
- * Version          : 00.02
+ * Version          : 00.03
  * Description      : AksIM-2 엔코더 제어를 위한 HAL (하드웨어 초기화 및 SPI 통신)
  * Programmer       : Kim Jeonghwan
- * Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+ * Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
  **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 64비트 수신 반환형 변경 및 불필요 변수 제거
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -19,7 +20,7 @@
 #ifndef HAL_ENCODER_H_
 #define HAL_ENCODER_H_
 
-#include "main.h"
+#include "main_cpu1.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -230,6 +230,6 @@
         </cconfiguration>
     </storageModule>
     <storageModule moduleId="cdtBuildSystem" version="4.0.0">
-        <project id="TMDSCNCD28388D_T2_CPU1.com.ti.ccstudio.buildDefinitions.C2000.ProjectType.934730721" name="C2000" projectType="com.ti.ccstudio.buildDefinitions.C2000.ProjectType"/>
+        <project id="ATTLA_T_CPU1.com.ti.ccstudio.buildDefinitions.C2000.ProjectType.934730721" name="C2000" projectType="com.ti.ccstudio.buildDefinitions.C2000.ProjectType"/>
     </storageModule>
 </cproject>
