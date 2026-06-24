@@ -57,7 +57,7 @@ void main(void)
     /* --- [핵심 개선] CM 코어와 IPC 하드웨어 동기화 (기동 대기) --- */
     Initial_IPC();
 
-    // [CRITICAL BUG FIX]: 전역 인터럽트(INTM) 및 실시간 디버깅(DBGM) 활성화
+    // 전역 인터럽트(INTM) 및 실시간 디버깅(DBGM) 활성화
     // 이 두 줄이 없으면 C28x 코어는 PIE 인터럽트를 무시하므로 어떠한 ISR도 발생하지 않고 IPC 수신도 불가합니다.
     EINT;
     ERTM;

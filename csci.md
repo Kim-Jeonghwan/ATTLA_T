@@ -10,6 +10,7 @@
 - **관련 파일**: `csu_Control.c`
 - **핵심 함수**:
   - `Control_Init()`: 전원 인가 직후 제어 상태를 관리하는 `xSysCtrl` 구조체 멤버들을 명시적으로 초기화합니다. 내부적으로 `Dio_Init()`을 호출합니다.
+  - `Initial_IPC()`: CM 코어와의 IPC 통신을 초기화하고, CM 코어가 이더넷/PHY 기동을 마치고 `IPC_CMD_CM_BOOT_READY` 신호를 보낼 때까지 안전하게 대기(`while(xIpcState.isCmReady == false)`)합니다.
   - `Offset_Isr()`: 초기 구동 시 10,000번 호출되는 100us 타이머 인터럽트 함수입니다.
 - **주요 변수**:
   - `xSysCtrl` (`stControlState` 구조체): `isOffsetCalibrated`, `isPbitComplete`, `offsetCount` 플래그 및 카운터를 포함합니다.
@@ -17,7 +18,16 @@
 - **동작 상세**: 
   - `Offset_Isr`가 구동되면 1초간 실행되며, 완료 조건(`xSysCtrl.offsetCount >= 10000U`) 달성 시 `EALLOW` 권한을 열어 `EPWM1_INT` 벡터를 `Pbit_Isr`로 스위칭합니다. 이 동적 인터럽트 스위칭 기법을 통해 초기화 단계와 메인 제어 단계를 분리합니다.
 
-### 1.2 전류센서 Offset 조정 CSU
+### 1.2 CM 코어 기동 및 동기화 CSU
+- **관련 파일**: `main_cm.c`
+- **핵심 함수**:
+  - `CM_init()` 및 `Initial_Ethernet()`: CM 코어 자체 기동 및 통신 초기화.
+- **동작 상세**:
+  - CM 코어가 기동하여 인터럽트 벡터를 RAM으로 복사하고, CPU1과 동기화를 맞춥니다.
+  - PHY 칩 리셋 후 안정화 딜레이(100ms)를 거친 뒤 이더넷 및 타이머를 초기화합니다.
+  - 모든 준비가 완료되면 CPU1에게 `IPC_CMD_CM_BOOT_READY` 신호를 발송하여 전체 시스템을 본격 가동시킵니다.
+
+### 1.3 전류센서 Offset 조정 CSU
 - **관련 파일**: `csu_Control.c`, `csu_Adc.c`
 - **핵심 함수**:
   - `Offset_Isr()`: ADC 원시 데이터를 누적합 연산합니다.
@@ -188,7 +198,7 @@
 ## 4. 외부 연동 CSC
 
 ### 4.1 화포통제컴퓨터 통신 CSU
-- **관련 파일**: `csu_Ethernet.c`
+- **관련 파일**: `ATTLA_T_CM/CSU/csu_Ethernet.c` (기존 CPU1에서 CM 코어로 완전 이관)
 - **핵심 함수**:
   - `Ethernet_StateMachine()`: 상태 천이 및 타임아웃, 재전송 제어.
   - `Ethernet_SendMessage()`: 헤더 및 페이로드 조립, 센드카운트 적용, 송신.
@@ -199,7 +209,7 @@
   - `xEthCtrl.Power270VStatus`: 체계로부터 270V 인가 메시지 수신 시 갱신되는 전원 플래그.
   - `g_isW6100Connected`: 하드웨어 링크 상태를 대변하는 글로벌 변수.
 - **동작 상세**:
-  - 100ms 주기로 백그라운드 태스크에서 동작하며 `g_isW6100Connected == 0`일 경우 함수를 즉시 `return`시켜 미연결 시 무한 락업 현상을 방어합니다.
+  - **CM 코어의 `main_cm.c` 내 100ms 백그라운드 태스크**에서 주기로 동작하며, `g_isW6100Connected == 0`일 경우 함수를 즉시 `return`시켜 미연결 시 무한 락업 현상을 방어합니다.
   - 상태가 `STATE_WAIT_BOOT_ACK`일 때 500ms 주기로 `ETH_CODE_BOOT_DONE`을 전송하며 `WaitAckCode`를 세팅합니다.
   - 수신 ISR에서 `ETH_CODE_ACK` 메시지를 파싱하여 `Code_Info`와 내가 기다리는 코드가 일치하면 `State`를 `STATE_JOINED`로 천이시킵니다.
   - 송수신되는 모든 패킷(Header+Data)에 대해 맨 뒷단 2바이트를 제외한 모든 바이트를 더하는 방식의 `Ethernet_CalculateChecksum()` 연산을 수행하여 통신 무결성을 상호 검증합니다. 통신 두절(Timeout Limit 50회 연속 미수신 초과) 발생 시 Socket을 닫고 재오픈(`socket()`)하여 초기 망 가입 모드(`STATE_WAIT_BOOT_ACK`)로 롤백합니다.

@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
-    Filename         : csu_Ethernet.c
-    Version          : 00.04
+    Filename         : csu_Ethernet_cpu1.c
+    Version          : 00.05
     Description      : 이더넷(W6100) 연동통제안 프로토콜 및 상태 머신 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (코딩 규칙 및 구조 불일치 사항 리팩토링 반영)
+    Last Updated     : 2026. 06. 24. (파일명 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 24. - 파일명 리팩토링 (_cpu1 분리)
  * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
  * 2026. 06. 22. - 체계 연동통제안(ICD) 반영: 상태 머신 이름 동기화 및 STATE_WAIT_BOOT_ACK 롤백 로직 적용
  * 2026. 06. 17. - 하드웨어 미연결 시 sendto_W6x00 내부 무한 루프(Stuck) 방지를 위해 Ethernet_StateMachine 동작 중지(return) 예외 처리
@@ -19,7 +20,7 @@
  * 2026. 06. 16. - 초기 구현 (체크섬, 파싱, 상태머신 1~5단계, CBIT/IBIT 통합)
  */
 
-#include "csu_Ethernet.h"
+#include "csu_Ethernet_cpu1.h"
 
 /* 글로벌 상태 구조체 인스턴스 */
 stEthControl xEthCtrl;

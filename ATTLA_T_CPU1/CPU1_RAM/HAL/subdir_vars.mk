@@ -11,7 +11,7 @@ C_SRCS += \
 ../HAL/hal_DspInit.c \
 ../HAL/hal_Encoder.c \
 ../HAL/hal_Epwm.c \
-../HAL/hal_Ethernet.c \
+../HAL/hal_Ethernet_cpu1.c \
 ../HAL/hal_Fram.c \
 ../HAL/hal_Ipc_cpu1.c \
 ../HAL/hal_MotorDriver.c \
@@ -26,7 +26,7 @@ C_DEPS += \
 ./HAL/hal_DspInit.d \
 ./HAL/hal_Encoder.d \
 ./HAL/hal_Epwm.d \
-./HAL/hal_Ethernet.d \
+./HAL/hal_Ethernet_cpu1.d \
 ./HAL/hal_Fram.d \
 ./HAL/hal_Ipc_cpu1.d \
 ./HAL/hal_MotorDriver.d \
@@ -41,7 +41,7 @@ OBJS += \
 ./HAL/hal_DspInit.obj \
 ./HAL/hal_Encoder.obj \
 ./HAL/hal_Epwm.obj \
-./HAL/hal_Ethernet.obj \
+./HAL/hal_Ethernet_cpu1.obj \
 ./HAL/hal_Fram.obj \
 ./HAL/hal_Ipc_cpu1.obj \
 ./HAL/hal_MotorDriver.obj \
@@ -56,7 +56,7 @@ OBJS__QUOTED += \
 "HAL\hal_DspInit.obj" \
 "HAL\hal_Encoder.obj" \
 "HAL\hal_Epwm.obj" \
-"HAL\hal_Ethernet.obj" \
+"HAL\hal_Ethernet_cpu1.obj" \
 "HAL\hal_Fram.obj" \
 "HAL\hal_Ipc_cpu1.obj" \
 "HAL\hal_MotorDriver.obj" \
@@ -71,7 +71,7 @@ C_DEPS__QUOTED += \
 "HAL\hal_DspInit.d" \
 "HAL\hal_Encoder.d" \
 "HAL\hal_Epwm.d" \
-"HAL\hal_Ethernet.d" \
+"HAL\hal_Ethernet_cpu1.d" \
 "HAL\hal_Fram.d" \
 "HAL\hal_Ipc_cpu1.d" \
 "HAL\hal_MotorDriver.d" \
@@ -86,7 +86,7 @@ C_SRCS__QUOTED += \
 "../HAL/hal_DspInit.c" \
 "../HAL/hal_Encoder.c" \
 "../HAL/hal_Epwm.c" \
-"../HAL/hal_Ethernet.c" \
+"../HAL/hal_Ethernet_cpu1.c" \
 "../HAL/hal_Fram.c" \
 "../HAL/hal_Ipc_cpu1.c" \
 "../HAL/hal_MotorDriver.c" \

@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
-    Filename         : hal_Ethernet.c
-    Version          : 00.08
+    Filename         : hal_Ethernet_cpu1.c
+    Version          : 00.09
     Description      : 이더넷(W6100) 하드웨어 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (모니터링 IP 변경: 192.168.200.11)
+    Last Updated     : 2026. 06. 24. (파일명 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 24. - 파일명 리팩토링 (_cpu1 분리)
  * 2026. 06. 23. - 모니터링 IP 변경: 192.168.200.11
  * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
  * 2026. 06. 17. - 명명 규칙 위반 리팩토링 연동 (Ethernet_ParsePacket -> Ethernet_ParsePacket)
@@ -23,7 +24,7 @@
  */
 
 
-#include "hal_Ethernet.h"
+#include "hal_Ethernet_cpu1.h"
 
 
 /*

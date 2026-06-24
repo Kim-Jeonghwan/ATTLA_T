@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
-    Filename         : csu_Ethernet.h
-    Version          : 00.02
+    Filename         : csu_Ethernet_cpu1.h
+    Version          : 00.03
     Description      : 이더넷(W6100) 연동통제안 프로토콜 및 상태 머신 정의
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+    Last Updated     : 2026. 06. 24. (파일명 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 24. - 파일명 리팩토링 (_cpu1 분리)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 22. - 체계 연동통제안(ICD) 반영: 메모리 패킹 추가 및 상태 머신 Enum 동기화
  * 2026. 06. 17. - 명명 규칙 위반 리팩토링 및 헤더 인클루드 수정
@@ -17,8 +18,8 @@
  * 2026. 06. 16. - 이더넷 통신 프로토콜 규격 구조체 및 상태 머신 신규 작성
  */
 
-#ifndef CSU_ETHERNET_H
-#define CSU_ETHERNET_H
+#ifndef CSU_ETHERNET_CPU1_H
+#define CSU_ETHERNET_CPU1_H
 
 #include "main_cpu1.h"
 

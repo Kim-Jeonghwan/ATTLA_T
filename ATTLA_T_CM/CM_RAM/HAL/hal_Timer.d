@@ -72,10 +72,10 @@ HAL/hal_Timer.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_
 HAL/hal_Timer.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/SDK/common/include/cm.h
 HAL/hal_Timer.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL/hal_Ipc_cm.h
 HAL/hal_Timer.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/main_cm.h
-HAL/hal_Timer.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL/hal_Ethernet.h
+HAL/hal_Timer.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL/hal_Ethernet_cm.h
 HAL/hal_Timer.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL/hal_Timer.h
 HAL/hal_Timer.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CSU/csu_Ipc_cm.h
-HAL/hal_Timer.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CSU/csu_Ethernet.h
+HAL/hal_Timer.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CSU/csu_Ethernet_cm.h
 
 ../HAL/hal_Timer.c:
 
@@ -221,11 +221,11 @@ D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL/hal_Ipc_cm
 
 D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/main_cm.h:
 
-D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL/hal_Ethernet.h:
+D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL/hal_Ethernet_cm.h:
 
 D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL/hal_Timer.h:
 
 D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CSU/csu_Ipc_cm.h:
 
-D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CSU/csu_Ethernet.h:
+D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CSU/csu_Ethernet_cm.h:
 

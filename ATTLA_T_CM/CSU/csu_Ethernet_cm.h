@@ -1,20 +1,21 @@
 /**********************************************************************
    Nexcom Co., Ltd.
-   Filename         : csu_Ethernet.h
-   Version          : 00.05
+   Filename         : csu_Ethernet_cm.h
+   Version          : 00.06
    Description      : CM 코어 체계 이더넷(Raw UDP) 연동통제안 및 프로토콜 정의
    Programmer       : Kim Jeonghwan
-   Last Updated     : 2026. 06. 23. (체계 연동통제안(ICD) 상태머신 및 메시지 코드 통합)
+   Last Updated     : 2026. 06. 24. (파일명 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 24. - 파일명 리팩토링 (_cm 분리)
  * 2026. 06. 23. - 체계 연동통제안(ICD) 상태머신 및 메시지 코드 통합
  */
 
-#ifndef CSU_ETHERNET_H
-#define CSU_ETHERNET_H
+#ifndef CSU_ETHERNET_CM_H
+#define CSU_ETHERNET_CM_H
 
 #include "main_cm.h"
 

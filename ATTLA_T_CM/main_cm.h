@@ -1,15 +1,16 @@
 /**********************************************************************
    Nexcom Co., Ltd.
    Filename         : main_cm.h
-   Version          : 00.00
+   Version          : 00.01
    Description      : CM 코어 전역 헤더 관리 파일
    Programmer       : Kim Jeonghwan
-   Last Updated     : 2026. 06. 23. (CM 코어 기동 및 동기화 구현을 위한 전역 헤더 생성)
+   Last Updated     : 2026. 06. 24. (이더넷 파일명 리팩토링 적용)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 24. - 이더넷 파일명 리팩토링 적용
  * 2026. 06. 23. - CM 코어 기동 및 동기화 구현을 위한 전역 헤더 생성
  */
 
@@ -30,11 +31,11 @@ typedef float float32_t;
 
 /* HAL 계층 */
 #include "hal_Ipc_cm.h"
-#include "hal_Ethernet.h"
+#include "hal_Ethernet_cm.h"
 #include "hal_Timer.h"
 
 /* CSU 계층 */
 #include "csu_Ipc_cm.h"
-#include "csu_Ethernet.h"
+#include "csu_Ethernet_cm.h"
 
 #endif // MAIN_CM_H

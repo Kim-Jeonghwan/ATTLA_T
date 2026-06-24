@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
-    Filename         : hal_Ethernet.c
-    Version          : 00.02
+    Filename         : hal_Ethernet_cm.c
+    Version          : 00.03
     Description      : EMAC 드라이버 초기화 및 Rx 하드웨어 인터럽트 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 19. (이더넷 전역 변수 캡슐화)
+    Last Updated     : 2026. 06. 24. (파일명 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 24. - 파일명 리팩토링 (_cm 분리)
  * 2026. 06. 19. - 변수명 규칙 적용 (xHalEth -> xEthDriver 변경)
  * 2026. 06. 19. - 이더넷 전역 변수 캡슐화 적용
  * 2026. 06. 19. - (Phase 4: 이더넷 RX 폴링 -> 인터럽트 전환)
@@ -41,7 +42,7 @@
  * EMAC_SS_BASE = 0x400C2000U  (Ethernet SS Wrapper 레지스터)
  */
 
-#include "hal_Ethernet.h"
+#include "hal_Ethernet_cm.h"
 
 /* ---------------------------------------------------------------
  * 전역 변수

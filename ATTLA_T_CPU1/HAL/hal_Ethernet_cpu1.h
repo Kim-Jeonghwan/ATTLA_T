@@ -1,15 +1,16 @@
 /**********************************************************************
  Nexcom Co., Ltd.
- Filename         : hal_Ethernet.h
- Version          : 00.06
+ Filename         : hal_Ethernet_cpu1.h
+ Version          : 00.07
  Description      : W6100 하드웨어 제어 및 이더넷 소켓 통신 헤더
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+ Last Updated     : 2026. 06. 24. (파일명 리팩토링)
  **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 24. - 파일명 리팩토링 (_cpu1 분리)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 23. - 모니터링 포트 변경: 5002
  * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
@@ -20,8 +21,8 @@
  */
 
 
-#ifndef HAL_ETHERNET_H
-#define HAL_ETHERNET_H
+#ifndef HAL_ETHERNET_CPU1_H
+#define HAL_ETHERNET_CPU1_H
 
 #include "main_cpu1.h"
 

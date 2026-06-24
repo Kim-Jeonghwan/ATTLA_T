@@ -1,22 +1,23 @@
 /**********************************************************************
     Nexcom Co., Ltd.
-    Filename         : hal_Ethernet.h
-    Version          : 00.01
-    Description      : Ethernet EMAC 드라이버 계층 헤더 (MII 모드, DP83822 PHY)
+    Filename         : hal_Ethernet_cm.h
+    Version          : 00.02
+    Description      : Ethernet EMAC 드라이버 계층 헤더 (MII 모드, DP8382 PHY)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 19. (이더넷 전역 변수 캡슐화)
+    Last Updated     : 2026. 06. 24. (파일명 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 24. - 파일명 리팩토링 (_cm 분리)
  * 2026. 06. 19. - 변수명 규칙 적용 (xHalEth -> xEthDriver 변경)
  * 2026. 06. 19. - 이더넷 전역 변수 캡슐화 적용
  * 2026. 06. 05. - 코드 주석 포맷팅 및 한글화
  */
 
-#ifndef HAL_ETHERNET_H
-#define HAL_ETHERNET_H
+#ifndef HAL_ETHERNET_CM_H
+#define HAL_ETHERNET_CM_H
 
 #include "main_cm.h"
 
