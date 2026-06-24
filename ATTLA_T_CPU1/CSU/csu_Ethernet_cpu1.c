@@ -48,7 +48,7 @@ void Ethernet_ProtocolInit(void)
     xEthCtrl.CbitPeriodSec = 0;
     xEthCtrl.CbitTimer100ms = 0;
     xEthCtrl.IbitInProgress = 0;
-    xEthCtrl.Power270VStatus = 0;
+
     xEthCtrl.WaitAckCode = 0;
     xEthCtrl.TxSize = 0;
 }
@@ -273,19 +273,8 @@ void Ethernet_StateMachine(void)
                 Ethernet_SendMessage(ETH_CODE_BOOT_DONE, ETH_ACK_REQ, NULL, 0);
             }
             break;
-            
         case STATE_JOINED:
-            // 망 가입 완료 (Step 4: Heartbeat)
-            // 100ms 주기 상태정보 통신
-            if ((xEthCtrl.TickCount100ms % ETH_HEARTBEAT_PERIOD) == 0 && xEthCtrl.WaitAckCode == 0)
-            {
-                // Heartbeat 페이로드의 첫 번째 바이트에 270V 전원 상태를 싣는다고 가정
-                uint8_t statusPayload[1];
-                statusPayload[0] = xEthCtrl.Power270VStatus;
-                
-                Ethernet_SendMessage(ETH_CODE_HEARTBEAT, ETH_ACK_NOT_REQ, statusPayload, 1);
-            }
-            
+            // 망 가입 완료 (Step 4: 상태 정보 교환)
             // 통신 두절 감시 (100ms * 50회 = 5초간 수신 없으면 리셋)
             xEthCtrl.TimeoutCount++;
             if (xEthCtrl.TimeoutCount >= ETH_DISCONNECT_LIMIT)
@@ -295,6 +284,19 @@ void Ethernet_StateMachine(void)
                 xEthCtrl.State = STATE_WAIT_BOOT_ACK;
                 xEthCtrl.TimeoutCount = 0;
                 xEthCtrl.WaitAckCode = 0;
+                break;
+            }
+            // 망 가입 완료 (Step 4: 상태 정보 교환)
+            // 통신 두절 감시 (100ms * 50회 = 5초간 수신 없으면 리셋)
+            xEthCtrl.TimeoutCount++;
+            if (xEthCtrl.TimeoutCount >= ETH_DISCONNECT_LIMIT)
+            {
+                // 소켓 리셋 및 망 가입 초기화
+                socket(SOCK_UDP_COM, Sn_MR_UDP, PORT_UDP_COM, 0x00);
+                xEthCtrl.State = STATE_WAIT_BOOT_ACK;
+                xEthCtrl.TimeoutCount = 0;
+                xEthCtrl.WaitAckCode = 0;
+                break;
             }
             
             // CBIT 동작 로직 (Step 5)
@@ -400,11 +402,7 @@ void Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length)
             xEthCtrl.IbitInProgress = 0;
             break;
             
-        case ETH_CODE_POWER_270V:
-            // 270VDC 구동 전원 인가 메시지 수신 (상태정보에 반영)
-            xEthCtrl.Power270VStatus = 1;
-            break;
-            
+
         case ETH_CODE_CBIT_SET:
             if (header.Data_Length >= 2)
             {
@@ -415,15 +413,7 @@ void Ethernet_ParsePacket(uint8_t *pRxBuf, uint16_t length)
             }
             break;
             
-        case ETH_CODE_HEARTBEAT:
-            // 체계에서 Heartbeat 요청이 오는 경우 응답 (현재 상태 전송)
-            {
-                uint8_t statusPayload[1];
-                statusPayload[0] = xEthCtrl.Power270VStatus;
-                Ethernet_SendMessage(ETH_CODE_HEARTBEAT, ETH_ACK_NOT_REQ, statusPayload, 1);
-            }
-            break;
-            
+
         default:
             break;
     }

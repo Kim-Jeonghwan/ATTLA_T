@@ -31,14 +31,14 @@
 
 /* --- 메시지 Code 정의 --- */
 #define ETH_CODE_BOOT_DONE      0x10    // 망 가입 요청 (Boot Done)
-#define ETH_CODE_HEARTBEAT      0x11    // 상태 정보 (Heartbeat)
+#define ETH_CODE_STATUS_REQ     0x11    // 상태 정보 (100ms 통신상태 확인)
 #define ETH_CODE_PBIT_REQ       0x12    // PBIT 요청
 #define ETH_CODE_PBIT_REP       0x13    // PBIT 결과
 #define ETH_CODE_IBIT_REQ       0x14    // IBIT 요청
 #define ETH_CODE_IBIT_REP       0x15    // IBIT 결과
 #define ETH_CODE_CBIT_SET       0x16    // CBIT 전송주기 설정
 #define ETH_CODE_CBIT_REP       0x17    // CBIT 주기 송신 (Reflect)
-#define ETH_CODE_POWER_270V     0x18    // 270V 구동전원 인가 메시지
+
 #define ETH_CODE_ACK            0xFF    // ACK 메시지
 
 /* --- Request ACK 설정 --- */
@@ -52,7 +52,7 @@
 #define ETH_ACK_INFO_CS_ERR     0x01    // 체크섬 오류
 
 /* --- 타임아웃 및 주기 제한 (100ms Task 기준 카운트) --- */
-#define ETH_HEARTBEAT_PERIOD    1       // 100ms 주기
+#define ETH_STATUS_PERIOD       1       // 100ms 주기
 #define ETH_BOOTDONE_PERIOD     5       // 500ms 주기
 #define ETH_ACK_TIMEOUT         1       // ACK 응답 대기시간 (100ms)
 #define ETH_DISCONNECT_LIMIT    50      // 50회(5초) 미응답 시 통신 두절
@@ -65,7 +65,7 @@
 typedef enum {
     STATE_BOOTING = 0,      // 28V 제어전원 인가 후 망 가입 초기화
     STATE_WAIT_BOOT_ACK,    // Boot Done 500ms 주기 반복 전송 및 ACK 대기
-    STATE_JOINED,           // 통신망 가입 완료 (Heartbeat 교환 및 CBIT 수행)
+    STATE_JOINED,           // 통신망 가입 완료 (상태 교환 및 CBIT 수행)
     STATE_COMM_LOSS         // 통신 두절 상태
 } EthState_e;
 
@@ -101,14 +101,14 @@ typedef struct {
     EthState_e  State;              // 현재 망 가입 상태
     uint32_t    LastRecvTimestamp;  // 화포통제컴퓨터가 보낸 가장 최근 Timestamp 유지
     uint16_t    TickCount100ms;     // 100ms 단위로 증가하는 타이머 틱
-    uint16_t    TimeoutCount;       // 통신 두절(Heartbeat 미수신) 100ms 카운트 (최대 50)
+    uint16_t    TimeoutCount;       // 통신 두절(상태정보 미수신) 100ms 카운트 (최대 50)
     uint16_t    RetryCount;         // 패킷 재전송 횟수 (1 ~ 4)
     uint16_t    WaitAckTimer;       // ACK 대기 타이머
     
     uint16_t    CbitPeriodSec;      // CBIT 전송 주기(초 단위)
     uint16_t    CbitTimer100ms;     // CBIT 송신 타이머 카운트
     uint8_t     IbitInProgress;     // IBIT 수행 중 플래그 (1: 진행중, 0: 대기)
-    uint8_t     Power270VStatus;    // 270V 구동 전원 상태 (0: 미인가, 1: 인가)
+
     
     // 재전송을 위한 패킷 버퍼 백업 (간단하게 송신 구조체 유지)
     uint8_t     WaitAckCode;        // 현재 ACK를 기다리고 있는 Code
@@ -134,7 +134,7 @@ void Ethernet_ProtocolInit(void);
 uint16_t Ethernet_CalculateChecksum(const uint8_t *pData, uint16_t length);
 
 /**
- * @brief  이더넷 100ms 주기 상태 머신 (망 가입 및 Heartbeat)
+ * @brief  이더넷 100ms 주기 상태 머신 (망 가입 및 100ms 통신 확인)
  */
 void Ethernet_StateMachine(void);
 

@@ -32,7 +32,7 @@ typedef struct {
             float32_t adcTemperature;  /* 보드 온도 센서값 */
         } TxData;
         struct {
-            uint32_t waveType;        /* 수신된 270V 전원 상태 */
+            uint32_t reserved1;       /* 예약 필드 (구 270V 전원 상태) */
             uint32_t ibitClearReq;    /* IBIT 수행 시작 시 에러 초기화 요청 플래그 (1=요청) */
         } RxData;
     } Payload;
@@ -55,7 +55,7 @@ extern volatile stIpcDataPacket *pxDataCmToCpu1;
 /* CM 코어로부터 수신된 체계 이더넷 수신 데이터 구조체 */
 typedef struct {
     uint8_t seqNum;
-    uint8_t waveType;
+    uint8_t reserved1;
 } stEthRxData;
 
 extern volatile stEthRxData xEthRxData;

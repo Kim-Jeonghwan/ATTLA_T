@@ -46,14 +46,13 @@
 | Code 값 | 매크로 명칭 | 설명 및 페이로드 데이터 |
 | :--- | :--- | :--- |
 | `0x10` | `ETH_CODE_BOOT_DONE` | 망 가입 요청 (부팅 완료 보고) |
-| `0x11` | `ETH_CODE_HEARTBEAT` | 상태 정보 (100ms 주기 교환). Payload[0]: 270V 전원 인가 상태 |
+| `0x11` | `ETH_CODE_STATUS_REQ` | 상태 정보 (100ms 주기 교환) |
 | `0x12` | `ETH_CODE_PBIT_REQ` | PBIT(초기점검) 수행 요청 |
 | `0x13` | `ETH_CODE_PBIT_REP` | PBIT 결과 응답 전송 (Payload[0~3]: 4B BIT Result Bitmask) |
-| `0x14` | `ETH_CODE_IBIT_REQ` | IBIT(임의점검) 수행 요청 |
+| `0x14` | `ETH_CODE_IBIT_REQ` | IBIT(임의점검) 수행 요청 (Payload[0~1]: N초 (수행 시간)) |
 | `0x15` | `ETH_CODE_IBIT_REP` | IBIT 결과 응답 전송 (Payload[0~3]: 4B BIT Result Bitmask) |
 | `0x16` | `ETH_CODE_CBIT_SET` | CBIT 전송주기 설정 요청. Payload[0~1]: N초 (주기) |
 | `0x17` | `ETH_CODE_CBIT_REP` | CBIT 주기 점검 결과 송신 (Payload[0~3]: 4B BIT Result Bitmask) |
-| `0x18` | `ETH_CODE_POWER_270V`| 270VDC 구동 전원 인가 통보 |
 | `0x19` | `ETH_CODE_IBIT_DONE` | IBIT 수행 완료 통보 (DSP -> PC) |
 | `0x1A` | `ETH_CODE_IBIT_RES_REQ` | IBIT 결과 요청 (PC -> DSP) |
 | `0x1B` | `ETH_CODE_CBIT_STOP` | CBIT 전송 중지 요청 (PC -> DSP) |
@@ -82,7 +81,7 @@
 | :--- | :--- |
 | `STATE_BOOTING` | 28V 제어전원 인가 및 초기화 후 망 가입 대기 단계. 즉시 다음 상태로 천이함. |
 | `STATE_WAIT_BOOT_ACK`| 망 가입을 위해 **500ms 단위**로 화포통제컴퓨터로 `ETH_CODE_BOOT_DONE` 패킷을 전송하고, ACK 응답 대기 상태. 정상 수신 시 `STATE_JOINED`로 천이. |
-| `STATE_JOINED` | 망 가입 완료 및 운용 단계. **100ms 단위**로 `ETH_CODE_HEARTBEAT` 패킷을 자발적으로 교환. 이때 270V 구동 전원 인가 상태(`Power270VStatus`)를 Payload 첫 바이트에 실어 전송. |
+| `STATE_JOINED` | 망 가입 완료 및 운용 단계. **100ms 단위**로 `ETH_CODE_STATUS_REQ` 패킷을 자발적으로 교환. |
 
 ### 3.1 타임아웃 및 재전송 (Fail-Safe) 로직
 1. **ACK 대기 타임아웃**:
@@ -90,12 +89,35 @@
    - 이때 패킷 헤더의 `Send_Count`를 1씩 증가시킴.
 2. **망 이탈(통신 두절) 롤백 규칙**:
    - 한 패킷의 최대 전송 횟수는 **총 4회** (최초 1회 + 재전송 3회).
-   - 4회까지 재전송했음에도 응답이 없거나, 링크 상태(`STATE_JOINED`)에서 100ms Heartbeat 패킷을 **연속 50회(5초)** 수신하지 못한 경우 통신 두절(`STATE_COMM_LOSS`) 조건 충족.
+   - 4회까지 재전송했음에도 응답이 없거나, 링크 상태(`STATE_JOINED`)에서 100ms 상태정보(`ETH_CODE_STATUS_REQ`) 패킷을 **연속 50회(5초)** 수신하지 못한 경우 통신 두절(`STATE_COMM_LOSS`) 조건 충족.
    - **조치**: W6100 소켓(0번)을 강제 리셋(닫고 재오픈)하고, 즉시 `STATE_WAIT_BOOT_ACK` 모드로 상태를 롤백하여 망 가입 단계부터 재개함.
 
 ---
 
-## 4. 제어 변수 및 데이터 구조 (`csu_Ethernet.h`)
+## 4. BIT (점검) 수행 및 연동 시퀀스
+
+ATTLA-T 체계의 점검(BIT)은 PBIT(초기점검), CBIT(주기점검), IBIT(임의점검) 3가지로 나뉘며, 화포통제컴퓨터(PC)와의 이더넷 패킷 교환을 통해 다음과 같이 통제됩니다.
+
+### 4.1 PBIT (초기점검) 및 통신망 가입
+1. **망 가입 요청**: DSP 부팅 완료 후 `ETH_CODE_BOOT_DONE(0x10)` 메시지를 500ms 주기로 PC에 전송.
+2. **망 가입 완료**: PC가 `0x10` 메시지를 수신하고 ACK를 보내면, DSP는 망 가입 완료 상태(`STATE_JOINED`)로 전환. 이후 PC와 DSP는 100ms 주기로 `ETH_CODE_STATUS_REQ(0x11)` 상태 정보 메시지 교환.
+3. **PBIT 수행 및 결과 요청**: 통신망 가입이 완료되고 첫 상태 정보를 교환한 직후, PC는 `ETH_CODE_PBIT_REQ(0x12)` 메시지를 전송하여 PBIT 결과를 요청. DSP는 이를 받아 PBIT 수행 결과를 `ETH_CODE_PBIT_REP(0x13)`로 응답.
+
+### 4.2 CBIT (주기점검) 수행 절차
+1. **주기 설정**: PC에서 `ETH_CODE_CBIT_SET(0x16)` (Payload: N초) 메시지를 보내면, DSP는 CBIT 전송 주기를 업데이트하고 ACK를 응답.
+2. **CBIT 시작 (결과 전송 시작)**: PC에서 `ETH_CODE_CBIT_REQ(0x1C)` 메시지를 보내면, DSP는 결과 전송 Flag를 켜고 설정된 주기(N초)마다 `ETH_CODE_CBIT_REP(0x17)` 메시지로 CBIT 결과를 전송. (장비 내부적인 CBIT 자체 점검은 모터 제어 주기마다 백그라운드에서 지속 수행됨)
+3. **CBIT 중지**: PC에서 `ETH_CODE_CBIT_STOP(0x1B)` 메시지를 보내면, DSP는 결과 전송 Flag를 끄고 CBIT 결과 송신을 일시 중단.
+
+### 4.3 IBIT (임의점검) 수행 절차 및 CBIT 연계
+1. **IBIT 수행 요청**: PC에서 IBIT 수행 시간(N초)을 Payload에 담아 `ETH_CODE_IBIT_REQ(0x14)` 메시지 전송.
+2. **CBIT 일시 정지 및 에러 초기화**: DSP는 요청에 대한 ACK를 전송한 후, 기존에 발생했던 에러 플래그를 한 번 완전히 초기화하고 진행 중이던 **CBIT 패킷 전송을 일시 중지**함. 이후 N초 동안 IBIT를 수행하며 오류를 새롭게 누적 (한 번이라도 오류가 나면 해당 항목은 오류로 기록됨).
+3. **IBIT 완료 통보 (IBIT Done)**: N초의 IBIT 수행 시간이 경과하면, DSP는 PC로 `ETH_CODE_IBIT_DONE(0x19)` 메시지를 전송하여 IBIT가 완료되었음을 알림.
+4. **CBIT 자동 재개**: PC가 `IBIT_DONE`을 수신하여 사용자 UI에 완료 상태를 표시함과 동시에 DSP로 ACK를 회신함. DSP가 이 **ACK를 수신하면, 즉시 IBIT 완료 대기 상태를 해제하고 중지되었던 CBIT 패킷 전송을 자동으로 재개**함 (단, 사전에 CBIT이 중지 상태가 아니었어야 함).
+5. **IBIT 결과 갱신 요청**: IBIT 완료(결과 대기) 상태에서 PC가 `ETH_CODE_IBIT_RES_REQ(0x1A)` 메시지를 전송하면, DSP는 누적된 IBIT 결과를 `ETH_CODE_IBIT_REP(0x15)` 메시지로 응답.
+
+---
+
+## 5. 제어 변수 및 데이터 구조 (`csu_Ethernet.h`)
 
 체계 통신 상태 모니터링을 위해 디버그 창(CCS Expressions)에서 활용되는 주요 글로벌 변수 구조체(`xEthCtrl`) 정보입니다.
 
@@ -111,7 +133,6 @@ typedef struct {
     uint16_t    CbitPeriodSec;      // 수신된 CBIT N초 전송 주기
     uint16_t    CbitTimer100ms;     // CBIT 주기 확인용 타이머
     uint8_t     IbitInProgress;     // IBIT 수행 진행 상태
-    uint8_t     Power270VStatus;    // 270V 구동 전원 유무 상태 플래그
     
     uint8_t     WaitAckCode;        // 현재 ACK를 대기 중인 명령어 Code 기록
     uint8_t     TxBuffer[256];      // 재전송용 패킷 버퍼

@@ -27,14 +27,14 @@
 
 /* 메시지 Code 정의 */
 #define ETH_CODE_BOOT_DONE      (0x10U)   /* 망 가입 요청 (Boot Done) */
-#define ETH_CODE_HEARTBEAT      (0x11U)   /* 상태 정보 (Heartbeat) */
+#define ETH_CODE_STATUS_REQ     (0x11U)   /* 상태 정보 (100ms 통신상태 확인) */
 #define ETH_CODE_PBIT_REQ       (0x12U)   /* PBIT 요청 */
 #define ETH_CODE_PBIT_REP       (0x13U)   /* PBIT 결과 응답 */
 #define ETH_CODE_IBIT_REQ       (0x14U)   /* IBIT 요청 */
 #define ETH_CODE_IBIT_REP       (0x15U)   /* IBIT 결과 응답 */
 #define ETH_CODE_CBIT_SET       (0x16U)   /* CBIT 전송주기 설정 */
 #define ETH_CODE_CBIT_REP       (0x17U)   /* CBIT 주기 송신 (Reflect) */
-#define ETH_CODE_POWER_270V     (0x18U)   /* 270V 구동전원 인가 메시지 */
+
 #define ETH_CODE_IBIT_DONE      (0x19U)   /* IBIT 완료 통보 */
 #define ETH_CODE_IBIT_RES_REQ   (0x1AU)   /* IBIT 결과 요청 */
 #define ETH_CODE_CBIT_STOP      (0x1BU)   /* CBIT 전송 중지 요청 */
@@ -56,7 +56,7 @@
 #define ETH_ACK_INFO_CS_ERR     (0x0001U) /* 체크섬 오류 */
 
 /* 타임아웃 및 주기 제한 (100ms Task 기준 카운트) */
-#define ETH_HEARTBEAT_PERIOD    (1U)      /* 100ms 주기 */
+
 #define ETH_BOOTDONE_PERIOD     (5U)      /* 500ms 주기 */
 #define ETH_ACK_TIMEOUT         (1U)      /* ACK 응답 대기시간 (100ms) */
 #define ETH_DISCONNECT_LIMIT    (50U)     /* 50회(5초) 미응답 시 통신 두절 */
@@ -139,7 +139,7 @@
 typedef enum {
     STATE_BOOTING = 0,      /* 28V 제어전원 인가 후 망 가입 초기화 */
     STATE_WAIT_BOOT_ACK,    /* Boot Done 500ms 주기 반복 전송 및 ACK 대기 */
-    STATE_JOINED,           /* 통신망 가입 완료 (Heartbeat 교환 및 CBIT 수행) */
+    STATE_JOINED,           /* 통신망 가입 완료 (상태 교환 및 CBIT 수행) */
     STATE_COMM_LOSS         /* 통신 두절 상태 */
 } EthState_e;
 
@@ -148,7 +148,7 @@ typedef struct {
     EthState_e  State;              /* 현재 망 가입 상태 */
     uint32_t    LastRecvTimestamp;  /* 화포통제컴퓨터가 보낸 가장 최근 Timestamp 유지 */
     uint16_t    TickCount100ms;     /* 100ms 단위로 증가하는 타이머 틱 */
-    uint16_t    TimeoutCount;       /* 통신 두절(Heartbeat 미수신) 100ms 카운트 (최대 50) */
+    uint16_t    TimeoutCount;       /* 통신 두절(상태정보 미수신) 100ms 카운트 (최대 50) */
     uint16_t    RetryCount;         /* 패킷 재전송 횟수 (1 ~ 4) */
     uint16_t    WaitAckTimer;       /* ACK 대기 타이머 */
     
@@ -158,7 +158,7 @@ typedef struct {
     uint8_t     IbitInProgress;     /* IBIT 수행 중 플래그 */
     uint16_t    IbitTimer;          /* IBIT 수행 시뮬레이션 지연 타이머 */
     uint16_t    IbitDuration;       /* IBIT 수행 지정 시간(초) */
-    uint8_t     Power270VStatus;    /* 270V 구동 전원 상태 */
+
     
     uint8_t     WaitAckCode;        /* 현재 ACK를 기다리고 있는 Code */
     uint8_t     TxBuffer[256];      /* 재전송용 패킷 버퍼 보관 */

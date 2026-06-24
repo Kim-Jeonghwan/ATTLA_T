@@ -21,7 +21,7 @@ namespace ATTLA_T_PC
         private const byte SrcIdPc          = 0x01;
         private const byte DstIdDsp         = 0x02;
         private const byte MsgCodeBoot      = 0x10;
-        private const byte MsgCodeHeartbeat = 0x11;
+        private const byte MsgCodeStatusReq = 0x11;
         private const byte MsgCodeAck       = 0xFF;
         private const byte MsgCodePbitReq     = 0x12;
         private const byte MsgCodePbitRep     = 0x13;
@@ -161,14 +161,14 @@ namespace ATTLA_T_PC
                 var msg = new StatusMessageData { IncNumber = 0, Status = 0x10, DspTemp = 0, IsCommError = false };
                 OnStatusReceived?.Invoke(msg);
             }
-            else if (srcId == DstIdDsp && code == MsgCodeHeartbeat)
+            else if (srcId == DstIdDsp && code == MsgCodeStatusReq)
             {
                 if (!VerifyChecksum(data, 15)) return;
                 
-                byte power270v = data[12];
-                var msg = new StatusMessageData { IncNumber = 1, Status = power270v, DspTemp = 0, IsCommError = false };
+                var msg = new StatusMessageData { IncNumber = 1, Status = 0, DspTemp = 0, IsCommError = false };
                 OnStatusReceived?.Invoke(msg);
             }
+
             else if (srcId == DstIdDsp && code == MsgCodePbitRep)
             {
                 if (!VerifyChecksum(data, 18)) return;

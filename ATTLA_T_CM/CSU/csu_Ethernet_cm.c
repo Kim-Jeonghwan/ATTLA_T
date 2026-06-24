@@ -287,10 +287,6 @@ void buildAndSendUdpPacket(uint32_t rxTimestamp, uint8_t msgCode, uint8_t reqAck
             pPayload[offset++] = pData[i];
         }
     }
-    else if (msgCode == ETH_CODE_HEARTBEAT && dataLen == 1U)
-    {
-        /* Heartbeat 특수 처리: 270V 상태를 실어 전송 */
-        pPayload[offset++] = xEthCtrl.Power270VStatus;
     }
     else if (msgCode == ETH_CODE_CBIT_REP)
     {
@@ -491,26 +487,13 @@ void processReceivedEthernetPacket(uint8_t *pPacket, uint16_t length)
                                     }
                                 }
                                 break;
-
-                            case ETH_CODE_HEARTBEAT:
-                                /* Heartbeat 수신 시 데이터 갱신 및 응답 */
-                                if (dataLength >= 1U)
-                                {
-                                    /* 체계가 270V 전원 메시지(0x18) 대신 Heartbeat로 270V를 인가할 수도 있음 */
-                                    if (pPayload[12U] == 1U)
-                                    {
-                                        xEthCtrl.Power270VStatus = 1U;
-                                    }
-                                }
-                                /* CPU1으로 전달할 MSGRAM에 기록 (Seqlock) */
+                            case ETH_CODE_STATUS_REQ:
+                                /* 통신 상태 확인 요청 수신 -> 100ms 통신 두절 방어용 */
                                 pxDataCmToCpu1->seqCount++;
-                                pxDataCmToCpu1->Payload.RxData.waveType = (uint32_t)xEthCtrl.Power270VStatus;
+                                pxDataCmToCpu1->Payload.RxData.reserved1 = 0U;
                                 pxDataCmToCpu1->seqCount++;
                                 break;
 
-                            case ETH_CODE_POWER_270V:
-                                xEthCtrl.Power270VStatus = 1U;
-                                break;
 
                             case ETH_CODE_PBIT_REQ:
                                 {
@@ -686,13 +669,6 @@ void Ethernet_StateMachine(void)
             break;
 
         case STATE_JOINED:
-            /* 100ms 마다 Heartbeat 자발 송출 */
-            if (((xEthCtrl.TickCount100ms % ETH_HEARTBEAT_PERIOD) == 0U) && (xEthCtrl.WaitAckCode == 0U))
-            {
-                uint8_t payload[1U];
-                payload[0U] = xEthCtrl.Power270VStatus;
-                buildAndSendUdpPacket(xEthCtrl.LastRecvTimestamp, ETH_CODE_HEARTBEAT, ETH_ACK_NOT_REQ, payload, 1U);
-            }
 
             /* 통신 두절 감시 (5초 미수신 시 롤백) */
             xEthCtrl.TimeoutCount++;
@@ -701,6 +677,7 @@ void Ethernet_StateMachine(void)
                 xEthCtrl.State = STATE_WAIT_BOOT_ACK;
                 xEthCtrl.TimeoutCount = 0U;
                 xEthCtrl.WaitAckCode = 0U;
+                break;
             }
 
             /* CBIT 주기 전송 */

@@ -21,7 +21,7 @@ namespace ATTLA_T_PC
     {
         private IProtocol _protocol;
         private System.Windows.Forms.Timer _timer;
-        private System.Windows.Forms.Timer _hbTimer; // For 100ms Heartbeat
+        private System.Windows.Forms.Timer _statusTimer; // 100ms 통신상태 확인용 타이머
 
         private Color colorBg = Color.FromArgb(30, 30, 30);
         private Color colorPanelBg = Color.FromArgb(45, 45, 48);
@@ -46,7 +46,7 @@ namespace ATTLA_T_PC
         private Label lblBoardTemp;
         
         private Label lblBootStatus;
-        private Label lblHbStatus;
+        private Label lblStatusInfo;
 
         private Label[] lblPbitFaults;
         private Label[] lblCbitFaults;
@@ -93,17 +93,19 @@ namespace ATTLA_T_PC
             _timer = new System.Windows.Forms.Timer { Interval = 100 }; // 100ms UI Update
             _timer.Tick += Timer_Tick;
 
-            _hbTimer = new System.Windows.Forms.Timer { Interval = 100 };
-            _hbTimer.Tick += HbTimer_Tick;
+            _statusTimer = new System.Windows.Forms.Timer { Interval = 100 };
+            _statusTimer.Tick += StatusTimer_Tick;
+
 
             BuildUI();
         }
 
-        private void HbTimer_Tick(object sender, EventArgs e)
+
+        private void StatusTimer_Tick(object sender, EventArgs e)
         {
             if (_protocol is UdpEthProtocol && _protocol.IsConnected)
             {
-                _protocol.SendEthCommand(0x11, null); // ETH_CODE_HEARTBEAT
+                _protocol.SendEthCommand(0x11, null); // ETH_CODE_STATUS_REQ
             }
         }
 
@@ -219,9 +221,8 @@ namespace ATTLA_T_PC
             lblBoardTemp = new Label { Text = "대기 중", Location = new Point(200, 48), AutoSize = true, Font = new Font("Consolas", 18, FontStyle.Bold), ForeColor = Color.White };
 
             lblBootStatus = new Label { Text = "통신망 가입 상태: 대기 중...", Location = new Point(730, 50), AutoSize = true, Font = new Font("맑은 고딕", 16, FontStyle.Bold), ForeColor = Color.Yellow };
-            lblHbStatus = new Label { Text = "상태정보 수신: 대기 중", Location = new Point(1470, 50), AutoSize = true, Font = new Font("맑은 고딕", 16, FontStyle.Bold), ForeColor = Color.Gray };
-
-            pnlStatus.Controls.AddRange(new Control[] { lblTempTitle, lblBoardTemp, lblBootStatus, lblHbStatus });
+            lblStatusInfo = new Label { Text = "통신 상태 확인: 대기 중", Location = new Point(1470, 50), AutoSize = true, Font = new Font("맑은 고딕", 16, FontStyle.Bold), ForeColor = Color.Gray };
+            pnlStatus.Controls.AddRange(new Control[] { lblTempTitle, lblBoardTemp, lblBootStatus, lblStatusInfo });
 
             // Fault LEDs Setup
             string[] faultNames = { "Mot OVC", "Brk OVC", "Bd OVT", "28V OVV", "Brk24V OVV", "DRV Fault", "Stall", "OverSpeed", "Enc Error", "Enc Warn" };
@@ -521,8 +522,9 @@ namespace ATTLA_T_PC
 
                 UpdateConnectButtons();
                 _timer.Start();
-                _firstHeartbeatReceived = false;
-                _hbTimer.Stop(); // 망 가입(Boot Done) 전까지 정지
+                _firstStatusReceived = false;
+                _statusTimer.Stop(); // 망 가입(Boot Done) 전까지 정지
+
             }
             catch (Exception ex)
             {
@@ -559,12 +561,14 @@ namespace ATTLA_T_PC
                 lblPortConnected.ForeColor = Color.Gray;
                 lblCommReceiving.ForeColor = Color.Gray;
                 _timer.Stop();
-                _hbTimer.Stop();
+                _statusTimer.Stop();
+
             }
         }
 
-        private bool _firstHeartbeatReceived = false;
-        private bool _hbToggle = false;
+
+        private bool _firstStatusReceived = false;
+        private bool _statusToggle = false;
 
         private void OnStatusReceived(StatusMessageData data)
         {
@@ -577,25 +581,23 @@ namespace ATTLA_T_PC
                 {
                     lblBootStatus.Text = "통신망 가입 완료 (Boot Done 수신 및 ACK 전송)";
                     lblBootStatus.ForeColor = Color.Lime;
-                    if (_logForm != null && !_logForm.IsDisposed)
-                        _logForm.AddLog("[BOOT] 망 가입 요청 수신 (ACK 자동 회신)");
-                    
                     if (rdoUdp.Checked)
                     {
-                        // 망 가입 완료 시 PC 측 100ms Heartbeat 전송 타이머 시작
-                        _hbTimer.Start();
+                        System.Threading.Thread.Sleep(100); 
+                        if (_logForm != null && !_logForm.IsDisposed)
+                            _logForm.AddLog("[BOOT] 망 가입 성공 (100ms 통신 상태 확인 시작)");
+                        _statusTimer.Start();
                     }
                 }
-                else if (data.IncNumber == 1) // Heartbeat Response
+                else if (data.IncNumber == 1) // Status Response
                 {
-                    lblBoardTemp.Text = $"270V: {(data.Status == 1 ? "ON" : "OFF")} / Temp: {data.DspTemp:F1} °C";
-                    _hbToggle = !_hbToggle;
-                    lblHbStatus.Text = _hbToggle ? "상태정보 수신: 정상 연결 중 ■" : "상태정보 수신: 정상 연결 중 □";
-                    lblHbStatus.ForeColor = Color.Lime;
+                    _statusToggle = !_statusToggle;
+                    lblStatusInfo.Text = _statusToggle ? "통신 상태 확인: 정상 연결 중 ■" : "통신 상태 확인: 정상 연결 중 □";
+                    lblStatusInfo.ForeColor = Color.Lime;
                     
-                    if (!_firstHeartbeatReceived && rdoUdp.Checked)
+                    if (!_firstStatusReceived && rdoUdp.Checked)
                     {
-                        _firstHeartbeatReceived = true;
+                        _firstStatusReceived = true;
                         if (_logForm != null && !_logForm.IsDisposed)
                             _logForm.AddLog("[PBIT] 첫 통신 성공 시 PBIT 자동 요청 발송");
                         _protocol.SendEthCommand(0x12, null); // ETH_CODE_PBIT_REQ

@@ -21,7 +21,7 @@
 | **CPU1 (C28x) Core** | 200 MHz | 메인 시스템 클럭 |
 | **시스템 오실레이터** | 25 MHz | SIT2024BM-S2-33E-25.000000 사용 |
 | **이더넷 크리스탈** | 25 MHz | ECS-250-8-37Q-RES-TR 사용 |
-| **모터/스위칭 (PWM)** | 10 kHz | 100us 주기 (시스템 운용 Heartbeat 역할) |
+| **모터/스위칭 (PWM)** | 10 kHz | 100us 주기 (시스템 운용 핵심 제어 루프) |
 | **DC/DC 컨버터** | 600 kHz / 330 kHz | DCM2322T50T2660T60 (600kHz), MGDD-21-N-C (330kHz) |
 
 ### 1.2 전원 공급망 (Power Supply)
@@ -64,7 +64,7 @@
 - **모니터링**: 브레이크용 TMCS1126 개별 전류 센서를 통해 동작 및 고장 상태 진단.
 
 - **모터 구동 및 제어 연산 방식 (`csu_MotorCtrl`)**:
-  - **제어 주기**: 100us (EPWM1 인터럽트 기반 동적 Heartbeat)
+  - **제어 주기**: 100us (EPWM1 인터럽트 기반 동적 주기 제어)
   - **제어 모드 (`MotorControlMode_t`)**: `MOTOR_MODE_STOP`, `MOTOR_MODE_SPEED_CTRL`, `MOTOR_MODE_POS_CTRL`, `MOTOR_MODE_FAULT_STOP` (고장 정지 모드 추가)
   - **고장 감지 연동 (Fail-Safe)**: 
     - 리미트 스위치 결함 감지(`LimitSwitch_CheckFaults()`) 또는 내장 테스트(BIT) 결함 플래그(`xBit.faultFlagSet == 1U`) 발생 시 즉각 `MOTOR_MODE_FAULT_STOP` 모드로 강제 전환.
@@ -157,10 +157,8 @@
 - **상태 머신 (통신망 가입 및 연동통제안 규격, `csu_Ethernet.c` 백그라운드 태스크 구현 완료)**:
   - **STATE_BOOTING**: 28V 제어전원 인가 및 초기화 후 즉각 망 가입 절차로 천이.
   - **STATE_WAIT_BOOT_ACK**: 망 가입을 위해 화포통제컴퓨터로 `BOOT_DONE` 500ms 주기 전송 및 응답 대기.
-  - **STATE_JOINED**: 망 가입 완료 후, 100ms 주기로 상태정보(`ETH_CODE_HEARTBEAT`) 송수신 영구 수행. 이때 Payload의 첫 번째 바이트에 270V 전원 상태(`Power270VStatus`)를 실어 보냄.
+  - **STATE_JOINED**: 망 가입 완료 후, 100ms 주기로 상태정보(`ETH_CODE_STATUS_REQ`) 요청 수신 시 응답 수행.
   - **STATE_COMM_LOSS (통신 두절 롤백)**: 100ms 주기 상태 메시지가 **연속 50회(5초) 이상** 미응답 시 소켓을 닫고 리셋한 뒤 `STATE_WAIT_BOOT_ACK` 단계로 롤백.
-- **270VDC 구동 전원 시퀀스**:
-  - 망 가입 후 270V 구동 전원 인가 메시지(`ETH_CODE_POWER_270V`) 수신 시 전원 상태 변수 갱신 후 Heartbeat를 통해 응답.
 - **CBIT / IBIT 제어 로직**:
   - CBIT(주기 점검)는 지정된 N초 단위로 100us ISR 내부에서 백그라운드로 송신. (ACK 미요청)
   - IBIT(지시 점검) 수행 시 CBIT가 일시 중단되며, IBIT 완료 보고 후 다시 CBIT를 재개함.
@@ -218,7 +216,7 @@
 - 초기 과전압, 과열, 게이트 폴트 등 PBIT를 1회 점검 수행합니다. 이상이 없으면, 대기시간 없이 즉시 메인 제어루프 인터럽트로 제어권을 스위칭합니다.
 
 ### ✅ 단계 3: 메인 제어 인터럽트 (`csu_MainControl_Isr`)
-- 모든 초기화가 끝난 후 시스템이 종료될 때까지 100us 주기로 영구적으로 호출되는 최종 Heartbeat ISR입니다.
+- 모든 초기화가 끝난 후 시스템이 종료될 때까지 100us 주기로 영구적으로 호출되는 최종 제어 ISR입니다.
 - 가이드라인에 따라 `Control_SystemOperation()` 함수를 통해 다음의 7단계 파이프라인으로 엄격히 순차 실행됩니다:
   1. **아날로그 신호 입력 및 연산** (`CalcAdcData`)
   2. **이산신호 입력** (`Dio_UpdateInput`)
