@@ -35,7 +35,15 @@
 #define ETH_CODE_CBIT_SET       (0x16U)   /* CBIT 전송주기 설정 */
 #define ETH_CODE_CBIT_REP       (0x17U)   /* CBIT 주기 송신 (Reflect) */
 #define ETH_CODE_POWER_270V     (0x18U)   /* 270V 구동전원 인가 메시지 */
+#define ETH_CODE_IBIT_DONE      (0x19U)   /* IBIT 완료 통보 */
+#define ETH_CODE_IBIT_RES_REQ   (0x1AU)   /* IBIT 결과 요청 */
+#define ETH_CODE_CBIT_STOP      (0x1BU)   /* CBIT 전송 중지 요청 */
+#define ETH_CODE_CBIT_REQ       (0x1CU)   /* CBIT 전송 시작 요청 */
 #define ETH_CODE_ACK            (0xFFU)   /* ACK 메시지 */
+
+/* Priority 설정 */
+#define ETH_PRIORITY_EMERG      (0x01U)   /* 비상정지 우선순위 */
+#define ETH_PRIORITY_NORMAL     (0x02U)   /* 일반 우선순위 */
 
 /* Request ACK 설정 */
 #define ETH_ACK_NOT_REQ         (0xFFU)   /* ACK 미요청 */
@@ -63,11 +71,11 @@
 #define ETH_DSP_IP2             (200U)
 #define ETH_DSP_IP3             (10U)
 
-/* PC (화포통제컴퓨터) IP: 192.168.200.1 (스펙 문서의 게이트웨이 및 PC 고정 대역) */
+/* PC (화포통제컴퓨터) IP: 192.168.200.100 (테스터기 전용 로컬 IP 대역 맞춤) */
 #define ETH_PC_IP0              (192U)
 #define ETH_PC_IP1              (168U)
 #define ETH_PC_IP2              (200U)
-#define ETH_PC_IP3              (1U)
+#define ETH_PC_IP3              (100U)
 
 /* DSP MAC: A8:63:F2:00:38:88 (체계 전용 물리 MAC) */
 #define ETH_DSP_MAC0            (0xA8U)
@@ -87,7 +95,7 @@
 
 /* UDP 포트 */
 #define ETH_DSP_RX_PORT         (5001U)   /* DSP 수신 포트 */
-#define ETH_PC_RX_PORT          (5001U)   /* PC 수신 포트 (체계 스펙 고정) */
+#define ETH_PC_RX_PORT          (5003U)   /* PC 수신 포트 (포트 충돌 방지) */
 
 /* ---------------------------------------------------------------
  * 프레임 헤더 크기 및 오프셋 정의 (Raw Packet 빌드용)
@@ -146,7 +154,10 @@ typedef struct {
     
     uint16_t    CbitPeriodSec;      /* CBIT 전송 주기(초 단위) */
     uint16_t    CbitTimer100ms;     /* CBIT 송신 타이머 카운트 */
+    uint8_t     CbitTxFlag;         /* CBIT 결과 주기 전송 상태 (1: 전송중, 0: 중지) */
     uint8_t     IbitInProgress;     /* IBIT 수행 중 플래그 */
+    uint16_t    IbitTimer;          /* IBIT 수행 시뮬레이션 지연 타이머 */
+    uint16_t    IbitDuration;       /* IBIT 수행 지정 시간(초) */
     uint8_t     Power270VStatus;    /* 270V 구동 전원 상태 */
     
     uint8_t     WaitAckCode;        /* 현재 ACK를 기다리고 있는 Code */

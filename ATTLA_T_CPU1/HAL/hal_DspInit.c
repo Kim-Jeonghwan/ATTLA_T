@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_DspInit.c
-    Version          : 00.10
+    Version          : 00.11
     Description      : DSP 초기화 및 GPIO/인터럽트 기본 설정
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (CM 기동 전 IPC 레지스터 클리어 호출 추가)
+    Last Updated     : 2026. 06. 24. (EMAC 관련 17개 핀에 대해 CM 코어로 제어권 이양 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 24. - EMAC 관련 17개 핀에 대해 CM 코어로 제어권 이양 추가
  * 2026. 06. 15. - 기존 hal_Led.c 파일 삭제 및 LED 핀 초기화 코드를 Init_GpioDout에 통합 관리
  * 2026. 06. 15. - W6100 SPI-A 통신 핀 및 CS 설정(GPIO 16~19)을 hal_Spi.c의 InitSpia()로 이관
  * 2026. 06. 12. - DSP_BRAKE 핀을 Active High(전원 인가 시 브레이크 잠금 해제)로 정정 및 주석 수정

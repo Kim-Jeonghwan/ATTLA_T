@@ -1,8 +1,8 @@
 /*
  * File: MainForm.cs
  * Created: 2026-06-01 (Modified by Antigravity)
- * Description: ATTLA_T PC Monitoring Dashboard MainForm
- * Last Updated: 2026. 06. 01. (SCI/UDP 프로토콜 선택 RadioButton 및 통신 두절 UI 추가)
+ * Description: ATTLA_T PC Monitoring Dashboard MainForm (Refactored for Layout and BIT requirements)
+ * Last Updated: 2026. 06. 24.
  */
 
 using System;
@@ -21,6 +21,7 @@ namespace ATTLA_T_PC
     {
         private IProtocol _protocol;
         private System.Windows.Forms.Timer _timer;
+        private System.Windows.Forms.Timer _hbTimer; // For 100ms Heartbeat
 
         private Color colorBg = Color.FromArgb(30, 30, 30);
         private Color colorPanelBg = Color.FromArgb(45, 45, 48);
@@ -42,12 +43,25 @@ namespace ATTLA_T_PC
         private Label lblCommReceiving;
 
         // Status & Control UI
-        private Label lblSeqNumber;
         private Label lblBoardTemp;
-        private Label lblCrcErrors;
         
-        private TextBox txtInputSeq;
-        private Button btnSendSeq;
+        private Label lblBootStatus;
+        private Label lblHbStatus;
+
+        private Label[] lblPbitFaults;
+        private Label[] lblCbitFaults;
+        private Label[] lblIbitFaults;
+
+        private int _cbitCount = 0;
+        private int _ibitCount = 0;
+        private Label lblCbitCount;
+        private Label lblIbitCount;
+
+        private Label lblCbitSetResult;
+        private Label lblIbitReqStatus;
+
+        private TextBox txtCbitPeriod;
+        private TextBox txtIbitDuration;
 
         // Log
         private LogForm _logForm;
@@ -63,8 +77,8 @@ namespace ATTLA_T_PC
         public MainForm()
         {
             this.Text = "ATTLA_T Monitoring & Dashboard";
-            this.Size = new Size(1100, 900); // Compact Size
-            this.MinimumSize = new Size(800, 600);
+            this.Size = new Size(2200, 1400); // Expanded Size
+            this.MinimumSize = new Size(2200, 1400);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = colorBg;
             this.ForeColor = colorText;
@@ -79,7 +93,18 @@ namespace ATTLA_T_PC
             _timer = new System.Windows.Forms.Timer { Interval = 100 }; // 100ms UI Update
             _timer.Tick += Timer_Tick;
 
+            _hbTimer = new System.Windows.Forms.Timer { Interval = 100 };
+            _hbTimer.Tick += HbTimer_Tick;
+
             BuildUI();
+        }
+
+        private void HbTimer_Tick(object sender, EventArgs e)
+        {
+            if (_protocol is UdpEthProtocol && _protocol.IsConnected)
+            {
+                _protocol.SendEthCommand(0x11, null); // ETH_CODE_HEARTBEAT
+            }
         }
 
         private void BuildUI()
@@ -92,8 +117,8 @@ namespace ATTLA_T_PC
                 Padding = new Padding(15, 40, 15, 15)
             };
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 220)); // Comm Panel
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 200)); // Status Panel
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 150)); // Control Panel
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 450)); // Status Panel (Height Expanded for Spacing)
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 250)); // Control Panel (Height Expanded)
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // Log Panel
 
             // 1. Top Bar - Communication Panel
@@ -185,56 +210,161 @@ namespace ATTLA_T_PC
             mainLayout.Controls.Add(pnlComm, 0, 0);
 
 
-            // 2. Status Panel - Sequence Number & Board Temperature & CRC
+            // 2. Status Panel - BIT Status & Board Temperature
             Panel pnlStatus = CreateStyledPanel("MCU STATUS MONITOR (수신 데이터)");
             pnlStatus.Dock = DockStyle.Fill;
-            pnlStatus.Margin = new Padding(5);
+            pnlStatus.Margin = new Padding(10);
 
-            Label lblSeqTitle = new Label { Text = "Seq. Num. (실시간):", Location = new Point(30, 60), AutoSize = true, Font = new Font("맑은 고딕", 14, FontStyle.Bold), ForeColor = Color.Cyan };
-            lblSeqNumber = new Label { Text = "0", Location = new Point(320, 60), Size = new Size(200, 35), Font = new Font("Consolas", 18, FontStyle.Bold), ForeColor = Color.White };
+            Label lblTempTitle = new Label { Text = "DSP 상태:", Location = new Point(40, 50), AutoSize = true, Font = new Font("맑은 고딕", 16, FontStyle.Bold), ForeColor = Color.Orange };
+            lblBoardTemp = new Label { Text = "대기 중", Location = new Point(200, 48), AutoSize = true, Font = new Font("Consolas", 18, FontStyle.Bold), ForeColor = Color.White };
 
-            Label lblTempTitle = new Label { Text = "DSP Temp. (온도):", Location = new Point(30, 110), AutoSize = true, Font = new Font("맑은 고딕", 14, FontStyle.Bold), ForeColor = Color.Orange };
-            lblBoardTemp = new Label { Text = "0.0 °C", Location = new Point(320, 110), Size = new Size(200, 35), Font = new Font("Consolas", 18, FontStyle.Bold), ForeColor = Color.White };
+            lblBootStatus = new Label { Text = "통신망 가입 상태: 대기 중...", Location = new Point(730, 50), AutoSize = true, Font = new Font("맑은 고딕", 16, FontStyle.Bold), ForeColor = Color.Yellow };
+            lblHbStatus = new Label { Text = "상태정보 수신: 대기 중", Location = new Point(1470, 50), AutoSize = true, Font = new Font("맑은 고딕", 16, FontStyle.Bold), ForeColor = Color.Gray };
 
-            Label lblCrcTitle = new Label { Text = "CRC Error Count:", Location = new Point(550, 60), AutoSize = true, Font = new Font("맑은 고딕", 14, FontStyle.Bold), ForeColor = Color.Red };
-            lblCrcErrors = new Label { Text = "0", Location = new Point(750, 60), Size = new Size(200, 35), Font = new Font("Consolas", 18, FontStyle.Bold), ForeColor = Color.White };
+            pnlStatus.Controls.AddRange(new Control[] { lblTempTitle, lblBoardTemp, lblBootStatus, lblHbStatus });
 
-            pnlStatus.Controls.AddRange(new Control[] { lblSeqTitle, lblSeqNumber, lblTempTitle, lblBoardTemp, lblCrcTitle, lblCrcErrors });
+            // Fault LEDs Setup
+            string[] faultNames = { "Mot OVC", "Brk OVC", "Bd OVT", "28V OVV", "Brk24V OVV", "DRV Fault", "Stall", "OverSpeed", "Enc Error", "Enc Warn" };
+            
+            // Layout adjusted for spacing
+            GroupBox grpPbit = new GroupBox { Text = "PBIT 결과", Location = new Point(40, 120), Size = new Size(580, 280), ForeColor = Color.Cyan, Font = new Font("맑은 고딕", 14, FontStyle.Bold) };
+            GroupBox grpCbit = new GroupBox { Text = "CBIT 결과", Location = new Point(650, 120), Size = new Size(580, 280), ForeColor = Color.MediumSpringGreen, Font = new Font("맑은 고딕", 14, FontStyle.Bold) };
+            GroupBox grpIbit = new GroupBox { Text = "IBIT 결과", Location = new Point(1260, 120), Size = new Size(580, 280), ForeColor = Color.DodgerBlue, Font = new Font("맑은 고딕", 14, FontStyle.Bold) };
+
+            lblPbitFaults = new Label[faultNames.Length];
+            lblCbitFaults = new Label[faultNames.Length];
+            lblIbitFaults = new Label[faultNames.Length];
+
+            lblCbitCount = new Label { Text = "누적 수행 횟수: 0회", Location = new Point(350, 30), AutoSize = true, ForeColor = Color.White, Font = new Font("맑은 고딕", 12) };
+            lblIbitCount = new Label { Text = "누적 수행 횟수: 0회", Location = new Point(350, 30), AutoSize = true, ForeColor = Color.White, Font = new Font("맑은 고딕", 12) };
+            grpCbit.Controls.Add(lblCbitCount);
+            grpIbit.Controls.Add(lblIbitCount);
+
+            for (int i = 0; i < faultNames.Length; i++)
+            {
+                // Spacing out items more (3 columns, rows spaced out)
+                Point loc = new Point(30 + (i % 3) * 180, 60 + (i / 3) * 55);
+                
+                lblPbitFaults[i] = new Label { Text = "● " + faultNames[i], Location = loc, AutoSize = true, Font = new Font("맑은 고딕", 12, FontStyle.Bold), ForeColor = Color.Gray };
+                lblCbitFaults[i] = new Label { Text = "● " + faultNames[i], Location = loc, AutoSize = true, Font = new Font("맑은 고딕", 12, FontStyle.Bold), ForeColor = Color.Gray };
+                lblIbitFaults[i] = new Label { Text = "● " + faultNames[i], Location = loc, AutoSize = true, Font = new Font("맑은 고딕", 12, FontStyle.Bold), ForeColor = Color.Gray };
+
+                grpPbit.Controls.Add(lblPbitFaults[i]);
+                grpCbit.Controls.Add(lblCbitFaults[i]);
+                grpIbit.Controls.Add(lblIbitFaults[i]);
+            }
+
+            pnlStatus.Controls.Add(grpPbit);
+            pnlStatus.Controls.Add(grpCbit);
+            pnlStatus.Controls.Add(grpIbit);
             mainLayout.Controls.Add(pnlStatus, 0, 1);
 
 
-            // 3. Control Panel - Sequence Number Input
+            // 3. Control Panel - CBIT & IBIT Control
             Panel pnlCtrl = CreateStyledPanel("MCU CONTROL (송신 데이터)");
             pnlCtrl.Dock = DockStyle.Fill;
-            pnlCtrl.Margin = new Padding(5);
+            pnlCtrl.Margin = new Padding(10);
 
-            Label lblInputSeq = new Label { Text = "수동 Seq. Num. 전송 (0~255):", Location = new Point(30, 60), AutoSize = true, Font = new Font("맑은 고딕", 12, FontStyle.Bold) };
-            txtInputSeq = new TextBox { 
-                Location = new Point(380, 58), 
-                Width = 100, 
+            // CBIT Controls
+            GroupBox grpCbitCtrl = new GroupBox { Text = "CBIT 제어", Location = new Point(40, 50), Size = new Size(800, 150), ForeColor = Color.MediumSpringGreen, Font = new Font("맑은 고딕", 12, FontStyle.Bold) };
+            
+            Label lblCbitInput = new Label { Text = "주기 (초):", Location = new Point(20, 50), AutoSize = true, Font = new Font("맑은 고딕", 14, FontStyle.Bold), ForeColor = Color.White };
+            txtCbitPeriod = new TextBox { 
+                Location = new Point(160, 48), 
+                Width = 60, 
                 BackColor = Color.FromArgb(60, 60, 60), 
                 ForeColor = Color.White, 
-                Text = "0", 
+                Text = "1", 
                 BorderStyle = BorderStyle.FixedSingle, 
                 Font = new Font("Consolas", 14) 
             };
-            btnSendSeq = CreateBorderedButton("Send Sequence", 500, 50, 180, 45);
-            btnSendSeq.BackColor = Color.MediumSpringGreen;
-            btnSendSeq.ForeColor = Color.Black;
-            btnSendSeq.Click += (s, e) => 
+            
+            Button btnCbitSet = CreateBorderedButton("설정 적용", 240, 40, 120, 45);
+            btnCbitSet.BackColor = Color.MediumSpringGreen;
+            btnCbitSet.ForeColor = Color.Black;
+            btnCbitSet.Click += (s, e) => 
             {
-                if (byte.TryParse(txtInputSeq.Text, out byte manualSeq))
+                if (!(_protocol is UdpEthProtocol))
                 {
-                    _ctrlDto.ManualSeqNum = manualSeq;
-                    _protocol.SendControlMessage(_ctrlDto);
+                    MessageBox.Show("CBIT 설정은 UDP(Ethernet) 모드에서만 가능합니다.", "통신 모드 확인", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
-                else
+                
+                if (ushort.TryParse(txtCbitPeriod.Text, out ushort cbitPeriod))
                 {
-                    MessageBox.Show("0에서 255 사이의 올바른 숫자를 입력하세요.", "입력 오류", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    lblCbitSetResult.Text = "설정 전송 중...";
+                    lblCbitSetResult.ForeColor = Color.Yellow;
+                    byte[] payload = new byte[2];
+                    payload[0] = (byte)(cbitPeriod & 0xFF);
+                    payload[1] = (byte)((cbitPeriod >> 8) & 0xFF);
+                    _protocol.SendEthCommand(0x16, payload); // ETH_CODE_CBIT_SET
                 }
+                else MessageBox.Show("올바른 주기 값을 입력하세요.", "입력 오류");
             };
 
-            pnlCtrl.Controls.AddRange(new Control[] { lblInputSeq, txtInputSeq, btnSendSeq });
+            lblCbitSetResult = new Label { Text = "대기 중", Location = new Point(380, 52), AutoSize = true, Font = new Font("맑은 고딕", 12, FontStyle.Bold), ForeColor = Color.Gray };
+
+            Button btnCbitReq = CreateBorderedButton("CBIT 시작", 570, 40, 120, 45);
+            btnCbitReq.BackColor = Color.CornflowerBlue;
+            btnCbitReq.Click += (s, e) => {
+                if (!(_protocol is UdpEthProtocol)) return;
+                _protocol.SendEthCommand(0x1C, null); // 0x1C : ETH_CODE_CBIT_REQ (시작)
+            };
+            
+            Button btnCbitStop = CreateBorderedButton("CBIT 중지", 700, 40, 120, 45);
+            btnCbitStop.BackColor = Color.OrangeRed;
+            btnCbitStop.Click += (s, e) => {
+                if (!(_protocol is UdpEthProtocol)) return;
+                _protocol.SendEthCommand(0x1B, null); // 0x1B : ETH_CODE_CBIT_STOP (중지)
+            };
+
+            grpCbitCtrl.Controls.AddRange(new Control[] { lblCbitInput, txtCbitPeriod, btnCbitSet, lblCbitSetResult, btnCbitReq, btnCbitStop });
+
+
+            // IBIT Controls
+            GroupBox grpIbitCtrl = new GroupBox { Text = "IBIT 제어", Location = new Point(880, 50), Size = new Size(950, 150), ForeColor = Color.DodgerBlue, Font = new Font("맑은 고딕", 12, FontStyle.Bold) };
+
+            Label lblIbitInput = new Label { Text = "수행 시간 (초):", Location = new Point(20, 50), AutoSize = true, Font = new Font("맑은 고딕", 14, FontStyle.Bold), ForeColor = Color.White };
+            txtIbitDuration = new TextBox { 
+                Location = new Point(260, 48), 
+                Width = 60, 
+                BackColor = Color.FromArgb(60, 60, 60), 
+                ForeColor = Color.White, 
+                Text = "5", 
+                BorderStyle = BorderStyle.FixedSingle, 
+                Font = new Font("Consolas", 14) 
+            };
+
+            Button btnIbitReq = CreateBorderedButton("IBIT 수행 요청", 340, 40, 160, 45);
+            btnIbitReq.BackColor = Color.DodgerBlue;
+            btnIbitReq.Click += (s, e) => 
+            {
+                if (!(_protocol is UdpEthProtocol))
+                {
+                    MessageBox.Show("IBIT 요청은 UDP(Ethernet) 모드에서만 가능합니다.", "통신 모드 확인", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                if (ushort.TryParse(txtIbitDuration.Text, out ushort duration))
+                {
+                    lblIbitReqStatus.Text = "요청 전송 중...";
+                    lblIbitReqStatus.ForeColor = Color.Yellow;
+                    byte[] payload = new byte[2];
+                    payload[0] = (byte)(duration & 0xFF);
+                    payload[1] = (byte)((duration >> 8) & 0xFF);
+                    _protocol.SendEthCommand(0x14, payload); // ETH_CODE_IBIT_REQ
+                }
+            };
+            
+            lblIbitReqStatus = new Label { Text = "대기 중", Location = new Point(520, 52), AutoSize = true, Font = new Font("맑은 고딕", 12, FontStyle.Bold), ForeColor = Color.Gray };
+
+            Button btnIbitResReq = CreateBorderedButton("IBIT 결과 갱신", 750, 40, 160, 45);
+            btnIbitResReq.Click += (s, e) => _protocol.SendEthCommand(0x1A, null); // ETH_CODE_IBIT_RES_REQ
+
+            grpIbitCtrl.Controls.AddRange(new Control[] { lblIbitInput, txtIbitDuration, btnIbitReq, lblIbitReqStatus, btnIbitResReq });
+
+
+            pnlCtrl.Controls.Add(grpCbitCtrl);
+            pnlCtrl.Controls.Add(grpIbitCtrl);
             mainLayout.Controls.Add(pnlCtrl, 0, 2);
 
 
@@ -293,8 +423,8 @@ namespace ATTLA_T_PC
 
             ToolStripMenuItem aboutItem = new ToolStripMenuItem("About (&A)", null, (s, e) => {
                 MessageBox.Show("ATTLA_T Monitoring & Dashboard\n\n" +
-                                "Version: 1.1 (Simplified Protocol)\n" +
-                                "Date: 2026. 06. 01.\n" +
+                                "Version: 1.2 (Refactored BIT Logic)\n" +
+                                "Date: 2026. 06. 24.\n" +
                                 "Developer: Kim Jeonghwan (Nexcom)", 
                                 "About Program", 
                                 MessageBoxButtons.OK, 
@@ -391,6 +521,8 @@ namespace ATTLA_T_PC
 
                 UpdateConnectButtons();
                 _timer.Start();
+                _firstHeartbeatReceived = false;
+                _hbTimer.Stop(); // 망 가입(Boot Done) 전까지 정지
             }
             catch (Exception ex)
             {
@@ -405,11 +537,10 @@ namespace ATTLA_T_PC
             _protocol.OnPortClosed += () => { if (!IsDisposed) Invoke((Action)UpdateConnectButtons); };
             _protocol.OnRawTx += OnRawTxReceived;
             _protocol.OnRawRx += OnRawRxReceived;
-
-            if (_protocol is SciPcProtocol sciProtocol)
-            {
-                sciProtocol.OnCrcErrorCountUpdated += OnCrcErrorCountUpdated;
-            }
+            
+            _protocol.OnBitResultReceived += OnBitResultReceived;
+            _protocol.OnIbitDoneReceived += OnIbitDoneReceived;
+            _protocol.OnAckReceived += OnAckReceived;
         }
 
         private void UpdateConnectButtons()
@@ -428,16 +559,12 @@ namespace ATTLA_T_PC
                 lblPortConnected.ForeColor = Color.Gray;
                 lblCommReceiving.ForeColor = Color.Gray;
                 _timer.Stop();
+                _hbTimer.Stop();
             }
         }
 
-        private void OnCrcErrorCountUpdated(int count)
-        {
-            BeginInvoke((Action)(() =>
-            {
-                lblCrcErrors.Text = count.ToString();
-            }));
-        }
+        private bool _firstHeartbeatReceived = false;
+        private bool _hbToggle = false;
 
         private void OnStatusReceived(StatusMessageData data)
         {
@@ -446,12 +573,118 @@ namespace ATTLA_T_PC
                 _lastRxTime = DateTime.Now;
                 lblCommReceiving.ForeColor = Color.Lime;
 
-                lblSeqNumber.Text = data.IncNumber.ToString();
-                lblBoardTemp.Text = string.Format("{0:0.0} °C", data.DspTemp);
+                if (data.IncNumber == 0) // Boot Done
+                {
+                    lblBootStatus.Text = "통신망 가입 완료 (Boot Done 수신 및 ACK 전송)";
+                    lblBootStatus.ForeColor = Color.Lime;
+                    if (_logForm != null && !_logForm.IsDisposed)
+                        _logForm.AddLog("[BOOT] 망 가입 요청 수신 (ACK 자동 회신)");
+                    
+                    if (rdoUdp.Checked)
+                    {
+                        // 망 가입 완료 시 PC 측 100ms Heartbeat 전송 타이머 시작
+                        _hbTimer.Start();
+                    }
+                }
+                else if (data.IncNumber == 1) // Heartbeat Response
+                {
+                    lblBoardTemp.Text = $"270V: {(data.Status == 1 ? "ON" : "OFF")} / Temp: {data.DspTemp:F1} °C";
+                    _hbToggle = !_hbToggle;
+                    lblHbStatus.Text = _hbToggle ? "상태정보 수신: 정상 연결 중 ■" : "상태정보 수신: 정상 연결 중 □";
+                    lblHbStatus.ForeColor = Color.Lime;
+                    
+                    if (!_firstHeartbeatReceived && rdoUdp.Checked)
+                    {
+                        _firstHeartbeatReceived = true;
+                        if (_logForm != null && !_logForm.IsDisposed)
+                            _logForm.AddLog("[PBIT] 첫 통신 성공 시 PBIT 자동 요청 발송");
+                        _protocol.SendEthCommand(0x12, null); // ETH_CODE_PBIT_REQ
+                    }
+                }
 
                 /* 통신 정상 수신 시 통신 두절 표시 해제 */
                 if (lblCommStatus != null)
                     lblCommStatus.Text = "";
+            }));
+        }
+
+        private void OnAckReceived(byte targetCode, bool isAck)
+        {
+            BeginInvoke((Action)(() =>
+            {
+                if (targetCode == 0x16) // CBIT_SET
+                {
+                    lblCbitSetResult.Text = isAck ? "주기 설정 완료" : "주기 설정 거부됨";
+                    lblCbitSetResult.ForeColor = isAck ? Color.Lime : Color.Red;
+                }
+                else if (targetCode == 0x1B) // CBIT_STOP
+                {
+                    lblCbitSetResult.Text = isAck ? "중지 완료" : "중지 거부됨";
+                    lblCbitSetResult.ForeColor = isAck ? Color.Yellow : Color.Red;
+                }
+                else if (targetCode == 0x1C) // CBIT_REQ
+                {
+                    lblCbitSetResult.Text = isAck ? "수신 중" : "요청 거부됨";
+                    lblCbitSetResult.ForeColor = isAck ? Color.Lime : Color.Red;
+                }
+                else if (targetCode == 0x14) // IBIT_REQ
+                {
+                    lblIbitReqStatus.Text = isAck ? "IBIT 수행 중..." : "IBIT 요청 거부됨";
+                    lblIbitReqStatus.ForeColor = isAck ? Color.Orange : Color.Red;
+                    if (isAck)
+                    {
+                        lblCbitSetResult.Text = "IBIT 중 일시정지";
+                        lblCbitSetResult.ForeColor = Color.Orange;
+                    }
+                }
+                else if (targetCode == 0x1A) // IBIT_RES_REQ
+                {
+                    lblIbitReqStatus.Text = isAck ? "결과 갱신 요청됨" : "결과 갱신 거부됨";
+                    lblIbitReqStatus.ForeColor = isAck ? Color.Lime : Color.Red;
+                }
+            }));
+        }
+
+        private void OnBitResultReceived(string type, uint bitmask)
+        {
+            BeginInvoke((Action)(() =>
+            {
+                Label[] targetFaults = lblPbitFaults;
+                
+                if (type == "CBIT")
+                {
+                    targetFaults = lblCbitFaults;
+                    _cbitCount++;
+                    lblCbitCount.Text = $"누적 수행 횟수: {_cbitCount}회";
+                    lblCbitSetResult.Text = "수신 중";
+                    lblCbitSetResult.ForeColor = Color.Lime;
+                }
+                else if (type == "IBIT")
+                {
+                    targetFaults = lblIbitFaults;
+                    _ibitCount++;
+                    lblIbitCount.Text = $"누적 수행 횟수: {_ibitCount}회";
+                    lblIbitReqStatus.Text = "결과 갱신 완료";
+                    lblIbitReqStatus.ForeColor = Color.Lime;
+                }
+
+                int[] bitPositions = { 8, 9, 11, 12, 13, 16, 17, 18, 19, 20 };
+                for (int i = 0; i < bitPositions.Length; i++)
+                {
+                    bool isSet = ((bitmask >> bitPositions[i]) & 1) == 1;
+                    targetFaults[i].ForeColor = isSet ? Color.Red : Color.Lime;
+                }
+            }));
+        }
+
+        private void OnIbitDoneReceived()
+        {
+            BeginInvoke((Action)(() =>
+            {
+                lblIbitReqStatus.Text = "IBIT 완료(결과 대기)";
+                lblIbitReqStatus.ForeColor = Color.Lime;
+                if (_logForm != null && !_logForm.IsDisposed)
+                    _logForm.AddLog("[IBIT] IBIT_DONE 수신 완료, 결과 요청 대기 중");
             }));
         }
 

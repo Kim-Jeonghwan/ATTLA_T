@@ -31,6 +31,10 @@ namespace ATTLA_T_PC
         
         public event Action<byte[]> OnRawTx;
         public event Action<byte[]> OnRawRx;
+        
+        public event Action<string, uint> OnBitResultReceived;
+        public event Action OnIbitDoneReceived;
+        public event Action<byte, bool> OnAckReceived;
 
         public bool IsConnected => _serialPort != null && _serialPort.IsOpen;
         
@@ -115,6 +119,11 @@ namespace ATTLA_T_PC
             {
                 OnCommError?.Invoke(ex.Message);
             }
+        }
+
+        public void SendEthCommand(byte cmdCode, byte[] payload)
+        {
+            // SCI 프로토콜에서는 지원하지 않음
         }
 
         private void ReadWorker()

@@ -28,13 +28,12 @@ typedef struct {
     union {
         uint32_t PayloadRaw[16];   /* 실제 데이터 배열 */
         struct {
-            float32_t waveValue;       /* 실시간 생성 파형 값 */
+            uint32_t bitInformAll;     /* xBit.informAll (결함 비트맵) 전송용 */
             float32_t adcTemperature;  /* 보드 온도 센서값 */
-            uint32_t sequenceNum;     /* 통신 동기화 시퀀스 넘버 */
         } TxData;
         struct {
-            uint32_t seqNum;          /* 수신된 시퀀스 넘버 */
             uint32_t waveType;        /* 수신된 270V 전원 상태 */
+            uint32_t ibitClearReq;    /* IBIT 수행 시작 시 에러 초기화 요청 플래그 (1=요청) */
         } RxData;
     } Payload;
 } stIpcDataPacket;

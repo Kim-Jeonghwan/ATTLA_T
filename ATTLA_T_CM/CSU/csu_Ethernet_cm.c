@@ -265,7 +265,7 @@ void buildAndSendUdpPacket(uint32_t rxTimestamp, uint8_t msgCode, uint8_t reqAck
     pPayload[offset++] = ETH_FC_ID;    /* Dest ID */
     pPayload[offset++] = msgCode;      /* Code */
     pPayload[offset++] = reqAck;       /* Request ACK */
-    pPayload[offset++] = 0U;           /* Priority */
+    pPayload[offset++] = ETH_PRIORITY_NORMAL; /* Priority */
 
     /* Send Count */
     uint8_t sendCount = 1U;
@@ -294,10 +294,10 @@ void buildAndSendUdpPacket(uint32_t rxTimestamp, uint8_t msgCode, uint8_t reqAck
     }
     else if (msgCode == ETH_CODE_CBIT_REP)
     {
-        /* CBIT 임시 0 페이로드 채움 */
+        /* CBIT 임시 처리 대체됨 (payload 조립 시 pData가 NULL이 아님) */
         for (i = 0U; i < dataLen; i++)
         {
-            pPayload[offset++] = 0U;
+            pPayload[offset++] = pData[i];
         }
     }
     else
@@ -483,6 +483,11 @@ void processReceivedEthernetPacket(uint8_t *pPacket, uint16_t length)
                                         {
                                             xEthCtrl.State = STATE_JOINED;
                                         }
+                                        /* IBIT_DONE ACK 수신 시 CBIT 재개 */
+                                        if (codeInfo == ETH_CODE_IBIT_DONE)
+                                        {
+                                            xEthCtrl.IbitInProgress = 0U;
+                                        }
                                     }
                                 }
                                 break;
@@ -499,7 +504,6 @@ void processReceivedEthernetPacket(uint8_t *pPacket, uint16_t length)
                                 }
                                 /* CPU1으로 전달할 MSGRAM에 기록 (Seqlock) */
                                 pxDataCmToCpu1->seqCount++;
-                                pxDataCmToCpu1->Payload.RxData.seqNum = rxTimestamp; /* Timestamp를 시퀀스처럼 사용 */
                                 pxDataCmToCpu1->Payload.RxData.waveType = (uint32_t)xEthCtrl.Power270VStatus;
                                 pxDataCmToCpu1->seqCount++;
                                 break;
@@ -509,15 +513,42 @@ void processReceivedEthernetPacket(uint8_t *pPacket, uint16_t length)
                                 break;
 
                             case ETH_CODE_PBIT_REQ:
-                                /* PBIT 결과 전송 */
-                                buildAndSendUdpPacket(rxTimestamp, ETH_CODE_PBIT_REP, ETH_ACK_NOT_REQ, NULL, 0U);
+                                {
+                                    uint32_t bitResult = pxDataCpu1ToCm->Payload.TxData.bitInformAll;
+                                    uint8_t payload[4];
+                                    payload[0] = (uint8_t)(bitResult & 0xFFU);
+                                    payload[1] = (uint8_t)((bitResult >> 8U) & 0xFFU);
+                                    payload[2] = (uint8_t)((bitResult >> 16U) & 0xFFU);
+                                    payload[3] = (uint8_t)((bitResult >> 24U) & 0xFFU);
+                                    buildAndSendUdpPacket(rxTimestamp, ETH_CODE_PBIT_REP, ETH_ACK_NOT_REQ, payload, 4U);
+                                }
                                 break;
 
                             case ETH_CODE_IBIT_REQ:
-                                xEthCtrl.IbitInProgress = 1U;
-                                // IBIT 완료 결과 통보
-                                buildAndSendUdpPacket(rxTimestamp, ETH_CODE_IBIT_REP, ETH_ACK_NOT_REQ, NULL, 0U);
-                                xEthCtrl.IbitInProgress = 0U;
+                                if (dataLength >= 2U)
+                                {
+                                    uint16_t durationSec = ((uint16_t)pPayload[13U] << 8U) | (uint16_t)pPayload[12U];
+                                    xEthCtrl.IbitDuration = durationSec;
+                                    xEthCtrl.IbitInProgress = 1U;
+                                    xEthCtrl.IbitTimer = durationSec * 10U; /* 100ms 주기 변환 */
+                                    
+                                    /* CPU1 측에 에러 클리어 요청 (IPC) */
+                                    pxDataCmToCpu1->seqCount++;
+                                    pxDataCmToCpu1->Payload.RxData.ibitClearReq = 1U;
+                                    pxDataCmToCpu1->seqCount++;
+                                }
+                                break;
+                                
+                            case ETH_CODE_IBIT_RES_REQ:
+                                {
+                                    uint32_t bitResult = pxDataCpu1ToCm->Payload.TxData.bitInformAll;
+                                    uint8_t payload[4];
+                                    payload[0] = (uint8_t)(bitResult & 0xFFU);
+                                    payload[1] = (uint8_t)((bitResult >> 8U) & 0xFFU);
+                                    payload[2] = (uint8_t)((bitResult >> 16U) & 0xFFU);
+                                    payload[3] = (uint8_t)((bitResult >> 24U) & 0xFFU);
+                                    buildAndSendUdpPacket(rxTimestamp, ETH_CODE_IBIT_REP, ETH_ACK_NOT_REQ, payload, 4U);
+                                }
                                 break;
 
                             case ETH_CODE_CBIT_SET:
@@ -527,6 +558,14 @@ void processReceivedEthernetPacket(uint8_t *pPacket, uint16_t length)
                                     xEthCtrl.CbitPeriodSec = periodSec;
                                     xEthCtrl.CbitTimer100ms = 0U;
                                 }
+                                break;
+
+                            case ETH_CODE_CBIT_STOP:
+                                xEthCtrl.CbitTxFlag = 0U;
+                                break;
+                                
+                            case ETH_CODE_CBIT_REQ:
+                                xEthCtrl.CbitTxFlag = 1U;
                                 break;
 
                             default:
@@ -665,13 +704,35 @@ void Ethernet_StateMachine(void)
             }
 
             /* CBIT 주기 전송 */
-            if (xEthCtrl.CbitPeriodSec > 0U && xEthCtrl.IbitInProgress == 0U)
+            if (xEthCtrl.CbitTxFlag == 1U && xEthCtrl.CbitPeriodSec > 0U && xEthCtrl.IbitInProgress == 0U)
             {
                 xEthCtrl.CbitTimer100ms++;
                 if (xEthCtrl.CbitTimer100ms >= (xEthCtrl.CbitPeriodSec * 10U))
                 {
                     xEthCtrl.CbitTimer100ms = 0U;
-                    buildAndSendUdpPacket(0U, ETH_CODE_CBIT_REP, ETH_ACK_NOT_REQ, NULL, 0U);
+                    uint32_t bitResult = pxDataCpu1ToCm->Payload.TxData.bitInformAll;
+                    uint8_t payload[4];
+                    payload[0] = (uint8_t)(bitResult & 0xFFU);
+                    payload[1] = (uint8_t)((bitResult >> 8U) & 0xFFU);
+                    payload[2] = (uint8_t)((bitResult >> 16U) & 0xFFU);
+                    payload[3] = (uint8_t)((bitResult >> 24U) & 0xFFU);
+                    buildAndSendUdpPacket(0U, ETH_CODE_CBIT_REP, ETH_ACK_NOT_REQ, payload, 4U);
+                }
+            }
+            
+            /* IBIT 지연 처리 (수행 시뮬레이션) */
+            if (xEthCtrl.IbitInProgress == 1U && xEthCtrl.IbitTimer > 0U)
+            {
+                xEthCtrl.IbitTimer--;
+                if (xEthCtrl.IbitTimer == 0U)
+                {
+                    xEthCtrl.IbitInProgress = 2U; // 대기 상태 (결과 요청 올 때까지 대기)
+                    buildAndSendUdpPacket(0U, ETH_CODE_IBIT_DONE, ETH_ACK_REQ, NULL, 0U);
+                    
+                    /* IBIT Clear Req 해제 */
+                    pxDataCmToCpu1->seqCount++;
+                    pxDataCmToCpu1->Payload.RxData.ibitClearReq = 0U;
+                    pxDataCmToCpu1->seqCount++;
                 }
             }
             break;

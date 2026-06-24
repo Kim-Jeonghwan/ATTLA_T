@@ -1,54 +1,46 @@
-# 이더넷 모듈(CPU1 / CM) 파일명 분리 및 리팩토링 조사 보고서
+# BIT 및 연동통제안 반영을 위한 사전 조사 보고서 (Research)
 
-## 1. 개요 및 배경
-현재 ATTLA_T 프로젝트의 듀얼 코어(CPU1, CM) 아키텍처 상, 양쪽 코어 폴더(`ATTLA_T_CPU1`, `ATTLA_T_CM`)의 `CSU`, `HAL` 계층에 **동일한 이름의 이더넷 소스/헤더 파일(`csu_Ethernet.c/h`, `hal_Ethernet.c/h`)** 이 존재하여 개발 및 유지보수 시 혼선을 야기할 우려가 있습니다.
-이를 해결하기 위해 각 코어의 소속을 명확히 하는 식별자(`_cpu1`, `_cm`)를 파일명에 부여하는 리팩토링 작업을 위한 사전 조사를 진행했습니다.
+## 0. 공통 및 UI 요구사항
+- **요구사항**: BIT 결과를 UI에 표기 (PBIT, CBIT, IBIT 각각 구분). 명시된 곳에서만 ACK 진행. PC UI에 각 BIT 정보 독립 업데이트. Seq Num, CRC Error Count 관련 UI 및 로직 삭제.
+- **수정 대상 파일**: 
+  - `MainForm.cs`, `MainForm.Designer.cs`: 기존의 Seq Num, CRC Error 관련 Label 및 UI 컨트롤 제거.
+  - `UdpEthProtocol.cs`, `SciPcProtocol.cs`: Seq Num 및 CRC 파싱 로직 제거.
+  - `csu_Ethernet_cm.c/h`: 기존에는 모든 패킷 수신 시 `reqAck`가 1이면 무조건 ACK를 회신했으나, 요구사항에 맞게 ACK 회신 조건 최적화 필요 (Boot Done, IBIT Done 등 특정 메시지에 대해서만).
 
----
+## 1. PBIT 수행 및 통신망 가입 (Network Join)
+- **요구사항 (DSP)**: 부팅 후 500ms 주기로 Boot Done 전송. PC로부터 ACK 수신 시 상태정보 요청 대기.
+- **요구사항 (PC)**: Boot Done 수신 시 ACK 전송. 이후 100ms 마다 상태정보 요청 전송. 첫 상태정보 응답 이후 1회에 한해 PBIT 결과 요청.
+- **수정 대상 파일**:
+  - `csu_Ethernet_cm.c`: 
+    - `STATE_WAIT_BOOT_ACK`는 기존 유지 (500ms 주기 전송 로직 존재).
+    - `STATE_JOINED`에서 기존에는 DSP가 100ms마다 자발적으로 Heartbeat를 보냈으나, PC의 상태정보 요청(`ETH_CODE_HEARTBEAT_REQ` 등 신규 코드 필요 여부 확인, 또는 Heartbeat 패킷 수신 시 응답하는 형태로 변경)에 대한 응답만 하도록 수정해야 함.
+  - `UdpEthProtocol.cs`, `MainForm.cs`:
+    - PC 쪽에 100ms 타이머를 두어 100ms마다 상태정보 요청을 전송하는 로직 추가.
+    - 첫 번째 상태정보 응답을 받으면 `ETH_CODE_PBIT_REQ`를 전송하는 로직 구현. (현재 `MainForm.cs`의 `OnStatusReceived`에 유사 로직 존재하나 통신 주도권이 PC로 넘어가도록 수정 필요)
 
-## 2. 식별된 대상 파일 및 리네임(Rename) 계획
+## 2. CBIT 수행 절차
+- **요구사항 (PC)**: 전송주기(N초) 설정 버튼 -> 메시지 전송. 결과 요청 버튼 -> 메시지 전송 (전송 Flag On). 결과 요청 중지 버튼 -> 메시지 전송 (Flag Off).
+- **요구사항 (DSP)**: 전송주기 수신 시 ACK 전송. Flag On 상태일 때 해당 주기마다 결과 전송. 
+- **수정 대상 파일**:
+  - `csu_Ethernet_cm.h`: `stEthControl` 구조체에 `CbitTxFlag` (CBIT 전송 플래그) 추가 필요.
+  - `csu_Ethernet_cm.c`:
+    - `ETH_CODE_CBIT_SET` 수신 시 ACK를 회신하도록 수정.
+    - `ETH_CODE_CBIT_REQ` (결과 요청) 수신 시 `CbitTxFlag = 1` 설정.
+    - `ETH_CODE_CBIT_STOP` 수신 시 `CbitTxFlag = 0` 설정.
+    - `STATE_JOINED` 내에서 주기 타이머 만료 시 `CbitTxFlag == 1`일 때만 `ETH_CODE_CBIT_REP` 전송.
+  - `MainForm.cs`: CBIT 관련 요청, 중지 버튼 이벤트 및 UI 추가.
 
-### 2.1 CPU1 코어 폴더 (`ATTLA_T_CPU1`)
-| 기존 파일명 | 변경 대상 파일명 (To-Be) |
-| :--- | :--- |
-| `CSU/csu_Ethernet.c` | `CSU/csu_Ethernet_cpu1.c` |
-| `CSU/csu_Ethernet.h` | `CSU/csu_Ethernet_cpu1.h` |
-| `HAL/hal_Ethernet.c` | `HAL/hal_Ethernet_cpu1.c` |
-| `HAL/hal_Ethernet.h` | `HAL/hal_Ethernet_cpu1.h` |
+## 3. IBIT 수행 절차
+- **요구사항 (PC)**: IBIT 시간 설정 칸, 수행 요청 버튼, 결과 요청 버튼 추가.
+- **요구사항 (DSP)**: 수행 요청 수신 시 ACK 전송 -> CBIT 일시 중지 -> N초간 IBIT 수행 (에러 누적) -> IBIT Done 전송 대기. PC에서 ACK 받으면 CBIT 재개.
+- **수정 대상 파일**:
+  - `csu_Ethernet_cm.h`: IBIT 수행 시간(N초) 저장용 변수 추가.
+  - `csu_Ethernet_cm.c`:
+    - `ETH_CODE_IBIT_REQ` 수신 시 N초 설정 및 ACK 전송.
+    - 수행 시뮬레이션 타이머 로직을 N초에 맞게 수정.
+    - N초 만료 시 `ETH_CODE_IBIT_DONE` 전송 및 PC로부터 ACK 대기. ACK 수신 전까지 대기하다가 수신 시 CBIT 재개.
+  - `MainForm.cs`: IBIT 시간 설정 텍스트박스 및 전송 버튼 연동. `OnIbitDoneReceived` 이벤트 수신 시 ACK 회신 로직 추가 (현재 `UdpEthProtocol.cs`에서 자동 처리 중인지 확인 필요).
 
-### 2.2 CM 코어 폴더 (`ATTLA_T_CM`)
-| 기존 파일명 | 변경 대상 파일명 (To-Be) |
-| :--- | :--- |
-| `CSU/csu_Ethernet.c` | `CSU/csu_Ethernet_cm.c` |
-| `CSU/csu_Ethernet.h` | `CSU/csu_Ethernet_cm.h` |
-| `HAL/hal_Ethernet.c` | `HAL/hal_Ethernet_cm.c` |
-| `HAL/hal_Ethernet.h` | `HAL/hal_Ethernet_cm.h` |
-
----
-
-## 3. 코드 내 의존성(Dependencies) 및 변경 필요 항목
-
-파일명 변경 시 소스 코드 내부에서도 참조하고 있는 내용(Include 구문, Header Guard 등)을 일관성 있게 수정해야 합니다. 
-
-### 3.1 헤더 파일 (`#include` 수정)
-- `main_cpu1.h`: `#include "csu_Ethernet.h"`, `#include "hal_Ethernet.h"` ➡️ `_cpu1.h`로 치환.
-- `main_cm.h`: `#include "csu_Ethernet.h"`, `#include "hal_Ethernet.h"` ➡️ `_cm.h`로 치환.
-- 각 이더넷 `.c` 파일들 상단의 자신의 `.h` 파일 `#include` 구문 업데이트.
-
-### 3.2 헤더 가드 (Header Guard) 수정 (권장 사항)
-헤더 파일 내부의 다중 포함 방지 매크로(`#ifndef`, `#define`)도 파일명에 맞추어 업데이트해야 합니다.
-- (예) `CSU_ETHERNET_H_` ➡️ `CSU_ETHERNET_CPU1_H_` / `CSU_ETHERNET_CM_H_`
-- (예) `HAL_ETHERNET_H_` ➡️ `HAL_ETHERNET_CPU1_H_` / `HAL_ETHERNET_CM_H_`
-
-### 3.3 물리 파일명 주석 (Header Comment) 갱신
-모든 `.c`, `.h` 파일 상단의 Nexcom 주석 템플릿(Header Comment) 내 `Filename`과 `Modification History` 항목을 룰에 맞게 업데이트(Version 증가 및 반영 이력 기재)해야 합니다.
-
----
-
-## 4. 빌드 시스템(CCS IDE) 유의사항
-- Eclipse 기반의 CCS(Code Composer Studio)는 `.cproject` 파일 내 명시적인 Exclude 설정이 없는 이상, 프로젝트 폴더 내 변경된 `.c` 파일들을 자동으로 재탐색하여 빌드 타겟에 포함시킵니다.
-- 다만 가상 폴더 구조(Virtual Folders)에 종속된 경우 약간의 재로드가 필요할 수 있으며, 이 리팩토링 후에는 **사용자께서 IDE에서 명시적으로 Rebuild(빌드)를 수행하여 링킹 오류가 없는지 교차 검증**해야 합니다.
-
----
-**결론:**
-본 조사를 바탕으로 계획(Plan)이 승인되면, 시스템 쉘 커맨드(`mv` 또는 Powershell 명령어)를 통한 파일 리네임(Rename)과, 그에 종속된 소스 코드 상의 매크로/인클루드 부분 치환 작업을 100% 안전하게 진행할 준비가 되어 있습니다.
+## 요약 및 결론
+- **UI 측면**: 불필요한 기능(Seq Num, CRC) 제거 및 통신 주도권 변경(PC가 주도하여 100ms 상태정보 요청)에 따른 타이머 기반 Request 로직 추가 필요.
+- **펌웨어 측면 (CM 코어)**: 기존 자발적 Heartbeat 송출 로직을 PC 요청에 대한 응답 로직으로 변경. CBIT 결과 전송 플래그 도입 및 IBIT 타이머 기반 흐름 제어 강화 필요.

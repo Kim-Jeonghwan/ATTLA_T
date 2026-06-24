@@ -17,6 +17,10 @@ namespace ATTLA_T_PC
         public event Action OnPortClosed;
         public event Action<byte[]> OnRawTx;
         public event Action<byte[]> OnRawRx;
+        
+        public event Action<string, uint> OnBitResultReceived;
+        public event Action OnIbitDoneReceived;
+        public event Action<byte, bool> OnAckReceived;
 
         private string _rxBuffer = "";
 
@@ -63,6 +67,11 @@ namespace ATTLA_T_PC
         public void ReInit()
         {
             _rxBuffer = "";
+        }
+
+        public void SendEthCommand(byte cmdCode, byte[] payload)
+        {
+            // Dummy
         }
 
         public void SendControlMessage(ControlMessageData ctrlDto)

@@ -157,7 +157,21 @@ static void cycle_100ms(void)
 {
     updateLedStatus();
     
-    // [REMOVED] W6100 체계 통신 상태 머신(100ms 주기 동작) 제거 ➡️ CM 코어가 체계 통신을 담당
+    // IBIT 에러 초기화 요청 확인 (Edge Detection)
+    static uint32_t lastIbitClearReq = 0U;
+    uint32_t currentIbitClearReq = pxDataCmToCpu1->Payload.RxData.ibitClearReq;
+    
+    if (currentIbitClearReq == 1U && lastIbitClearReq == 0U)
+    {
+        Bit_FaultReset(1U);
+    }
+    lastIbitClearReq = currentIbitClearReq;
+
+    // CM 코어로 최신 BIT 진단 결과 및 보드 온도 전달 (IPC)
+    pxDataCpu1ToCm->seqCount++;
+    pxDataCpu1ToCm->Payload.TxData.bitInformAll = xBit.informAll;
+    pxDataCpu1ToCm->Payload.TxData.adcTemperature = xAdc.tsenBdLpf;
+    pxDataCpu1ToCm->seqCount++;
 }
 
 /*

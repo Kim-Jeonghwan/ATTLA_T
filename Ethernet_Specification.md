@@ -48,12 +48,15 @@
 | `0x10` | `ETH_CODE_BOOT_DONE` | 망 가입 요청 (부팅 완료 보고) |
 | `0x11` | `ETH_CODE_HEARTBEAT` | 상태 정보 (100ms 주기 교환). Payload[0]: 270V 전원 인가 상태 |
 | `0x12` | `ETH_CODE_PBIT_REQ` | PBIT(초기점검) 수행 요청 |
-| `0x13` | `ETH_CODE_PBIT_REP` | PBIT 결과 응답 전송 |
+| `0x13` | `ETH_CODE_PBIT_REP` | PBIT 결과 응답 전송 (Payload[0~3]: 4B BIT Result Bitmask) |
 | `0x14` | `ETH_CODE_IBIT_REQ` | IBIT(임의점검) 수행 요청 |
-| `0x15` | `ETH_CODE_IBIT_REP` | IBIT 결과 응답 전송 |
+| `0x15` | `ETH_CODE_IBIT_REP` | IBIT 결과 응답 전송 (Payload[0~3]: 4B BIT Result Bitmask) |
 | `0x16` | `ETH_CODE_CBIT_SET` | CBIT 전송주기 설정 요청. Payload[0~1]: N초 (주기) |
-| `0x17` | `ETH_CODE_CBIT_REP` | CBIT 주기 점검 결과 송신 (설정된 N초 주기 발송) |
+| `0x17` | `ETH_CODE_CBIT_REP` | CBIT 주기 점검 결과 송신 (Payload[0~3]: 4B BIT Result Bitmask) |
 | `0x18` | `ETH_CODE_POWER_270V`| 270VDC 구동 전원 인가 통보 |
+| `0x19` | `ETH_CODE_IBIT_DONE` | IBIT 수행 완료 통보 (DSP -> PC) |
+| `0x1A` | `ETH_CODE_IBIT_RES_REQ` | IBIT 결과 요청 (PC -> DSP) |
+| `0x1B` | `ETH_CODE_CBIT_STOP` | CBIT 전송 중지 요청 (PC -> DSP) |
 | `0xFF` | `ETH_CODE_ACK` | ACK(수신 확인) 응답 메시지 |
 
 ### 2.3 Checksum (체크섬) 생성 규칙

@@ -1,80 +1,65 @@
 // UdpEthProtocol.cs
 // Nexcom Co., Ltd.
-// Description : UDP 이더넷 프로토콜 구현 (규격서 Payload/ACK MSG Format 준수)
-// Last Updated : 2026. 06. 02. (PC 수신 포트를 50002로 변경하여 포트 충돌 방지 및 소켓 안정화)
-//
-// [메시지 종류]
-//   PC→DSP: Update 타입 (Request Ack = 0x01, ACK 필요)
-//   DSP→PC: Reflect 타입 (Request Ack = 0xFF, ACK 미요청)
-//   DSP→PC: ACK 응답 타입 (Code = 0xFF)
-//
-// [재전송 규칙]
-//   - 100ms 내 ACK 없으면 재전송 (Send Count 1→2→3→4)
-//   - 4회 모두 실패 시 통신 두절 판단
+// Description : ATTLA-T 이더넷(UDP) 프로토콜 구현 (Ethernet_Specification.md 규격 준수)
 
 using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace ATTLA_T_PC
 {
-    /// <summary>UDP 이더넷 프로토콜 구현 클래스 (규격서 Payload/ACK MSG Format 준수)</summary>
     public class UdpEthProtocol : IProtocol
     {
         // ── 네트워크 설정 ─────────────────────────────────────
         private const string DspIpAddress   = "192.168.200.10";
         private const string LocalIpAddress = "192.168.200.100";
-        private const int    DspRxPort      = 5001;  // DSP 수신 포트
-        private const int    PcRxPort       = 50002; // PC  수신 포트 (5000번 대역 충돌 회피를 위해 변경)
+        private const int    DspRxPort      = 5001;  
+        private const int    PcRxPort       = 5003; 
 
         // ── 규격서 프로토콜 상수 ──────────────────────────────
-        private const byte SrcIdPc          = 0x20;
-        private const byte DstIdDsp         = 0x10;
-        private const byte MsgCodeMonitor   = 0x10;
+        private const byte SrcIdPc          = 0x01;
+        private const byte DstIdDsp         = 0x02;
+        private const byte MsgCodeBoot      = 0x10;
+        private const byte MsgCodeHeartbeat = 0x11;
         private const byte MsgCodeAck       = 0xFF;
-        private const byte ReqAckRequest    = 0x01;  // Update 타입
-        private const byte ReqAckNone       = 0xFF;  // Reflect 타입
+        private const byte MsgCodePbitReq     = 0x12;
+        private const byte MsgCodePbitRep     = 0x13;
+        private const byte MsgCodeIbitReq     = 0x14;
+        private const byte MsgCodeIbitRep     = 0x15;
+        private const byte MsgCodeCbitSet     = 0x16;
+        private const byte MsgCodeCbitRep     = 0x17;
+        private const byte MsgCodeIbitDone    = 0x19;
+        private const byte MsgCodeIbitResReq  = 0x1A;
+        private const byte MsgCodeCbitStop    = 0x1B;
+        private const byte PriorityEmerg    = 0x01;
         private const byte PriorityNormal   = 0x02;
-        private const byte AckOk            = 0x10;
-        private const byte AckNack          = 0x11;
-
-        // ── 재전송 규칙 ───────────────────────────────────────
-        private const int   AckTimeoutMs    = 100;   // 100ms ACK 타임아웃
-        private const int   MaxSendCount    = 4;     // 최대 전송 횟수 (1회 + 재전송 3회)
 
         // ── 내부 상태 ─────────────────────────────────────────
-        private UdpClient       _udpClient;
-        private IPEndPoint      _dspEndPoint;
-        private IPEndPoint      _localEndPoint;
-        private Thread          _rxThread;
+        private UdpClient?      _udpClient;
+        private IPEndPoint?     _dspEndPoint;
+        private IPEndPoint?     _localEndPoint;
+        private Thread?         _rxThread;
         private volatile bool   _keepReceiving;
-        private volatile bool   _ackReceived;
         private volatile bool   _commError;
-        private byte            _currentSendCount;
         private readonly object _sendLock = new object();
 
         // ── IProtocol 이벤트 ──────────────────────────────────
-        public event Action<StatusMessageData> OnStatusReceived;
-        public event Action<string>            OnCommError;
-        public event Action                    OnPortClosed;
-        public event Action<byte[]>            OnRawTx;
-        public event Action<byte[]>            OnRawRx;
+        public event Action<StatusMessageData>? OnStatusReceived;
+        public event Action<string>?            OnCommError;
+        public event Action?                    OnPortClosed;
+        public event Action<byte[]>?            OnRawTx;
+        public event Action<byte[]>?            OnRawRx;
+        public event Action<string, uint>?      OnBitResultReceived;
+        public event Action?                    OnIbitDoneReceived;
+        public event Action<byte, bool>?        OnAckReceived;
         public bool IsConnected => _udpClient != null;
 
-        /// <summary>
-        /// UDP 소켓 연결 (portName 파라미터는 IProtocol 호환용으로 무시, baudRate 무시)
-        /// 실제 IP/포트는 클래스 상수 사용
-        /// </summary>
         public void Connect(string portName, int baudRate)
         {
             if (IsConnected) Disconnect();
 
             _commError        = false;
-            _ackReceived      = false;
-            _currentSendCount = 1;
-            /* IPAddress.Any 대신 LocalIpAddress(192.168.100.100)로 강제 바인딩하여 Wi-Fi로 패킷이 새는 것을 방지 */
             _localEndPoint    = new IPEndPoint(IPAddress.Parse(LocalIpAddress), PcRxPort);
             _dspEndPoint      = new IPEndPoint(IPAddress.Parse(DspIpAddress), DspRxPort);
 
@@ -87,85 +72,61 @@ namespace ATTLA_T_PC
             _rxThread.Start();
         }
 
-        /// <summary>UDP 소켓 해제</summary>
         public void Disconnect()
         {
             _keepReceiving = false;
-
-            try
-            {
-                _udpClient?.Close();
-            }
-            catch (Exception) { /* 무시 */ }
-
+            try { _udpClient?.Close(); } catch { }
             _rxThread?.Join(500);
             _udpClient = null;
             OnPortClosed?.Invoke();
         }
 
-        /// <summary>재초기화 (Disconnect 후 재Connect)</summary>
         public void ReInit()
         {
-            string ip   = DspIpAddress;
-            int    port = DspRxPort;
             Disconnect();
-            Connect(ip, port);
+            Connect("", 0);
         }
 
-        /// <summary>
-        /// PC→DSP Update 메시지 전송 (규격서: ACK 필요, 100ms 내 ACK 없으면 재전송)
-        /// Send Count가 MaxSendCount 초과 시 통신 두절 판단
-        /// </summary>
         public void SendControlMessage(ControlMessageData ctrlDto)
         {
-            if (_udpClient == null) return;
+            // 사용하지 않음
+        }
 
+        public void SendEthCommand(byte cmdCode, byte[] payload)
+        {
+            if (_udpClient == null) return;
             lock (_sendLock)
             {
-                _ackReceived      = false;
-                _currentSendCount = 1;
+                int pLen = (payload != null) ? payload.Length : 0;
+                byte[] packet = new byte[14 + pLen];
+                uint ts = (uint)(Environment.TickCount & 0x7FFFFFFF);
 
-                while (_currentSendCount <= MaxSendCount)
+                packet[0] = (byte)(ts & 0xFF);
+                packet[1] = (byte)((ts >> 8)  & 0xFF);
+                packet[2] = (byte)((ts >> 16) & 0xFF);
+                packet[3] = (byte)((ts >> 24) & 0xFF);
+                packet[4] = SrcIdPc;
+                packet[5] = DstIdDsp;
+                packet[6] = cmdCode;
+                packet[7] = 0x01; // ReqAck
+                packet[8] = 0x02; // Priority Normal
+                packet[9] = 1;
+                packet[10] = (byte)(pLen & 0xFF);
+                packet[11] = (byte)((pLen >> 8) & 0xFF);
+                
+                if (payload != null)
                 {
-                    byte[] payload = BuildUpdatePayload(ctrlDto.ManualSeqNum,
-                                                        cmd: 0x00,
-                                                        sendCount: _currentSendCount);
-                    SendPayload(payload);
-
-                    // 100ms ACK 대기
-                    bool ack = WaitForAck(AckTimeoutMs);
-                    if (ack)
-                    {
-                        _commError = false;
-                        break;
-                    }
-
-                    _currentSendCount++;
+                    Array.Copy(payload, 0, packet, 12, pLen);
                 }
 
-                if (_currentSendCount > MaxSendCount)
-                {
-                    _commError = true;
-                    OnCommError?.Invoke("통신 두절: DSP로부터 ACK 없음 (재전송 3회 초과)");
-                }
+                ushort chk = CalcChecksum(packet, 12 + pLen);
+                packet[12 + pLen] = (byte)(chk & 0xFF);
+                packet[13 + pLen] = (byte)((chk >> 8) & 0xFF);
+
+                SendPayload(packet);
             }
         }
 
-        // ── 내부: ACK 대기 ────────────────────────────────────
-        private bool WaitForAck(int timeoutMs)
-        {
-            int elapsed = 0;
-            const int step = 5;
-            while (elapsed < timeoutMs)
-            {
-                if (_ackReceived) return true;
-                Thread.Sleep(step);
-                elapsed += step;
-            }
-            return false;
-        }
-
-        // ── 내부: UDP 수신 스레드 ─────────────────────────────
         private void ReceiveWorker()
         {
             IPEndPoint remoteEp = new IPEndPoint(IPAddress.Any, 0);
@@ -173,120 +134,123 @@ namespace ATTLA_T_PC
             {
                 try
                 {
-                    byte[] data = _udpClient?.Receive(ref remoteEp);
+                    byte[]? data = _udpClient?.Receive(ref remoteEp);
                     if (data == null || data.Length == 0) continue;
 
                     OnRawRx?.Invoke(data);
                     ProcessReceivedUdpPayload(data);
                 }
-                catch (SocketException)
-                {
-                    if (_keepReceiving)
-                        OnCommError?.Invoke("UDP 수신 오류");
-                    break;
-                }
+                catch (SocketException) { if (_keepReceiving) OnCommError?.Invoke("UDP 수신 오류"); break; }
                 catch (ObjectDisposedException) { break; }
             }
         }
 
-        // ── 내부: 수신 페이로드 파싱 ─────────────────────────
         private void ProcessReceivedUdpPayload(byte[] data)
         {
-            // 최소 길이: MSG Header(12B) + 최소 Data(2B) + Checksum(2B) = 16B
-            if (data.Length < 16) return;
+            if (data.Length < 14) return;
 
-            byte srcId   = data[4];
-            byte code    = data[6];
-            byte reqAck  = data[7];
+            byte srcId = data[4];
+            byte code  = data[6];
 
-            // ① DSP→PC Reflect 메시지 (온도+시퀀스)
-            if (srcId == DstIdDsp && code == MsgCodeMonitor && reqAck == ReqAckNone)
+            if (srcId == DstIdDsp && code == MsgCodeBoot)
             {
-                // Reflect 메시지 구조: 헤더(12) + Data(4: Seq, Status, Temp 2B) + Checksum(2) = 총 18바이트
-                if (!VerifyChecksum(data, 18)) return;
-
-                byte   seqNum  = data[12];
-                byte   status  = data[13];
-                ushort tempRaw = (ushort)(data[14] | (data[15] << 8)); // Little Endian
-
-                var msg = new StatusMessageData
-                {
-                    IncNumber   = seqNum,
-                    Status      = status,
-                    DspTemp     = tempRaw / 10.0,
-                    IsCommError = _commError
-                };
+                if (!VerifyChecksum(data, 14)) return;
+                
+                SendAck(MsgCodeBoot, 0x0000);
+                
+                var msg = new StatusMessageData { IncNumber = 0, Status = 0x10, DspTemp = 0, IsCommError = false };
                 OnStatusReceived?.Invoke(msg);
             }
-            // ② DSP→PC ACK 응답
+            else if (srcId == DstIdDsp && code == MsgCodeHeartbeat)
+            {
+                if (!VerifyChecksum(data, 15)) return;
+                
+                byte power270v = data[12];
+                var msg = new StatusMessageData { IncNumber = 1, Status = power270v, DspTemp = 0, IsCommError = false };
+                OnStatusReceived?.Invoke(msg);
+            }
+            else if (srcId == DstIdDsp && code == MsgCodePbitRep)
+            {
+                if (!VerifyChecksum(data, 18)) return;
+                uint bitResult = BitConverter.ToUInt32(data, 12);
+                OnBitResultReceived?.Invoke("PBIT", bitResult);
+            }
+            else if (srcId == DstIdDsp && code == MsgCodeCbitRep)
+            {
+                if (!VerifyChecksum(data, 18)) return;
+                uint bitResult = BitConverter.ToUInt32(data, 12);
+                OnBitResultReceived?.Invoke("CBIT", bitResult);
+            }
+            else if (srcId == DstIdDsp && code == MsgCodeIbitRep)
+            {
+                if (!VerifyChecksum(data, 18)) return;
+                uint bitResult = BitConverter.ToUInt32(data, 12);
+                OnBitResultReceived?.Invoke("IBIT", bitResult);
+            }
+            else if (srcId == DstIdDsp && code == MsgCodeIbitDone)
+            {
+                if (!VerifyChecksum(data, 14)) return;
+                SendAck(MsgCodeIbitDone, 0x0000);
+                OnIbitDoneReceived?.Invoke();
+            }
             else if (srcId == DstIdDsp && code == MsgCodeAck)
             {
-                byte ackResult = reqAck;  // 0x10=ACK, 0x11=NACK
-                if (ackResult == AckOk)
-                {
-                    _ackReceived = true;
-                    _commError   = false;
-                }
-                else if (ackResult == AckNack)
-                {
-                    // NACK 수신 시 통신 오류 보고
-                    OnCommError?.Invoke("NACK 수신: DSP Checksum 오류");
-                }
+                if (!VerifyChecksum(data, 18)) return;
+                byte ackResult = data[7]; // 0x10=ACK, 0x11=NACK
+                byte targetCode = data[12];
+                OnAckReceived?.Invoke(targetCode, ackResult == 0x10);
             }
         }
 
-        // ── 내부: PC→DSP Update 페이로드 조립 ───────────────
-        private byte[] BuildUpdatePayload(byte seqNum, byte cmd, byte sendCount)
+        private void SendAck(byte targetCode, ushort ackResult)
         {
-            // Payload = MSG Header(12B) + Data(2B) + Checksum(2B) = 16B
-            byte[] payload = new byte[16];
-            uint   ts      = (uint)(Environment.TickCount & 0x7FFFFFFF);
+            if (_udpClient == null) return;
+            lock (_sendLock)
+            {
+                byte[] payload = new byte[18];
+                uint ts = (uint)(Environment.TickCount & 0x7FFFFFFF);
 
-            // Timestamp (Little Endian, 4B)
-            payload[0] = (byte)(ts & 0xFF);
-            payload[1] = (byte)((ts >> 8)  & 0xFF);
-            payload[2] = (byte)((ts >> 16) & 0xFF);
-            payload[3] = (byte)((ts >> 24) & 0xFF);
-            payload[4] = SrcIdPc;
-            payload[5] = DstIdDsp;
-            payload[6] = MsgCodeMonitor;
-            payload[7] = ReqAckRequest;   // Update 타입: 0x01
-            payload[8] = PriorityNormal;
-            payload[9] = sendCount;
-            // Data Length = 2 (Little Endian)
-            payload[10] = 0x02;
-            payload[11] = 0x00;
-            // Data (2B)
-            payload[12] = seqNum;
-            payload[13] = cmd;
-            // Checksum (2B, Little Endian): 앞 14B 합산 최하위 2B
-            ushort chk = CalcChecksum(payload, 14);
-            payload[14] = (byte)(chk & 0xFF);
-            payload[15] = (byte)((chk >> 8) & 0xFF);
+                payload[0] = (byte)(ts & 0xFF);
+                payload[1] = (byte)((ts >> 8)  & 0xFF);
+                payload[2] = (byte)((ts >> 16) & 0xFF);
+                payload[3] = (byte)((ts >> 24) & 0xFF);
+                payload[4] = SrcIdPc;
+                payload[5] = DstIdDsp;
+                payload[6] = MsgCodeAck;
+                payload[7] = 0xFF; // ReqAck none
+                payload[8] = PriorityNormal;
+                payload[9] = 1;
+                payload[10] = 0x04;
+                payload[11] = 0x00;
+                payload[12] = targetCode;
+                payload[13] = 0x00;
+                payload[14] = (byte)(ackResult & 0xFF);
+                payload[15] = (byte)((ackResult >> 8) & 0xFF);
 
-            return payload;
+                ushort chk = CalcChecksum(payload, 16);
+                payload[16] = (byte)(chk & 0xFF);
+                payload[17] = (byte)((chk >> 8) & 0xFF);
+
+                SendPayload(payload);
+            }
         }
 
-        // ── 내부: 규격서 Checksum 계산 ───────────────────────
         private static ushort CalcChecksum(byte[] buf, int length)
         {
             uint sum = 0;
-            for (int i = 0; i < length; i++)
-                sum += buf[i];
+            for (int i = 0; i < length; i++) sum += buf[i];
             return (ushort)(sum & 0xFFFF);
         }
 
-        // ── 내부: 수신 Checksum 검증 ─────────────────────────
         private static bool VerifyChecksum(byte[] data, int totalLen)
         {
             if (data.Length < totalLen) return false;
-            int   chkOffset = totalLen - 2;
-            ushort recvChk  = (ushort)(data[chkOffset] | (data[chkOffset + 1] << 8));
-            ushort calcChk  = CalcChecksum(data, chkOffset);
+            int chkOffset = totalLen - 2;
+            ushort recvChk = (ushort)(data[chkOffset] | (data[chkOffset + 1] << 8));
+            ushort calcChk = CalcChecksum(data, chkOffset);
             return recvChk == calcChk;
         }
 
-        // ── 내부: UDP 페이로드 전송 ───────────────────────────
         private void SendPayload(byte[] payload)
         {
             try
@@ -294,10 +258,7 @@ namespace ATTLA_T_PC
                 _udpClient?.Send(payload, payload.Length, _dspEndPoint);
                 OnRawTx?.Invoke(payload);
             }
-            catch (Exception ex)
-            {
-                OnCommError?.Invoke($"UDP 전송 오류: {ex.Message}");
-            }
+            catch (Exception ex) { OnCommError?.Invoke($"UDP 전송 오류: {ex.Message}"); }
         }
     }
 }
