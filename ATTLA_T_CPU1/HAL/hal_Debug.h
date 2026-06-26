@@ -1,7 +1,7 @@
 /**********************************************************************
    Nexcom Co., Ltd.
-   Filename         : hal_Debug_cpu1.h
-   Version          : 00.08
+   Filename         : hal_Debug.h
+   Version          : 00.09
    Description      : W6100 하드웨어 제어 및 디버그 소켓 통신 헤더
    Programmer       : Kim Jeonghwan
    Last Updated     : 2026. 06. 26. (모듈명 변경 및 디버깅 전용망 분리)
@@ -10,14 +10,15 @@
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 26. - 파일명에서 _cpu1 제거 (리팩토링)
  * 2026. 06. 26. - hal_Ethernet_cpu1 에서 hal_Debug_cpu1 으로 모듈명 변경
  * 2026. 06. 24. - 파일명 리팩토링 (_cpu1 분리)
  * 2026. 06. 23. - 모니터링 포트 변경: 5002
  * 2026. 06. 15. - Initial_W6100() 반환형을 int8_t로 변경하여 하드웨어 미연결 예외 처리 기능 추가
  */
 
-#ifndef HAL_DEBUG_CPU1_H
-#define HAL_DEBUG_CPU1_H
+#ifndef HAL_DEBUG_H
+#define HAL_DEBUG_H
 
 #include "main_cpu1.h"
 
@@ -55,4 +56,4 @@ __interrupt void isr_DebugExtInt(void);
  */
 void Debug_Process(void);
 
-#endif // HAL_DEBUG_CPU1_H
+#endif // HAL_DEBUG_H

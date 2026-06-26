@@ -1,7 +1,7 @@
 /**********************************************************************
     Nexcom Co., Ltd.
-    Filename         : hal_Timer.c
-    Version          : 00.01
+    Filename         : hal_Timer_cm.c
+    Version          : 00.02
     Description      : CM Core CPU 타이머 소스
     Programmer       : Kim Jeonghwan
     Last Updated     : 2026. 06. 23. (코딩 규칙 준수 정비)
@@ -10,11 +10,12 @@
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 26. - hal_Timer_cm 으로 파일명 리팩토링
  * 2026. 06. 23. - 코딩 규칙 준수 정비 (매크로 상수 헤더로 이동 및 작성자 기입)
  * 2026. 06. 05. - 코드 주석 포맷팅 및 한글화
  */
 
-#include "hal_Timer.h"
+#include "hal_Timer_cm.h"
 
 volatile stTimer xTimer;
 

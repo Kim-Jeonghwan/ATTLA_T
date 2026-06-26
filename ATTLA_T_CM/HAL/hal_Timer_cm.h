@@ -1,7 +1,7 @@
 /**********************************************************************
     Nexcom Co., Ltd.
-    Filename         : hal_Timer.h
-    Version          : 00.01
+    Filename         : hal_Timer_cm.h
+    Version          : 00.02
     Description      : CM Core SysTick 타이머 헤더
     Programmer       : Kim Jeonghwan
     Last Updated     : 2026. 06. 23. (코딩 규칙 준수 정비)
@@ -10,11 +10,12 @@
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 26. - hal_Timer_cm 으로 파일명 리팩토링
  * 2026. 06. 23. - 코딩 규칙 준수 정비 (매크로 상수 이동 및 작성자 기입)
  * 2026. 06. 05. - 코드 주석 포맷팅 및 한글화
  */
-#ifndef HAL_TIMER_H
-#define HAL_TIMER_H
+#ifndef HAL_TIMER_CM_H
+#define HAL_TIMER_CM_H
 
 #include "main_cm.h"
 
@@ -46,4 +47,4 @@ extern void isr_CpuTimer0(void); // 이더넷 송신
 extern void isr_CpuTimer1(void); // 주기적 작업
 extern void isr_CpuTimer2(void); // Hz 측정
 
-#endif // HAL_TIMER_H
+#endif // HAL_TIMER_CM_H

@@ -1,7 +1,7 @@
 /**********************************************************************
    Nexcom Co., Ltd.
    Filename         : main_cpu1.h
-   Version          : 00.10
+   Version          : 00.11
    Description      : 전역 헤더 관리 파일 (main.h ➡️ main_cpu1.h 리팩토링)
    Programmer       : Kim Jeonghwan
    Last Updated     : 2026. 06. 24. (이더넷 파일명 리팩토링 적용)
@@ -10,6 +10,7 @@
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 26. - Debug 관련 헤더명 _cpu1 제거 반영
  * 2026. 06. 24. - 이더넷 파일명 리팩토링 적용
  * 2026. 06. 23. - main_cpu1.h 로 물리 파일명 리팩토링
  * 2026. 06. 23. - CM 코어 IPC 관련 헤더 인클루드 추가
@@ -57,14 +58,14 @@
 #include "hal_Common.h"
 #include "hal_DspInit.h"
 #include "hal_Encoder.h"
-#include "hal_Epwm.h"    /* EPWM1 기반 2ms 타이머 */
+#include "hal_Epwm.h" 
 #include "hal_Fram.h"
 #include "hal_MotorDriver.h"
 #include "hal_Ramfuncs.h"
 #include "hal_Sci.h"
 #include "hal_Spi.h"
 #include "hal_Timer.h"
-#include "hal_Debug_cpu1.h"
+#include "hal_Debug.h"
 #include "hal_Ipc_cpu1.h"
 
 /* CSU Library */
@@ -78,7 +79,7 @@
 #include "csu_Pid.h"
 #include "csu_Bit.h"
 #include "csu_SciPc.h"
-#include "csu_Debug_cpu1.h"
+#include "csu_Debug.h"
 #include "csu_LimitSwitch.h"
 #include "csu_Ipc_cpu1.h"
 

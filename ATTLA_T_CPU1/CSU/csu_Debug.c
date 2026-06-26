@@ -1,7 +1,7 @@
 /**********************************************************************
     Nexcom Co., Ltd.
-    Filename         : csu_Debug_cpu1.c
-    Version          : 00.06
+    Filename         : csu_Debug.c
+    Version          : 00.07
     Description      : 노트북 디버깅망 동적 IP 라우팅 프로토콜 및 텔레메트리 구현
     Programmer       : Kim Jeonghwan
     Last Updated     : 2026. 06. 26. (모듈명 변경 및 디버깅 전용망 분리)
@@ -10,12 +10,13 @@
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 26. - 파일명에서 _cpu1 제거 (리팩토링)
  * 2026. 06. 26. - csu_Ethernet_cpu1 에서 csu_Debug_cpu1 으로 모듈명 변경
  * 2026. 06. 26. - 체계 연동(FC) 통제안(Boot Ack, CBIT, IBIT 등) 로직 전면 삭제
  * 2026. 06. 26. - 노트북 통신을 위한 동적 IP 타겟팅 및 100ms 텔레메트리(상태 전송) 로직 구현
  */
 
-#include "csu_Debug_cpu1.h"
+#include "csu_Debug.h"
 
 /* 글로벌 상태 구조체 인스턴스 */
 stDbgControl xDbgCtrl;

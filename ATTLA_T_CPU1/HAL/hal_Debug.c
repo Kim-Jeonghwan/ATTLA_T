@@ -1,7 +1,7 @@
 /**********************************************************************
     Nexcom Co., Ltd.
-    Filename         : hal_Debug_cpu1.c
-    Version          : 00.10
+    Filename         : hal_Debug.c
+    Version          : 00.11
     Description      : 이더넷(W6100) 하드웨어 제어 로직 (디버그 통신망)
     Programmer       : Kim Jeonghwan
     Last Updated     : 2026. 06. 26. (모듈명 변경 및 디버깅 전용망 분리)
@@ -10,6 +10,7 @@
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 26. - 파일명에서 _cpu1 제거 (리팩토링)
  * 2026. 06. 26. - hal_Ethernet_cpu1 에서 hal_Debug_cpu1 으로 모듈명 변경
  * 2026. 06. 24. - 파일명 리팩토링 (_cpu1 분리)
  * 2026. 06. 23. - 모니터링 IP 변경: 192.168.200.11
@@ -17,7 +18,7 @@
  * 2026. 06. 15. - Initial_W6100 반환값 처리 추가로 하드웨어 미연결 시 소켓 개방 스킵(무한루프 방지) 구현
  */
 
-#include "hal_Debug_cpu1.h"
+#include "hal_Debug.h"
 
 /*
 @function    int8_t Initial_W6100(void)
