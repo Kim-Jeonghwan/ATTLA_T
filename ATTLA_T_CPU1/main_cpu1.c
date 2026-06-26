@@ -81,12 +81,11 @@ void main(void)
         // 100us 인터럽트(Offset_Isr -> Pbit_Isr) 체인이 완료될 때까지 백그라운드 대기
     }
 
-	// 이더넷 (W6100) 하드웨어 초기화
-	// CM 코어 활성화와 별개로, W6100은 192.168.200.11:5002 로 모니터링 동작을 수행함.
-	Ethernet_Init();
+	// 이더넷 (W6100) 하드웨어 초기화 (디버그망)
+	Debug_Init();
 	
-	// 이더넷 상태 머신 초기화 (CSU)
-	Ethernet_ProtocolInit();
+	// 이더넷 디버그 상태 머신 초기화 (CSU)
+	Debug_ProtocolInit();
 	
 	// 외부 통신 인터럽트(W6100) 활성화
 	Interrupt_enable(INT_XINT1);
@@ -156,6 +155,9 @@ static void cycle_10ms(void)
 static void cycle_100ms(void)
 {
     updateLedStatus();
+    
+    // 디버그망(W6100) 텔레메트리 송신
+    Debug_StateMachine();
     
     // IBIT 에러 초기화 요청 확인 (Edge Detection)
     static uint32_t lastIbitClearReq = 0U;

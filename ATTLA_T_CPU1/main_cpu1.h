@@ -64,7 +64,7 @@
 #include "hal_Sci.h"
 #include "hal_Spi.h"
 #include "hal_Timer.h"
-#include "hal_Ethernet_cpu1.h"
+#include "hal_Debug_cpu1.h"
 #include "hal_Ipc_cpu1.h"
 
 /* CSU Library */
@@ -78,7 +78,7 @@
 #include "csu_Pid.h"
 #include "csu_Bit.h"
 #include "csu_SciPc.h"
-#include "csu_Ethernet_cpu1.h"
+#include "csu_Debug_cpu1.h"
 #include "csu_LimitSwitch.h"
 #include "csu_Ipc_cpu1.h"
 

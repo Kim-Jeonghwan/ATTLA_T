@@ -14,10 +14,10 @@
 | **Gateway** | `192.168.200.1` | - |
 | **수신/송신 포트** | `5001` (`PORT_UDP_COM`) 고정 | `5001` (대상 포트 고정) |
 | **프로토콜** | IPv4, UDP (Little Endian Payload) | IPv4, UDP |
-| **물리 계층(칩셋)**| **W6100** (SPI-A, 10MHz 통신, **CM 코어 전담**) | - |
-| **인터럽트** | `INTn` ➡️ GPIO 20 (`XINT1`, 하강 에지) | - |
+| **물리 계층(칩셋)**| **내부 EMAC & 외부 PHY** (DP83822 등, **CM 코어 전담**) | - |
+| **인터럽트** | `INT_EMAC_RX0` 등 EMAC 전용 인터럽트 수신 | - |
 
-> 💡 **비고**: SPI 클럭은 시스템 LSPCLK 최대 한계 초과 에러를 방지하기 위해 10MHz(`POL0PHA0`)로 최적화되어 있습니다. 하드웨어 미연결 또는 SPI 통신 불량 시 무한 루프 락업(Stuck) 방지를 위해 `g_isW6100Connected = 0` 처리되어 상태 머신이 동작하지 않습니다.
+> 💡 **비고**: 본 명세서는 화포통제컴퓨터와의 체계 연동망(CM 코어 전담) 통신 규격입니다. 기존 W6100(SPI-A) 기반의 노트북 통신 모니터링망(CPU1 전담) 프로토콜에 대해서는 별도의 `Debug_Protocol.md` 문서를 참조하십시오.
 
 ---
 
@@ -140,7 +140,6 @@ typedef struct {
 } stEthControl;
 
 extern stEthControl xEthCtrl;
-extern uint8_t g_isW6100Connected;  // 하드웨어 미연결 시 예외 처리 플래그 (1: 정상)
 ```
 
 > **💡 개발자 및 Antigravity 가이드**

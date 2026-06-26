@@ -1,31 +1,23 @@
 /**********************************************************************
     Nexcom Co., Ltd.
-    Filename         : hal_Ethernet_cpu1.c
-    Version          : 00.09
-    Description      : 이더넷(W6100) 하드웨어 제어 로직
+    Filename         : hal_Debug_cpu1.c
+    Version          : 00.10
+    Description      : 이더넷(W6100) 하드웨어 제어 로직 (디버그 통신망)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 24. (파일명 리팩토링)
+    Last Updated     : 2026. 06. 26. (모듈명 변경 및 디버깅 전용망 분리)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 26. - hal_Ethernet_cpu1 에서 hal_Debug_cpu1 으로 모듈명 변경
  * 2026. 06. 24. - 파일명 리팩토링 (_cpu1 분리)
  * 2026. 06. 23. - 모니터링 IP 변경: 192.168.200.11
- * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
- * 2026. 06. 17. - 명명 규칙 위반 리팩토링 연동 (Ethernet_ParsePacket -> Ethernet_ParsePacket)
- * 2026. 06. 16. - 수신 패킷을 Ethernet_ParsePacket()로 전달하고 기존 임시 응답 코드 제거
- * 2026. 06. 16. - socket.h의 오버로딩 매크로 삭제에 맞춰 sendto/recvfrom을 sendto_W6x00/recvfrom_W6x00으로 변경
  * 2026. 06. 15. - W6100용 SPI 통신 콜백 함수 이름을 spia_ 접두어를 포함한 이름으로 수정 반영
  * 2026. 06. 15. - Initial_W6100 반환값 처리 추가로 하드웨어 미연결 시 소켓 개방 스킵(무한루프 방지) 구현
- * 2026. 06. 12. - 소켓 및 포트 매크로 상수를 헤더(.h)로 이동 (글로벌 룰 적용)
- * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
- * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
 
-
-#include "hal_Ethernet_cpu1.h"
-
+#include "hal_Debug_cpu1.h"
 
 /*
 @function    int8_t Initial_W6100(void)
@@ -81,25 +73,24 @@ int8_t Initial_W6100(void)
 uint8_t isW6100Connected = 0;
 
 /*
-@function    void Ethernet_Init(void)
-@brief      이더넷 통신망, 소켓 개방 및 W6100 외부 인터럽트 등록
+@function    void Debug_Init(void)
+@brief      디버그 통신망, 소켓 개방 및 W6100 외부 인터럽트 등록
 @param      void
 @return     void
 */
-void Ethernet_Init(void)
+void Debug_Init(void)
 {
     // 1. W6100 하드웨어 설정 적용 및 연결 상태 확인
     if (Initial_W6100() < 0)
     {
         // 하드웨어가 연결되어 있지 않으면 이후의 소켓 개방 루틴을 무시하고 빠져나갑니다.
-        // 이를 통해 WIZnet 드라이버 내부의 무한 루프 블로킹을 근본적으로 방지합니다.
         isW6100Connected = 0;
         return; 
     }
     isW6100Connected = 1;
     
     // 2. UDP 소켓 개방
-    socket(SOCK_UDP_COM, Sn_MR_UDP, PORT_UDP_COM, 0x00);
+    socket(SOCK_UDP_DBG, Sn_MR_UDP, PORT_UDP_DBG, 0x00);
     
     // 3. W6100 INTn(GPIO 20) 핀을 XINT1 외부 인터럽트로 등록
     GPIO_setInterruptPin(20U, GPIO_INT_XINT1);
@@ -108,46 +99,47 @@ void Ethernet_Init(void)
     GPIO_setInterruptType(GPIO_INT_XINT1, GPIO_INT_TYPE_FALLING_EDGE);
     
     // PIE 인터럽트 등록
-    Interrupt_register(INT_XINT1, isr_EthernetExtInt);
+    Interrupt_register(INT_XINT1, isr_DebugExtInt);
 }
 
 /*
-@function    __interrupt void isr_EthernetExtInt(void)
+@function    __interrupt void isr_DebugExtInt(void)
 @brief      W6100 외부 인터럽트 (XINT1) 서비스 루틴
 @param      void
 @return     __interrupt void
 */
-__interrupt void isr_EthernetExtInt(void)
+__interrupt void isr_DebugExtInt(void)
 {
     // 1. 수신 처리 및 응답 전송 로직 실행
-    Ethernet_Process();
+    Debug_Process();
     
     // 2. PIE ACK (XINT1은 그룹 1에 속함)
     Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP1);
 }
 
 /*
-@function    void Ethernet_Process(void)
-@brief      W6100 인터럽트 발생 시 패킷 수신 및 즉각 응답
+@function    void Debug_Process(void)
+@brief      W6100 인터럽트 발생 시 패킷 수신 및 파싱
 @param      void
 @return     void
-@remark     XINT1 (isr_EthernetExtInt) 인터럽트 루틴에서 호출됨
+@remark     XINT1 (isr_DebugExtInt) 인터럽트 루틴에서 호출됨
 */
-void Ethernet_Process(void)
+void Debug_Process(void)
 {
     uint8_t rx_buf[128];
     uint16_t rx_size;
     uint8_t dest_ip[4];
     uint16_t dest_port;
     uint8_t dest_addrlen = 4; // IPv4 address length
-    // 1. 현재 0번 소켓의 하드웨어 상태 레지스터(Sn_SR) 값을 읽어옵니다.
-    uint8_t sn_sr = getSn_SR(SOCK_UDP_COM);
+    
+    // 1. 현재 소켓의 하드웨어 상태 레지스터(Sn_SR) 값을 읽어옵니다.
+    uint8_t sn_sr = getSn_SR(SOCK_UDP_DBG);
 
     // 2. 소켓이 정상적으로 UDP 모드로 개방되어 있는 경우
     if (sn_sr == SOCK_UDP) 
     {
         // 3. 수신된 데이터(RX Payload)가 버퍼에 존재하는지 바이트 크기를 확인합니다.
-        rx_size = getSn_RX_RSR(SOCK_UDP_COM);
+        rx_size = getSn_RX_RSR(SOCK_UDP_DBG);
 
         if (rx_size > 0) 
         {
@@ -156,17 +148,17 @@ void Ethernet_Process(void)
                 rx_size = sizeof(rx_buf);
             }
 
-            recvfrom_W6x00(SOCK_UDP_COM, rx_buf, rx_size, dest_ip, &dest_port, &dest_addrlen);
+            recvfrom_W6x00(SOCK_UDP_DBG, rx_buf, rx_size, dest_ip, &dest_port, &dest_addrlen);
             
             // 수신 후 인터럽트 플래그 클리어 (W6100 하드웨어)
-            setSn_IR(SOCK_UDP_COM, 0xFF);
+            setSn_IR(SOCK_UDP_DBG, 0xFF);
             
-            // 수신된 패킷 파싱 로직 호출 (CSU 계층으로 전달)
-            Ethernet_ParsePacket(rx_buf, rx_size);
+            // 수신된 패킷 파싱 로직 호출 (동적 IP 캡처를 위해 송신자 IP와 Port 전달)
+            Debug_ParsePacket(rx_buf, rx_size, dest_ip, dest_port);
         }
     } 
     else if (sn_sr == SOCK_CLOSED) 
     {
-        socket(SOCK_UDP_COM, Sn_MR_UDP, PORT_UDP_COM, 0x00);
+        socket(SOCK_UDP_DBG, Sn_MR_UDP, PORT_UDP_DBG, 0x00);
     }
 }
