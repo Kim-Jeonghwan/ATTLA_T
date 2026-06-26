@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Spi.c
-    Version          : 00.06
+    Version          : 00.07
     Description      : SPI 통신 하드웨어 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 17. (수동 CS 오해로 인한 SPI_enableTriWire 설정 제거)
+    Last Updated     : 2026. 06. 26. (SPI-B 및 SPI-C 핀맵 MUX 설정 변경)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 26. - SPI-B 및 SPI-C 통신 핀맵 재할당 (GPIO 63~66, 70, 71)
  * 2026. 06. 17. - 수동 CS 오해로 인한 SPI_enableTriWire 설정 제거 (W6100 및 FRAM 수신 에러 해결)
  * 2026. 06. 15. - cs_sel, spi_read_byte 등 W6100 전용 외부 콜백 함수에 spia_ 접두어 추가
  * 2026. 06. 15. - 가독성을 위해 InitSpia, InitSpib, InitSpic, InitSpid 및 관련 래퍼 함수들을 알파벳 순으로 재배치
@@ -202,23 +203,23 @@ static void InitSpib(void)
 {
     EALLOW;
 
-    // GPIO 58: SPIB_CLK
-    GPIO_setPinConfig(GPIO_58_SPIB_CLK);
+    // GPIO 65: SPIB_CLK
+    GPIO_setPinConfig(GPIO_65_SPIB_CLK);
     GPIO_setDirectionMode(SPIB_MOTOR_CLK_PIN, GPIO_DIR_MODE_OUT);
     GPIO_setPadConfig(SPIB_MOTOR_CLK_PIN, GPIO_PIN_TYPE_STD);
 
-    // GPIO 59: SPIB_STE (Chip Select)
-    GPIO_setPinConfig(GPIO_59_SPIB_STEN);
+    // GPIO 66: SPIB_STE (Chip Select)
+    GPIO_setPinConfig(GPIO_66_SPIB_STEN);
     GPIO_setDirectionMode(SPIB_MOTOR_STE_PIN, GPIO_DIR_MODE_OUT);
     GPIO_setPadConfig(SPIB_MOTOR_STE_PIN, GPIO_PIN_TYPE_STD);
 
-    // GPIO 60: SPIB_SIMO
-    GPIO_setPinConfig(GPIO_60_SPIB_SIMO);
+    // GPIO 63: SPIB_SIMO
+    GPIO_setPinConfig(GPIO_63_SPIB_SIMO);
     GPIO_setDirectionMode(SPIB_MOTOR_SIMO_PIN, GPIO_DIR_MODE_OUT);
     GPIO_setPadConfig(SPIB_MOTOR_SIMO_PIN, GPIO_PIN_TYPE_STD);
 
-    // GPIO 61: SPIB_SOMI
-    GPIO_setPinConfig(GPIO_61_SPIB_SOMI);
+    // GPIO 64: SPIB_SOMI
+    GPIO_setPinConfig(GPIO_64_SPIB_SOMI);
     GPIO_setDirectionMode(SPIB_MOTOR_SOMI_PIN, GPIO_DIR_MODE_IN);
     GPIO_setPadConfig(SPIB_MOTOR_SOMI_PIN, GPIO_PIN_TYPE_PULLUP);
     GPIO_setQualificationMode(SPIB_MOTOR_SOMI_PIN, GPIO_QUAL_ASYNC);
@@ -260,11 +261,11 @@ static void InitSpic(void)
     // GPIO_setPadConfig(SSI_SIMO_SPIB, GPIO_PIN_TYPE_STD);
     // GPIO_setQualificationMode(SSI_SIMO_SPIB, GPIO_QUAL_ASYNC);
 
-    GPIO_setPinConfig(GPIO_51_SPIC_SOMI);
+    GPIO_setPinConfig(GPIO_70_SPIC_SOMI);
     GPIO_setPadConfig(SPIC_SSI_SOMI_PIN, GPIO_PIN_TYPE_PULLUP);
     GPIO_setQualificationMode(SPIC_SSI_SOMI_PIN, GPIO_QUAL_ASYNC);
 
-    GPIO_setPinConfig(GPIO_52_SPIC_CLK);
+    GPIO_setPinConfig(GPIO_71_SPIC_CLK);
     GPIO_setPadConfig(SPIC_SSI_CLK_PIN, GPIO_PIN_TYPE_STD);
     GPIO_setQualificationMode(SPIC_SSI_CLK_PIN, GPIO_QUAL_ASYNC);
 

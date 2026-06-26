@@ -1,50 +1,71 @@
-# ATTLA_T 듀얼 채널 이더넷 아키텍처 반영 현황 조사 보고서 (Research Report)
+# ATTLA_T 하드웨어 변경 사항 반영 조사 보고서 (Research)
 
-## 1. 조사 목적
-최근 업데이트된 `Architecture.md`의 시스템 구성도 내용(이더넷 통신망 분리)이 실제 펌웨어 소스코드(CPU1 및 CM 코어의 CSU, HAL, MAIN)에 올바르게 반영되어 있는지 교차 검증하고, 불일치하는 부분을 식별하여 향후 수정 및 리팩토링 방향을 수립하기 위함입니다.
+## 1. 이더넷 PHY IC 및 부품 변경 사양
+### 1.1. CM 코어 이더넷 PHY IC
+- **적용 부품**: DP83822HFRHBT
+- **영향 범위**:
+  - `Architecture.md` 문서 내 CM 코어 이더넷 제어부 명세(4.1절)에 해당 부품명 기입 필요.
 
-### 업데이트된 아키텍처 기준 사항
-- **CPU1 코어**: W6100 칩(SPI-A)을 제어하여 **노트북(분석 및 디버깅용) 통신망**을 담당합니다.
-- **CM 코어**: 내부 EMAC 및 PHY 칩을 제어하여 **상위 제어기(화포통제컴퓨터) 체계 연동 통신망**을 전담합니다. (Boot Ack, CBIT, IBIT 등 시스템 ICD 프로토콜 수행)
+### 1.2. 트랜스포머 및 클럭 발진기 (PHY IC)
+- **트랜스포머**: HX1188NL (외부 커넥터 간 연결)
+- **입력 클럭(XI)**: 25 MHz (발진기: SIT2024BM-S2-33E-25.000000)
+- **영향 범위**:
+  - `Architecture.md` 1.1 주요 동작 주파수에 기입 필요.
 
----
+### 1.3. W6100 (디버그용 이더넷) 부품
+- **트랜스포머**: HX1188NL
+- **크리스탈**: ECS-250-8-37Q-RES-TR (25MHz)
+- **영향 범위**:
+  - `Architecture.md` W6100 사양(4.1절)에 부품 정보 추가 반영 필요.
 
-## 2. 모듈별 상세 분석 결과
+## 2. GPIO 핀맵 할당 변경 (1차 그림 반영)
+다음 핀들은 실제 코드가 위치한 `hal_DspInit.c` 및 `hal_Spi.c` 에 변경 반영이 필요합니다.
 
-### [1] CM 코어 (ATTLA_T_CM) - 상위 제어기 연동망 (PHY/EMAC)
-**결론: 아키텍처와 100% 일치하며 정상 구현됨 (수정 불필요)**
+| 신호명 | 기존 GPIO | 변경 GPIO | 비고 |
+| :--- | :--- | :--- | :--- |
+| DSP_BRAKE | 35 | 74 | `hal_DspInit.c` 내 GPIO 초기화 핀 번호 변경 |
+| DSP_nLIMIT1_NO | 36 | 75 (※임시 73) | TX_D0(75) 중복 문제로 평가보드 테스트 시에는 73으로 사용하고 주석 표기 요망 |
+| DSP_nLIMIT1_NC | 37 | 76 | `hal_DspInit.c` GPIO 초기화 변경 |
+| DSP_nLIMIT2_NO | 38 | 77 | `hal_DspInit.c` GPIO 초기화 변경 |
+| DSP_nLIMIT2_NC | 39 | 78 | `hal_DspInit.c` GPIO 초기화 변경 |
+| DSP_PM_n24V | 40 | 79 | `hal_DspInit.c` GPIO 초기화 변경 |
+| DSP_nCABLE_LOOP | 46 | 80 | 기존 `DSP_CABLE_LOOP`에서 이름 변경 포함 |
+| DSP_ENC_DATA | 51 | 70 | `hal_Spi.c` SPI-C SOMI 핀 매핑 변경 |
+| DSP_ENC_CLK | 52 | 71 | `hal_Spi.c` SPI-C CLK 핀 매핑 변경 |
+| DSP_DRV_SPIB_CLK | 58 | 65 | `DSP_SPIB_CLK` ➡️ `DSP_DRV_SPIB_CLK` (이름/핀 변경) |
+| DSP_DRV_SPIB_nCS | 59 | 66 | `DSP_SPIB_nCS` ➡️ `DSP_DRV_SPIB_nCS` (이름/핀 변경) |
+| DSP_DRV_SPIB_SIMO | 60 | 63 | `DSP_SPIB_SIMO` ➡️ `DSP_DRV_SPIB_SIMO` (이름/핀 변경) |
+| DSP_DRV_SPIB_SOMI | 61 | 64 | `DSP_SPIB_SOMI` ➡️ `DSP_DRV_SPIB_SOMI` (이름/핀 변경) |
 
-*   **`main_cm.c` (MAIN)**
-    *   `Initial_Ethernet()` 및 `Ethernet_StateMachine()`을 주기적으로 호출하여 체계 연동망을 기동하고 통제합니다. **(일치)**
-*   **`hal_Ethernet_cm.c` (HAL)**
-    *   MII 인터페이스, 외부 25MHz 클럭, DP83822 PHY 설정 등 하드웨어 초기화 및 EMAC RX 인터럽트를 정상적으로 구성하고 있습니다. **(일치)**
-*   **`csu_Ethernet_cm.c` (CSU)**
-    *   상위 제어기와의 ICD(인터페이스 통제 문서) 규격에 따른 프로토콜(Boot Done, CBIT, IBIT 등)을 EMAC 패킷 전송 함수(`sendEthernetFrame`)를 통해 정상적으로 수행합니다.
-    *   특히, IBIT 명령 수신 시 CPU1 코어로 `ibitClearReq` IPC 메시지를 보내 에러를 초기화하도록 위임하는 로직이 완벽히 연동되어 있습니다. **(일치)**
+## 3. 이더넷 PHY 연결 GPIO 변경 (2차 그림 반영)
+현재는 평가보드 테스트를 위해 **기존 GPIO 핀맵을 그대로 유지**하며, 향후 변경될 핀 번호를 주석으로 상세히 표기할 예정입니다.
+대상 소스: `hal_DspInit.h` 내 `#define GPIO_PIN_ENET_...` 및 `hal_DspInit.c` `initEmacGpioPins()` 함수.
 
-### [2] CPU1 코어 (ATTLA_T_CPU1) - 노트북 모니터링망 (W6100)
-**결론: HAL과 MAIN은 정상이나, CSU 계층에서 심각한 아키텍처 불일치(로직 꼬임) 발생 (전면 수정 필요)**
+| 신호명 | 유지 GPIO (테스트용) | 예정 GPIO (주석에 반영) |
+| :--- | :--- | :--- |
+| ENET_CRS | 109 | 34 |
+| ENET_COL | 110 | 35 |
+| ENET_MDC | 105 | 42 |
+| ENET_MDIO | 106 | 43 |
+| ENET_RX_CLK | 111 | 49 |
+| ENET_RX_DV | 112 | 50 |
+| ENET_RX_ER | 113 | 51 |
+| ENET_RX_D0 | 114 | 52 |
+| ENET_RX_D1 | 115 | 53 |
+| ENET_RX_D2 | 116 | 54 |
+| ENET_RX_D3 | 117 | 55 |
+| ENET_TX_EN | 118 | 56 |
+| ENET_TX_CLK | 44 | 58 |
+| ENET_TX_D0 | 75 | 59 |
+| ENET_TX_D1 | 122 | 60 |
+| ENET_TX_D2 | 123 | 61 |
+| ENET_TX_D3 | 124 | 62 |
+| ENET_RESET_N | 119 | 67 |
+| ENET_PWDN_N | 108 | 68 |
 
-*   **`main_cpu1.c` (MAIN)**
-    *   CM 코어와의 IPC 통신(`isCmReady` 대기 등)이 잘 구성되어 있으며, `Ethernet_Init()`을 통해 W6100을 기동합니다.
-    *   주기 태스크(`cycle_100ms`)에서 CM 코어로 상태 데이터(CBIT 송신용 `bitInformAll`)를 넘겨주거나, CM의 `ibitClearReq`를 받아 폴트 리셋을 수행하는 등 역할 분담이 정상적으로 이루어져 있습니다. **(일치)**
-*   **`hal_Ethernet_cpu1.c` (HAL)**
-    *   W6100 하드웨어를 제어하기 위해 SPI-A 콜백을 등록하고, 노트북 연결용 IP(`192.168.200.11`)를 세팅하는 등 HAL 기능이 의도에 맞게 구현되어 있습니다. **(일치)**
-*   **`csu_Ethernet_cpu1.c` (CSU) 🚨 (수정 필요 대상)**
-    *   **문제점**: 해당 파일은 W6100을 제어하고 있으나, 내부 로직은 노트북 모니터링용 프로토콜이 아닌 **CM 코어가 수행해야 할 체계 연동망 프로토콜(ICD - Boot Ack, PBIT/IBIT/CBIT 등)을 그대로 복사하여 수행**하고 있습니다.
-    *   **증상**: `STATE_WAIT_BOOT_ACK` 상태를 운영하며 FC(화포통제컴퓨터) IP(`192.168.200.1`)로 묶여 있고, 심지어 자신이 만들어낸 `bitInformAll` 변수를 IPC 수신 버퍼(`pxDataCpu1ToCm`)에서 역으로 참조하는 등 복사-붙여넣기의 잔재가 강하게 남아 있습니다.
-
----
-
-## 3. 수정 및 리팩토링 계획 (Action Items)
-
-해당 리서치 결과를 바탕으로 다음 작업을 수행하여 아키텍처를 완벽하게 일치시켜야 합니다.
-
-### 🔴 csu_Ethernet_cpu1.c 전면 리팩토링 (노트북 디버깅망 전용화)
-1.  **기존 시스템 ICD 통신 로직 전면 삭제**:
-    *   `STATE_WAIT_BOOT_ACK`, `ETH_CODE_BOOT_DONE`, `ETH_CODE_PBIT_REQ`, `ETH_CODE_IBIT_REQ`, CBIT 등 상위 제어기(FC) 전용 메시지 파싱 및 응답 로직을 모두 제거합니다.
-2.  **모니터링/디버깅 프로토콜로 재구성**:
-    *   W6100을 통한 통신은 노트북(PC UI)에서 모터의 상태(전류, 위치, 온도 등)를 실시간으로 확인하거나 단순한 디버깅 패킷(명령어)을 송수신하는 용도로만 동작하도록 `Ethernet_ParsePacket()` 및 `Ethernet_StateMachine()`을 단순화/재작성해야 합니다.
-    *   타겟 IP 및 상태 머신(State Machine) 구조를 디버깅용 규격에 맞게 새롭게 정의해야 합니다.
-
-*본 리서치 보고서를 확인하시고, **`csu_Ethernet_cpu1.c`의 수정(노트북 프로토콜 구현)에 대한 계획(Plan) 수립 및 코드 작성을 지시**해 주시면 즉시 작업을 진행하겠습니다.*
+## 4. 수행 계획 요약
+위 조사 내용을 바탕으로 다음 단계에서 실제 펌웨어 코드 및 문서 수정을 진행할 계획입니다.
+1. `Architecture.md` 업데이트: 주요 스펙에 부품명(DP83822HFRHBT, HX1188NL, 오실레이터 등) 반영.
+2. `hal_DspInit.h`: 이더넷 PHY 핀 할당 주석을 새 예정 핀으로 업데이트 (기존 코드는 유지).
+3. `hal_DspInit.c`: GPIO_35 ~ GPIO_46 입력/출력 핀 초기화 코드를 신규 핀(GPIO_73 ~ GPIO_80)으로 마이그레이션.
+4. `hal_Spi.c`: 엔코더 및 모터 드라이버용 SPI 통신 핀을 매뉴얼 규격에 맞게 핀 MUX 세팅 변경.

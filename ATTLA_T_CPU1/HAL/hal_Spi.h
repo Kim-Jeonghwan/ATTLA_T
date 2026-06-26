@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Spi.h
-    Version          : 00.07
+    Version          : 00.08
     Description      : SPI 하드웨어 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+    Last Updated     : 2026. 06. 26. (SPI-B 및 SPI-C 핀맵 재할당)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 26. - SPI-B 및 SPI-C 통신 핀맵 재할당 (GPIO 63~66, 70, 71)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 15. - cs_sel, spi_read_byte 등 W6100 전용 래퍼 함수에 spia_ 접두어 추가
  * 2026. 06. 15. - LSPCLK 초과 에러 해결을 위해 W6100 SPI-A 통신 속도 10MHz로 하향 조정
@@ -40,16 +41,16 @@
 // [ SPI-B : Motor Driver ]
 #define SPIB_MOTOR_BAUDRATE         1000000u    // 1MHz
 #define SPIB_MOTOR_DATA_WIDTH       16u
-#define SPIB_MOTOR_CLK_PIN          58u
-#define SPIB_MOTOR_STE_PIN          59u
-#define SPIB_MOTOR_SIMO_PIN         60u
-#define SPIB_MOTOR_SOMI_PIN         61u
+#define SPIB_MOTOR_CLK_PIN          65u
+#define SPIB_MOTOR_STE_PIN          66u
+#define SPIB_MOTOR_SIMO_PIN         63u
+#define SPIB_MOTOR_SOMI_PIN         64u
 
 // [ SPI-C : SSI Encoder ]
 #define SPIC_SSI_BAUDRATE           2500000u    // 2.5MHz
 #define SPIC_SSI_DATA_WIDTH         16u
-#define SPIC_SSI_SOMI_PIN           51u
-#define SPIC_SSI_CLK_PIN            52u
+#define SPIC_SSI_SOMI_PIN           70u
+#define SPIC_SSI_CLK_PIN            71u
 
 // [ SPI-D : FRAM ]
 #define SPID_FRAM_BAUDRATE          1000000u    // 1MHz

@@ -1,15 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_DspInit.c
-    Version          : 00.11
+    Version          : 00.13
     Description      : DSP 초기화 및 GPIO/인터럽트 기본 설정
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 24. (EMAC 관련 17개 핀에 대해 CM 코어로 제어권 이양 추가)
+    Last Updated     : 2026. 06. 26. (시스템 제어 및 스위치 GPIO 핀 매직넘버 상수화)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 26. - 시스템 제어 및 스위치 입력/출력 핀 할당 매직넘버 상수화 적용
+ * 2026. 06. 26. - 하드웨어 스위치 및 브레이크 제어 핀맵 재할당 (GPIO 73, 74, 76~80)
  * 2026. 06. 24. - EMAC 관련 17개 핀에 대해 CM 코어로 제어권 이양 추가
  * 2026. 06. 15. - 기존 hal_Led.c 파일 삭제 및 LED 핀 초기화 코드를 Init_GpioDout에 통합 관리
  * 2026. 06. 15. - W6100 SPI-A 통신 핀 및 CS 설정(GPIO 16~19)을 hal_Spi.c의 InitSpia()로 이관
@@ -124,64 +126,64 @@ static void Init_GpioDin(void)
     // --- 모터 드라이버 피드백 및 홀 센서 ---
     // DRV_nFAULT (GPIO 10)
     GPIO_setPinConfig(GPIO_10_GPIO10);
-    GPIO_setPadConfig(10U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setDirectionMode(10U, GPIO_DIR_MODE_IN);
-    GPIO_setQualificationMode(10U, GPIO_QUAL_ASYNC);
+    GPIO_setPadConfig(GPIO_PIN_DRV_nFAULT, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(GPIO_PIN_DRV_nFAULT, GPIO_DIR_MODE_IN);
+    GPIO_setQualificationMode(GPIO_PIN_DRV_nFAULT, GPIO_QUAL_ASYNC);
 
     // HALL_A_IN (INLA, GPIO 11)
     GPIO_setPinConfig(GPIO_11_GPIO11);
-    GPIO_setPadConfig(11U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setDirectionMode(11U, GPIO_DIR_MODE_IN);
-    GPIO_setQualificationMode(11U, GPIO_QUAL_ASYNC);
+    GPIO_setPadConfig(GPIO_PIN_HALL_A_IN, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(GPIO_PIN_HALL_A_IN, GPIO_DIR_MODE_IN);
+    GPIO_setQualificationMode(GPIO_PIN_HALL_A_IN, GPIO_QUAL_ASYNC);
 
     // HALL_B_IN (INHB, GPIO 12)
     GPIO_setPinConfig(GPIO_12_GPIO12);
-    GPIO_setPadConfig(12U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setDirectionMode(12U, GPIO_DIR_MODE_IN);
-    GPIO_setQualificationMode(12U, GPIO_QUAL_ASYNC);
+    GPIO_setPadConfig(GPIO_PIN_HALL_B_IN, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(GPIO_PIN_HALL_B_IN, GPIO_DIR_MODE_IN);
+    GPIO_setQualificationMode(GPIO_PIN_HALL_B_IN, GPIO_QUAL_ASYNC);
 
     // HALL_C_IN (INLB, GPIO 13)
     GPIO_setPinConfig(GPIO_13_GPIO13);
-    GPIO_setPadConfig(13U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setDirectionMode(13U, GPIO_DIR_MODE_IN);
-    GPIO_setQualificationMode(13U, GPIO_QUAL_ASYNC);
+    GPIO_setPadConfig(GPIO_PIN_HALL_C_IN, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(GPIO_PIN_HALL_C_IN, GPIO_DIR_MODE_IN);
+    GPIO_setQualificationMode(GPIO_PIN_HALL_C_IN, GPIO_QUAL_ASYNC);
 
     // --- 시스템 모니터링 및 스위치 입력 ---
-    // nLIMIT1_NO (GPIO 36)
-    GPIO_setPinConfig(GPIO_36_GPIO36);
-    GPIO_setPadConfig(36U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setDirectionMode(36U, GPIO_DIR_MODE_IN);
-    GPIO_setQualificationMode(36U, GPIO_QUAL_ASYNC);
+    // nLIMIT1_NO (GPIO 73, ※TX_D0 중복 방지 테스트 임시, 향후 75로 변경)
+    GPIO_setPinConfig(GPIO_73_GPIO73);
+    GPIO_setPadConfig(GPIO_PIN_nLIMIT1_NO, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(GPIO_PIN_nLIMIT1_NO, GPIO_DIR_MODE_IN);
+    GPIO_setQualificationMode(GPIO_PIN_nLIMIT1_NO, GPIO_QUAL_ASYNC);
 
-    // nLIMIT1_NC (GPIO 37)
-    GPIO_setPinConfig(GPIO_37_GPIO37);
-    GPIO_setPadConfig(37U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setDirectionMode(37U, GPIO_DIR_MODE_IN);
-    GPIO_setQualificationMode(37U, GPIO_QUAL_ASYNC);
+    // nLIMIT1_NC (GPIO 76)
+    GPIO_setPinConfig(GPIO_76_GPIO76);
+    GPIO_setPadConfig(GPIO_PIN_nLIMIT1_NC, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(GPIO_PIN_nLIMIT1_NC, GPIO_DIR_MODE_IN);
+    GPIO_setQualificationMode(GPIO_PIN_nLIMIT1_NC, GPIO_QUAL_ASYNC);
 
-    // nLIMIT2_NO (GPIO 38)
-    GPIO_setPinConfig(GPIO_38_GPIO38);
-    GPIO_setPadConfig(38U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setDirectionMode(38U, GPIO_DIR_MODE_IN);
-    GPIO_setQualificationMode(38U, GPIO_QUAL_ASYNC);
+    // nLIMIT2_NO (GPIO 77)
+    GPIO_setPinConfig(GPIO_77_GPIO77);
+    GPIO_setPadConfig(GPIO_PIN_nLIMIT2_NO, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(GPIO_PIN_nLIMIT2_NO, GPIO_DIR_MODE_IN);
+    GPIO_setQualificationMode(GPIO_PIN_nLIMIT2_NO, GPIO_QUAL_ASYNC);
 
-    // nLIMIT2_NC (GPIO 39)
-    GPIO_setPinConfig(GPIO_39_GPIO39);
-    GPIO_setPadConfig(39U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setDirectionMode(39U, GPIO_DIR_MODE_IN);
-    GPIO_setQualificationMode(39U, GPIO_QUAL_ASYNC);
+    // nLIMIT2_NC (GPIO 78)
+    GPIO_setPinConfig(GPIO_78_GPIO78);
+    GPIO_setPadConfig(GPIO_PIN_nLIMIT2_NC, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(GPIO_PIN_nLIMIT2_NC, GPIO_DIR_MODE_IN);
+    GPIO_setQualificationMode(GPIO_PIN_nLIMIT2_NC, GPIO_QUAL_ASYNC);
 
-    // PM_n24V (GPIO 40)
-    GPIO_setPinConfig(GPIO_40_GPIO40);
-    GPIO_setPadConfig(40U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setDirectionMode(40U, GPIO_DIR_MODE_IN);
-    GPIO_setQualificationMode(40U, GPIO_QUAL_ASYNC);
+    // PM_n24V (GPIO 79)
+    GPIO_setPinConfig(GPIO_79_GPIO79);
+    GPIO_setPadConfig(GPIO_PIN_PM_n24V, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(GPIO_PIN_PM_n24V, GPIO_DIR_MODE_IN);
+    GPIO_setQualificationMode(GPIO_PIN_PM_n24V, GPIO_QUAL_ASYNC);
 
-    // CABLE_LOOP (GPIO 46)
-    GPIO_setPinConfig(GPIO_46_GPIO46);
-    GPIO_setPadConfig(46U, GPIO_PIN_TYPE_PULLUP);
-    GPIO_setDirectionMode(46U, GPIO_DIR_MODE_IN);
-    GPIO_setQualificationMode(46U, GPIO_QUAL_ASYNC);
+    // nCABLE_LOOP (GPIO 80)
+    GPIO_setPinConfig(GPIO_80_GPIO80);
+    GPIO_setPadConfig(GPIO_PIN_nCABLE_LOOP, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(GPIO_PIN_nCABLE_LOOP, GPIO_DIR_MODE_IN);
+    GPIO_setQualificationMode(GPIO_PIN_nCABLE_LOOP, GPIO_QUAL_ASYNC);
 
     // [하드웨어 연결 정보 메모] 
     // - PonRST 신호는 easyDSP 리셋핀, 내부 3.3V 레귤레이터(TPS70445PWP) 리셋핀, 그리고 DSP XRS_N 과 직결됨.
@@ -202,47 +204,47 @@ static void Init_GpioDout(void)
     // --- 모터 드라이버 제어 출력 (DRV8343) ---
     // DRV_ENABLE (GPIO 2 / EPWM2A)
     GPIO_setPinConfig(GPIO_2_GPIO2);
-    GPIO_setPadConfig(2U, GPIO_PIN_TYPE_STD);
-    GPIO_setDirectionMode(2U, GPIO_DIR_MODE_OUT);
-    GPIO_writePin(2U, 0U); // Active High 이므로 기본 Low (OFF)
+    GPIO_setPadConfig(GPIO_PIN_DRV_ENABLE, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(GPIO_PIN_DRV_ENABLE, GPIO_DIR_MODE_OUT);
+    GPIO_writePin(GPIO_PIN_DRV_ENABLE, 0U); // Active High 이므로 기본 Low (OFF)
 
     // DRV_DIR (INHC, GPIO 3 / EPWM2B)
     GPIO_setPinConfig(GPIO_3_GPIO3);
-    GPIO_setPadConfig(3U, GPIO_PIN_TYPE_STD);
-    GPIO_setDirectionMode(3U, GPIO_DIR_MODE_OUT);
-    GPIO_writePin(3U, 0U); // Active High 이므로 기본 Low (OFF)
+    GPIO_setPadConfig(GPIO_PIN_DRV_DIR, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(GPIO_PIN_DRV_DIR, GPIO_DIR_MODE_OUT);
+    GPIO_writePin(GPIO_PIN_DRV_DIR, 0U); // Active High 이므로 기본 Low (OFF)
 
     // DRV_nBRAKE (INLC, GPIO 4 / EPWM3A)
     // DRV8343 1x PWM 모드 구동을 위해 브레이크 해제 상태(High)로 초기화
     GPIO_setPinConfig(GPIO_4_GPIO4);
-    GPIO_setPadConfig(4U, GPIO_PIN_TYPE_STD);
-    GPIO_setDirectionMode(4U, GPIO_DIR_MODE_OUT);
-    GPIO_writePin(4U, 1U); // Active Low 이므로 High 출력이 브레이크 해제 (Normal 구동) 상태임
+    GPIO_setPadConfig(GPIO_PIN_DRV_nBRAKE, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(GPIO_PIN_DRV_nBRAKE, GPIO_DIR_MODE_OUT);
+    GPIO_writePin(GPIO_PIN_DRV_nBRAKE, 1U); // Active Low 이므로 High 출력이 브레이크 해제 (Normal 구동) 상태임
 
     // --- 외부 장비 표시 및 제어용 IO ---
     // LED_nNORMAL (GPIO 31 할당)
     GPIO_setPinConfig(GPIO_31_GPIO31);
-    GPIO_setPadConfig(31U, GPIO_PIN_TYPE_STD);
-    GPIO_setDirectionMode(31U, GPIO_DIR_MODE_OUT);
-    GPIO_writePin(31U, 1U); // Active Low 이므로 기본 High (OFF)
+    GPIO_setPadConfig(GPIO_PIN_LED_nNORMAL, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(GPIO_PIN_LED_nNORMAL, GPIO_DIR_MODE_OUT);
+    GPIO_writePin(GPIO_PIN_LED_nNORMAL, 1U); // Active Low 이므로 기본 High (OFF)
 
     // **메인 컨트롤 ISR 동작 확인용 임시 LED (GPIO 34 할당)**
     GPIO_setPinConfig(GPIO_34_GPIO34);
-    GPIO_setPadConfig(34U, GPIO_PIN_TYPE_STD);
-    GPIO_setDirectionMode(34U, GPIO_DIR_MODE_OUT);
-    GPIO_writePin(34U, 1U);
+    GPIO_setPadConfig(GPIO_PIN_LED_ISR_TEST, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(GPIO_PIN_LED_ISR_TEST, GPIO_DIR_MODE_OUT);
+    GPIO_writePin(GPIO_PIN_LED_ISR_TEST, 1U);
 
     // LED_nFAULT (GPIO 32 할당)
     GPIO_setPinConfig(GPIO_32_GPIO32);
-    GPIO_setPadConfig(32U, GPIO_PIN_TYPE_STD);
-    GPIO_setDirectionMode(32U, GPIO_DIR_MODE_OUT);
-    GPIO_writePin(32U, 1U); // Active Low 이므로 기본 High (OFF)
+    GPIO_setPadConfig(GPIO_PIN_LED_nFAULT, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(GPIO_PIN_LED_nFAULT, GPIO_DIR_MODE_OUT);
+    GPIO_writePin(GPIO_PIN_LED_nFAULT, 1U); // Active Low 이므로 기본 High (OFF)
 
-    // DSP_BRAKE (GPIO 35 할당)
-    GPIO_setPinConfig(GPIO_35_GPIO35);
-    GPIO_setPadConfig(35U, GPIO_PIN_TYPE_STD);
-    GPIO_setDirectionMode(35U, GPIO_DIR_MODE_OUT);
-    GPIO_writePin(35U, 0U); // Active High(전원 인가 시 잠금 해제). 따라서 기본 Low 출력으로 전원을 차단하여 기계적 잠금 상태(Fail-Safe) 유지
+    // DSP_BRAKE (GPIO 74 할당)
+    GPIO_setPinConfig(GPIO_74_GPIO74);
+    GPIO_setPadConfig(GPIO_PIN_DSP_BRAKE, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(GPIO_PIN_DSP_BRAKE, GPIO_DIR_MODE_OUT);
+    GPIO_writePin(GPIO_PIN_DSP_BRAKE, 0U); // Active High(전원 인가 시 잠금 해제). 따라서 기본 Low 출력으로 전원을 차단하여 기계적 잠금 상태(Fail-Safe) 유지
 }
 
 /*
@@ -334,18 +336,18 @@ static void initW6100GpioPins(void)
 {
     /* --- INTn (GPIO20) --- */
     GPIO_setPinConfig(GPIO_20_GPIO20);
-    GPIO_setDirectionMode(20U, GPIO_DIR_MODE_IN);
-    GPIO_setPadConfig(20U, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(GPIO_PIN_W6100_INTn, GPIO_DIR_MODE_IN);
+    GPIO_setPadConfig(GPIO_PIN_W6100_INTn, GPIO_PIN_TYPE_PULLUP);
 
     /* --- RSTn (GPIO21) 하드웨어 리셋 --- */
     GPIO_setPinConfig(GPIO_21_GPIO21);
-    GPIO_setDirectionMode(21U, GPIO_DIR_MODE_OUT);
-    GPIO_setPadConfig(21U, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setDirectionMode(GPIO_PIN_W6100_RSTn, GPIO_DIR_MODE_OUT);
+    GPIO_setPadConfig(GPIO_PIN_W6100_RSTn, GPIO_PIN_TYPE_PULLUP);
     
     // W6100 하드웨어 리셋 시퀀스
-    GPIO_writePin(21U, 0U);
+    GPIO_writePin(GPIO_PIN_W6100_RSTn, 0U);
     DEVICE_DELAY_US(10000U); // 10ms
-    GPIO_writePin(21U, 1U);
+    GPIO_writePin(GPIO_PIN_W6100_RSTn, 1U);
     DEVICE_DELAY_US(50000U); // PLL 안정화 대기 50ms
 }
 
