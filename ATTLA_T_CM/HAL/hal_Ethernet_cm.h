@@ -30,6 +30,7 @@
 /* Rx 버퍼 크기 및 채널 개수 */
 #define ETH_RX_NUM_PKT_DESC    (3U)     /* Rx 디스크립터(패킷 버퍼) 개수 */
 #define ETH_RX_BUF_SIZE        (1536U)  /* 단일 Rx 버퍼 크기 (1518B 이더넷 최대 + 여유) */
+#define ETH_TX_NUM_PKT_DESC    (4U)     /* Tx 디스크립터(패킷 버퍼) 개수 */
 #define ETH_TX_BUF_SIZE        (256U)   /* Tx 버퍼 크기 (최대 UDP 패킷 61B 대비 여유) */
 
 /* ---------------------------------------------------------------
@@ -37,7 +38,7 @@
  * --------------------------------------------------------------- */
 typedef struct {
     Ethernet_Handle hEMAC;
-    uint8_t txBuf[ETH_TX_BUF_SIZE];
+    uint8_t txBuf[ETH_TX_NUM_PKT_DESC][ETH_TX_BUF_SIZE];
     uint32_t initRet;
 } stEthDriverState;
 
@@ -58,6 +59,11 @@ void updateEthernetTask(void);
 Ethernet_Pkt_Desc *App_ethGetPacketBuffer(void);
 Ethernet_Pkt_Desc *App_ethRxCallback(Ethernet_Handle hApp, Ethernet_Pkt_Desc *pPkt);
 void               App_ethTxCallback(Ethernet_Handle hApp, Ethernet_Pkt_Desc *pPkt);
+
+/* 패킷 버퍼 점유 상태 및 버퍼 획득 API */
+bool     Ethernet_isTxAvailable(void);
+uint8_t* Ethernet_getTxBuffer(uint8_t descIdx);
+void     Ethernet_consumeTxBuffer(void);
 
 /* LLD 드라이버 내 하드폴트 방지용 인터럽트 제어 콜백 래퍼 */
 void Platform_enableCoreInterrupt(void);

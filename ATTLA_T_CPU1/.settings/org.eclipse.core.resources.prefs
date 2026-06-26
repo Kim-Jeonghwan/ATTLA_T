@@ -1,6 +1,8 @@
 eclipse.preferences.version=1
 encoding//CPU1_FLASH/CSU/subdir_rules.mk=UTF-8
 encoding//CPU1_FLASH/CSU/subdir_vars.mk=UTF-8
+encoding//CPU1_FLASH/HAL/W6100/subdir_rules.mk=UTF-8
+encoding//CPU1_FLASH/HAL/W6100/subdir_vars.mk=UTF-8
 encoding//CPU1_FLASH/HAL/subdir_rules.mk=UTF-8
 encoding//CPU1_FLASH/HAL/subdir_vars.mk=UTF-8
 encoding//CPU1_FLASH/SDK/common/cmd/subdir_rules.mk=UTF-8
@@ -13,6 +15,8 @@ encoding//CPU1_FLASH/SDK/driverlib/ccs/Release/subdir_rules.mk=UTF-8
 encoding//CPU1_FLASH/SDK/driverlib/ccs/Release/subdir_vars.mk=UTF-8
 encoding//CPU1_FLASH/SDK/driverlib/subdir_rules.mk=UTF-8
 encoding//CPU1_FLASH/SDK/driverlib/subdir_vars.mk=UTF-8
+encoding//CPU1_FLASH/SDK/easydsp/subdir_rules.mk=UTF-8
+encoding//CPU1_FLASH/SDK/easydsp/subdir_vars.mk=UTF-8
 encoding//CPU1_FLASH/SDK/headers/cmd/subdir_rules.mk=UTF-8
 encoding//CPU1_FLASH/SDK/headers/cmd/subdir_vars.mk=UTF-8
 encoding//CPU1_FLASH/SDK/headers/source/subdir_rules.mk=UTF-8

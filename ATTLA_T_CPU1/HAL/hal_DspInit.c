@@ -366,42 +366,74 @@ static void initEmacGpioPins(void)
 
     /* --- TX 경로 --- */
     GPIO_setPinConfig(GPIO_44_ENET_MII_TX_CLK);    /* TBD: TX 클럭 */
+    GPIO_setMasterCore(GPIO_PIN_MII_TX_CLK, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_118_ENET_MII_TX_EN);    /* TBD: TX Enable */
+    GPIO_setMasterCore(GPIO_PIN_MII_TX_EN, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_75_ENET_MII_TX_DATA0);  /* TBD: TX Data bit0 */
+    GPIO_setMasterCore(GPIO_PIN_MII_TX_D0, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_122_ENET_MII_TX_DATA1); /* TBD: TX Data bit1 */
+    GPIO_setMasterCore(GPIO_PIN_MII_TX_D1, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_123_ENET_MII_TX_DATA2); /* TBD: TX Data bit2 */
+    GPIO_setMasterCore(GPIO_PIN_MII_TX_D2, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_124_ENET_MII_TX_DATA3); /* TBD: TX Data bit3 */
+    GPIO_setMasterCore(GPIO_PIN_MII_TX_D3, GPIO_CORE_CM);
 
     /* --- RX 경로 --- */
     GPIO_setPinConfig(GPIO_111_ENET_MII_RX_CLK);   /* TBD: RX 클럭 */
+    GPIO_setMasterCore(GPIO_PIN_MII_RX_CLK, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_112_ENET_MII_RX_DV);    /* TBD: RX Data Valid */
+    GPIO_setMasterCore(GPIO_PIN_MII_RX_DV, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_113_ENET_MII_RX_ERR);   /* TBD: RX Error */
+    GPIO_setMasterCore(GPIO_PIN_MII_RX_ERR, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_114_ENET_MII_RX_DATA0); /* TBD: RX Data bit0 */
+    GPIO_setMasterCore(GPIO_PIN_MII_RX_D0, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_115_ENET_MII_RX_DATA1); /* TBD: RX Data bit1 */
+    GPIO_setMasterCore(GPIO_PIN_MII_RX_D1, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_116_ENET_MII_RX_DATA2); /* TBD: RX Data bit2 */
+    GPIO_setMasterCore(GPIO_PIN_MII_RX_D2, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_117_ENET_MII_RX_DATA3); /* TBD: RX Data bit3 */
+    GPIO_setMasterCore(GPIO_PIN_MII_RX_D3, GPIO_CORE_CM);
 
     /* --- MDIO 관리 인터페이스 --- */
     GPIO_setPinConfig(GPIO_105_ENET_MDIO_CLK);     /* TBD: MDC 클럭 */
+    GPIO_setMasterCore(GPIO_PIN_MII_MDC_CLK, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_106_ENET_MDIO_DATA);    /* TBD: MDIO 데이터 */
+    GPIO_setMasterCore(GPIO_PIN_MII_MDIO_DATA, GPIO_CORE_CM);
 
     /* --- CRS / COL 선택적 MII 신호 --- */
     GPIO_setPinConfig(GPIO_109_ENET_MII_CRS);      /* TBD: CRS */
+    GPIO_setMasterCore(GPIO_PIN_MII_CRS, GPIO_CORE_CM);
     GPIO_setPinConfig(GPIO_110_ENET_MII_COL);      /* TBD: COL */
+    GPIO_setMasterCore(GPIO_PIN_MII_COL, GPIO_CORE_CM);
 
     /* --- PWDN/INT 핀 (GPIO108): 일반 GPIO 입력 및 풀업 설정 --- */
     GPIO_setPinConfig(GPIO_108_GPIO108);           /* TBD */
     GPIO_setDirectionMode(GPIO_PIN_ENET_PHY_PWDN_INT, GPIO_DIR_MODE_IN);
     GPIO_setPadConfig(GPIO_PIN_ENET_PHY_PWDN_INT, GPIO_PIN_TYPE_PULLUP);
+    GPIO_setMasterCore(GPIO_PIN_ENET_PHY_PWDN_INT, GPIO_CORE_CM);
 
     /* --- PHY 하드웨어 리셋 (GPIO119, Active-Low) --- */
     GPIO_setPinConfig(GPIO_119_GPIO119);           /* TBD */
     GPIO_setDirectionMode(GPIO_PIN_ENET_PHY_RESET, GPIO_DIR_MODE_OUT);
     GPIO_setPadConfig(GPIO_PIN_ENET_PHY_RESET, GPIO_PIN_TYPE_STD);
     
+    // CPU1이 직접 리셋을 1회 수행한 뒤 권한을 그대로 유지 (CM으로 넘기면 CM의 DAT 초기값 0이 반영되어 Reset이 계속 Low로 묶이는 현상 방지)
     GPIO_writePin(GPIO_PIN_ENET_PHY_RESET, 0U);    /* Active-Low 리셋 강제 인가 (0V) */
     DEVICE_DELAY_US(10000U);                       /* 10ms 대기 */
     GPIO_writePin(GPIO_PIN_ENET_PHY_RESET, 1U);    /* 리셋 해제 (3.3V) */
+    // GPIO_setMasterCore(GPIO_PIN_ENET_PHY_RESET, GPIO_CORE_CM); // 삭제: CPU1이 소유해야 리셋이 High로 유지됨
+
+    /* --- CM 코어 상태 표시용 LED 핀 방향 설정 및 권한 부여 --- */
+    // CM 코어는 GPIO MUX나 DIR 레지스터를 변경할 권한이 없으므로, 반드시 CPU1에서 OUTPUT으로 설정해 주어야 합니다.
+    GPIO_setPinConfig(GPIO_145_GPIO145);
+    GPIO_setDirectionMode(GPIO_PIN_CM_ALIVE_LED, GPIO_DIR_MODE_OUT);
+    GPIO_setPadConfig(GPIO_PIN_CM_ALIVE_LED, GPIO_PIN_TYPE_STD);
+    GPIO_setMasterCore(GPIO_PIN_CM_ALIVE_LED, GPIO_CORE_CM);
+
+    GPIO_setPinConfig(GPIO_146_GPIO146);
+    GPIO_setDirectionMode(GPIO_PIN_CM_ETH_LED, GPIO_DIR_MODE_OUT);
+    GPIO_setPadConfig(GPIO_PIN_CM_ETH_LED, GPIO_PIN_TYPE_STD);
+    GPIO_setMasterCore(GPIO_PIN_CM_ETH_LED, GPIO_CORE_CM);
 }
 
 /*

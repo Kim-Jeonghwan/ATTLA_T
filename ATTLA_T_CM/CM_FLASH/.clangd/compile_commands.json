@@ -2,7 +2,7 @@
    {
       "directory" : "D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CM_FLASH",
       "command"   : "clang++ -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/SDK/driverlib_cm\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/SDK/common/include\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/device\" -I\"C:/ti/ti-cgt-arm_20.2.7.LTS/include\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CSU\" -DDEBUG -D_FLASH -xc",
-      "file"      : "D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CSU/csu_Ethernet.c"
+      "file"      : "D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CSU/csu_Ethernet_cm.c"
    },
    {
       "directory" : "D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CM_FLASH",
@@ -12,7 +12,7 @@
    {
       "directory" : "D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CM_FLASH",
       "command"   : "clang++ -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/SDK/driverlib_cm\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/SDK/common/include\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/device\" -I\"C:/ti/ti-cgt-arm_20.2.7.LTS/include\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CSU\" -DDEBUG -D_FLASH -xc",
-      "file"      : "D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL/hal_Ethernet.c"
+      "file"      : "D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL/hal_Ethernet_cm.c"
    },
    {
       "directory" : "D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CM_FLASH",
@@ -22,7 +22,7 @@
    {
       "directory" : "D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CM_FLASH",
       "command"   : "clang++ -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/SDK/driverlib_cm\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/SDK/common/include\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/device\" -I\"C:/ti/ti-cgt-arm_20.2.7.LTS/include\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL\" -I\"D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CSU\" -DDEBUG -D_FLASH -xc",
-      "file"      : "D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL/hal_Timer.c"
+      "file"      : "D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/HAL/hal_Timer_cm.c"
    },
    {
       "directory" : "D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CM/CM_FLASH",

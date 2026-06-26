@@ -1,15 +1,16 @@
 /**********************************************************************
    Nexcom Co., Ltd.
    Filename         : csu_Ethernet_cm.c
-   Version          : 00.07
+   Version          : 00.08
    Description      : CM 코어 체계 이더넷(Raw UDP) 연동통제안 및 프로토콜 구현
    Programmer       : Kim Jeonghwan
-   Last Updated     : 2026. 06. 24. (파일명 리팩토링)
+   Last Updated     : 2026. 06. 26. (컴파일 에러 픽스 - 중괄호 오타 수정)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 26. - 컴파일 에러 픽스 (buildAndSendUdpPacket 닫는 중괄호 오타 수정)
  * 2026. 06. 24. - 파일명 리팩토링 (_cm 분리)
  * 2026. 06. 23. - 체계 연동통제안(ICD) 상태머신 및 메시지 처리 구현
  */
@@ -209,6 +210,11 @@ static bool sendEthernetFrame(uint8_t *pFrame, uint16_t frameSize)
 {
     bool bRet = false;
 
+    if (!Ethernet_isTxAvailable())
+    {
+        return false;
+    }
+
     if ((xEthDriver.hEMAC != (Ethernet_Handle)0U) && (pFrame != NULL))
     {
         Ethernet_Pkt_Desc *pTxDesc = &s_xTxPktDesc[s_ucTxPktDescIdx];
@@ -227,6 +233,7 @@ static bool sendEthernetFrame(uint8_t *pFrame, uint16_t frameSize)
         
         if (retCode == 0U)
         {
+            Ethernet_consumeTxBuffer();
             s_ucTxPktDescIdx = (s_ucTxPktDescIdx + 1U) % ETH_TX_NUM_PKT_DESC;
             bRet = true;
         }
@@ -249,7 +256,15 @@ static bool sendEthernetFrame(uint8_t *pFrame, uint16_t frameSize)
 */
 void buildAndSendUdpPacket(uint32_t rxTimestamp, uint8_t msgCode, uint8_t reqAck, const uint8_t *pData, uint16_t dataLen)
 {
-    uint8_t  *pPayload = xEthDriver.txBuf + PAYLOAD_OFFSET;
+    if (!Ethernet_isTxAvailable())
+    {
+        return; /* 가용 디스크립터가 없으면 패킷 생성 취소 (오염 방지) */
+    }
+
+    uint8_t  *pTxBuffer = Ethernet_getTxBuffer(s_ucTxPktDescIdx);
+    if (pTxBuffer == NULL) return;
+
+    uint8_t  *pPayload = pTxBuffer + PAYLOAD_OFFSET;
     uint16_t  offset = 0U;
     uint16_t  totalPayloadLen = ETH_MSG_HEADER_SIZE + dataLen + ETH_CHECKSUM_SIZE;
     uint16_t  i;
@@ -287,7 +302,6 @@ void buildAndSendUdpPacket(uint32_t rxTimestamp, uint8_t msgCode, uint8_t reqAck
             pPayload[offset++] = pData[i];
         }
     }
-    }
     else if (msgCode == ETH_CODE_CBIT_REP)
     {
         /* CBIT 임시 처리 대체됨 (payload 조립 시 pData가 NULL이 아님) */
@@ -307,16 +321,16 @@ void buildAndSendUdpPacket(uint32_t rxTimestamp, uint8_t msgCode, uint8_t reqAck
     pPayload[offset++] = (uint8_t)(checksum >> 8U);
 
     /* ---- 4. 이더넷/IP/UDP 헤더 조립 및 송신 ---- */
-    buildEthernetHeader(xEthDriver.txBuf);
-    buildIPHeader(xEthDriver.txBuf, totalPayloadLen);
-    buildUDPHeader(xEthDriver.txBuf, totalPayloadLen);
+    buildEthernetHeader(pTxBuffer);
+    buildIPHeader(pTxBuffer, totalPayloadLen);
+    buildUDPHeader(pTxBuffer, totalPayloadLen);
 
     /* Tx 활동 LED 점등 */
     ETH_LED_ON();
     ethActivityTimer = 20U;
 
     uint16_t totalFrameSize = ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE + totalPayloadLen;
-    (void)sendEthernetFrame(xEthDriver.txBuf, totalFrameSize);
+    (void)sendEthernetFrame(pTxBuffer, totalFrameSize);
 
     /* ---- 5. ACK 대기 타이머 세팅 ---- */
     if (reqAck == ETH_ACK_REQ)
@@ -328,7 +342,7 @@ void buildAndSendUdpPacket(uint32_t rxTimestamp, uint8_t msgCode, uint8_t reqAck
             xEthCtrl.RetryCount = 1U;
             /* 백업 버퍼 저장 */
             xEthCtrl.TxSize = totalFrameSize;
-            (void)memcpy(xEthCtrl.TxBuffer, xEthDriver.txBuf, totalFrameSize);
+            (void)memcpy(xEthCtrl.TxBuffer, pTxBuffer, totalFrameSize);
         }
     }
 }
@@ -356,8 +370,15 @@ void processReceivedEthernetPacket(uint8_t *pPacket, uint16_t length)
                     ETH_LED_ON();
                     ethActivityTimer = 20U;
 
-                    static uint8_t arpReply[60];
-                    (void)memset(arpReply, 0U, sizeof(arpReply));
+                    if (!Ethernet_isTxAvailable())
+                    {
+                        return; /* 디스크립터 고갈 시 무시 */
+                    }
+
+                    uint8_t *arpReply = Ethernet_getTxBuffer(s_ucTxPktDescIdx);
+                    if (arpReply == NULL) return;
+
+                    (void)memset(arpReply, 0U, 60U);
 
                     /* Ethernet Header (Dst MAC = Sender MAC) */
                     for (i = 0U; i < 6U; i++)
@@ -570,10 +591,17 @@ void processReceivedEthernetPacket(uint8_t *pPacket, uint16_t length)
  * --------------------------------------------------------------- */
 void sendAckResponse(uint8_t ackResult, uint16_t ackInfo, uint32_t timestamp, uint8_t targetCode)
 {
-    static uint8_t s_ucAckBuf[TX_ACK_FRAME_SIZE];
-    uint8_t        *pPayload = s_ucAckBuf + PAYLOAD_OFFSET;
-    uint16_t        offset = 0U;
-    uint16_t        totalPayloadLen = ETH_MSG_HEADER_SIZE + ETH_ACK_DATA_SIZE + ETH_CHECKSUM_SIZE;
+    if (!Ethernet_isTxAvailable())
+    {
+        return; /* 가용 디스크립터가 없으면 무시 */
+    }
+
+    uint8_t  *pTxBuffer = Ethernet_getTxBuffer(s_ucTxPktDescIdx);
+    if (pTxBuffer == NULL) return;
+
+    uint8_t  *pPayload = pTxBuffer + PAYLOAD_OFFSET;
+    uint16_t  offset = 0U;
+    uint16_t  totalPayloadLen = ETH_MSG_HEADER_SIZE + ETH_ACK_DATA_SIZE + ETH_CHECKSUM_SIZE;
 
     /* MSG Header (12B) */
     pPayload[offset++] = (uint8_t)(timestamp & 0x000000FFU);
@@ -585,7 +613,7 @@ void sendAckResponse(uint8_t ackResult, uint16_t ackInfo, uint32_t timestamp, ui
     pPayload[offset++] = ETH_FC_ID;
     pPayload[offset++] = ETH_CODE_ACK;
     pPayload[offset++] = ackResult;      /* 0x10=ACK / 0x11=NACK */
-    pPayload[offset++] = 0U;
+    pPayload[offset++] = ETH_PRIORITY_NORMAL; /* Priority */
     pPayload[offset++] = 1U;             /* Send Count */
 
     pPayload[offset++] = (uint8_t)(ETH_ACK_DATA_SIZE & 0x00FFU);
@@ -602,11 +630,11 @@ void sendAckResponse(uint8_t ackResult, uint16_t ackInfo, uint32_t timestamp, ui
     pPayload[offset++] = (uint8_t)(checksum & 0x00FFU);
     pPayload[offset++] = (uint8_t)(checksum >> 8U);
 
-    buildEthernetHeader(s_ucAckBuf);
-    buildIPHeader(s_ucAckBuf, totalPayloadLen);
-    buildUDPHeader(s_ucAckBuf, totalPayloadLen);
+    buildEthernetHeader(pTxBuffer);
+    buildIPHeader(pTxBuffer, totalPayloadLen);
+    buildUDPHeader(pTxBuffer, totalPayloadLen);
 
-    (void)sendEthernetFrame(s_ucAckBuf, TX_ACK_FRAME_SIZE);
+    (void)sendEthernetFrame(pTxBuffer, TX_ACK_FRAME_SIZE);
 }
 
 /* ---------------------------------------------------------------

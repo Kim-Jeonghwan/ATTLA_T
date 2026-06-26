@@ -62,6 +62,12 @@ static Ethernet_Pkt_Desc s_xRxPktDesc[ETH_RX_NUM_PKT_DESC];
 /* Rx 버퍼 순환 인덱스 */
 static uint8_t s_ucRxBufIdx = 0U;
 
+/* Tx 버퍼 및 디스크립터 상태 추적용 */
+static volatile uint8_t s_ucTxDescAvailCount = ETH_TX_NUM_PKT_DESC;
+
+/* 인터럽트 안전 중첩 제어용 카운터 */
+static volatile uint32_t s_uiInterruptNestCount = 0U;
+
 /* ---------------------------------------------------------------
  * static 함수 선언
  * --------------------------------------------------------------- */
@@ -103,7 +109,15 @@ static void initRxDescriptors(void)
 */
 void Platform_enableCoreInterrupt(void)
 {
-    (void)Interrupt_enableInProcessor();
+    if (s_uiInterruptNestCount > 0U)
+    {
+        s_uiInterruptNestCount--;
+    }
+    
+    if (s_uiInterruptNestCount == 0U)
+    {
+        (void)Interrupt_enableInProcessor();
+    }
 }
 
 /*
@@ -115,6 +129,7 @@ void Platform_enableCoreInterrupt(void)
 void Platform_disableCoreInterrupt(void)
 {
     (void)Interrupt_disableInProcessor();
+    s_uiInterruptNestCount++;
 }
 
 /* ---------------------------------------------------------------
@@ -133,7 +148,7 @@ void Initial_Ethernet(void)
 
     /* --- Rx 디스크립터 풀 초기화 --- */
     initRxDescriptors();
-    (void)memset(xEthDriver.txBuf, 0U, ETH_TX_BUF_SIZE);
+    (void)memset(xEthDriver.txBuf, 0U, sizeof(xEthDriver.txBuf));
 
     /* -------------------------------------------------------
      * Step 1: 인터페이스 설정 구조체 구성
@@ -187,6 +202,7 @@ void Initial_Ethernet(void)
     /* DMA 채널 수: 1채널 */
     pInitCfg->numChannels = 1U;
     pInitCfg->pktMTU      = (uint32_t)ETH_RX_BUF_SIZE;
+    pInitCfg->chInfo[ETHERNET_CH_DIR_RX][0U].numBD = ETH_RX_NUM_PKT_DESC; /* [치명적 버그 수정] 디폴트 8개가 아닌 실제 할당된 버퍼 갯수로 맞춤 */
 
     /* -------------------------------------------------------
      * Step 4: EMAC 핸들 획득 및 초기화
@@ -396,5 +412,34 @@ void App_ethTxCallback(Ethernet_Handle hApp, Ethernet_Pkt_Desc *pPkt)
 {
     (void)hApp; /* 미사용 파라미터 */
     (void)pPkt; /* 미사용 파라미터 */
-    /* xEthDriver.txBuf 는 정적 배열이므로 별도 해제 불필요 */
+
+    if (s_ucTxDescAvailCount < ETH_TX_NUM_PKT_DESC)
+    {
+        s_ucTxDescAvailCount++;
+    }
+}
+
+/* ---------------------------------------------------------------
+ * Tx 디스크립터 상태 조회 및 버퍼 포인터 반환 API
+ * --------------------------------------------------------------- */
+bool Ethernet_isTxAvailable(void)
+{
+    return (s_ucTxDescAvailCount > 0U);
+}
+
+uint8_t* Ethernet_getTxBuffer(uint8_t descIdx)
+{
+    if (descIdx < ETH_TX_NUM_PKT_DESC)
+    {
+        return xEthDriver.txBuf[descIdx];
+    }
+    return NULL;
+}
+
+void Ethernet_consumeTxBuffer(void)
+{
+    if (s_ucTxDescAvailCount > 0U)
+    {
+        s_ucTxDescAvailCount--;
+    }
 }

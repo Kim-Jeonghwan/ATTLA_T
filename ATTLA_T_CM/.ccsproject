@@ -9,4 +9,7 @@
 	<templateProperties value="id=empty_c28x_cm_driverlib_project.projectspec.empty_c28x_cm_driverlib_project_cm"/>
 	<origin value="C:\ti\c2000\C2000Ware_26_00_00_00\driverlib\f2838x\examples\c28x_cm\empty_projects\CCS\empty_c28x_cm_driverlib_project.projectspec"/>
 	<filesToOpen value=""/>
+	<connection value="common/targetdb/connections/TIXDS100v3_Dot7_Connection.xml"/>
+	<activeTargetConfiguration value="targetConfigs/TMS320F28388D.ccxml"/>
+	<isTargetConfigurationManual value="false"/>
 </projectOptions>

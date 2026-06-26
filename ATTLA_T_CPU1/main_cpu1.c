@@ -1,15 +1,17 @@
 /**********************************************************************
    Nexcom Co., Ltd.
    Filename         : main_cpu1.c
-   Version          : 00.08
-   Description      : 메인 백그라운드 루프 및 주기적 태스크 실행 (main.c ➡️ main_cpu1.c 리팩토링)
+   Version          : 00.01
+   Description      : 메인 CPU1 제어 루프 및 백그라운드 태스크
    Programmer       : Kim Jeonghwan
-   Last Updated     : 2026. 06. 23. (main_cpu1.c 로 물리 파일명 리팩토링)
+   Last Updated     : 2026. 06. 26. (CM BOOTROM Race Condition 해결을 위한 FLAG0 대기 로직 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 26. - CM BOOTROM Race Condition 해결을 위한 FLAG0 대기 로직 추가
+ * 2026. 06. 23. - 불필요한 CM BOOT 재호출 코드 제거 및 C2000Ware 권장 부팅 프로세스 정상화
  * 2026. 06. 23. - main_cpu1.c 로 물리 파일명 리팩토링
  * 2026. 06. 23. - CM 코어 IPC 동기화 추가 및 W6100 상태머신 제거
  * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
@@ -87,10 +89,9 @@ void main(void)
 	// 이더넷 디버그 상태 머신 초기화 (CSU)
 	Debug_ProtocolInit();
 	
-	// 외부 통신 인터럽트(W6100) 활성화
+	// 디버그 통신(W6100)용 외부 핀 인터럽트(XINT1) 활성화
 	Interrupt_enable(INT_XINT1);
 
-    // 이더넷 및 외부 통신 인터럽트 초기화가 완료되었으므로,
     // PBIT 완료 시 일시 중지되었던 EPWM1 인터럽트를 재활성화하여 메인 컨트롤 ISR 구동을 시작함.
     Interrupt_enable(INT_EPWM1);
 

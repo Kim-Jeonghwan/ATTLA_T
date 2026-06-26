@@ -106,7 +106,6 @@
 #define ETH_ACK_DATA_SIZE       (4U)      /* ACK 데이터 크기 */
 #define ETH_CHECKSUM_SIZE       (2U)
 
-#define ETH_TX_NUM_PKT_DESC     (4U)
 
 #define ETH_HDR_DST_OFFSET      (0U)
 #define ETH_HDR_SRC_OFFSET      (6U)

@@ -1,33 +1,39 @@
-# 리팩토링 계획: 파일명 명명 규칙 통일 (hal_Timer_cm 및 CPU1 Debug)
+# Fix Ethernet CM Core Freeze / Communication Drop Issue
 
-## 작업 목표
-1. CM 코어: `hal_Timer` 파일을 `hal_Timer_cm`으로 변경하여 명명 규칙 통일.
-2. CPU1 코어: `csu_Debug_cpu1` 및 `hal_Debug_cpu1` 파일명에서 `_cpu1` 접미사를 제거하여 명명 규칙 통일.
+The CM core hangs (ALIVE LED 145 and ETH LED 146 freeze) primarily due to **Ethernet DMA Descriptor Ring Corruption** and **Unsafe Interrupt Nesting**. The `-O1` optimization changes memory layout and execution timing just enough to trigger these critical bugs, but they are ticking time bombs even at `-O2`.
 
-## 1. CM 코어 (hal_Timer -> hal_Timer_cm) 변경 사항
-### 파일 이름 변경
-- `ATTLA_T_CM/HAL/hal_Timer.c` ➡️ `hal_Timer_cm.c`
-- `ATTLA_T_CM/HAL/hal_Timer.h` ➡️ `hal_Timer_cm.h`
+## Proposed Changes
 
-### 내부 참조 변경
-- **hal_Timer_cm.h**: `#ifndef HAL_TIMER_CM_H` 로 헤더 가드 변경, 상단 주석 업데이트
-- **hal_Timer_cm.c**: `#include "hal_Timer_cm.h"` 로 변경, 상단 주석 업데이트
-- **main_cm.h**: `#include "hal_Timer_cm.h"` 로 변경, 상단 주석 업데이트
+### 1. Fix RX Descriptor Circular Queue Corruption (CRITICAL)
+- **Problem**: `driverlib` requests `numBuildMsgs` (default 8) buffers during initialization. However, `ETH_RX_NUM_PKT_DESC` is only 4. Our `App_ethGetPacketBuffer` blindly wraps around `idx % 4`, handing the driver the same 4 descriptors twice! This creates a circular linked list inside the hardware DMA ring, causing infinite loops or Hard Faults.
+- **Fix**: Explicitly set `pInitCfg->numBuildMsgs = ETH_RX_NUM_PKT_DESC;` during initialization. Also, safely track available RX buffers to return `NULL` instead of corrupting the queue if exhausted.
 
-## 2. CPU1 코어 (Debug 모듈 _cpu1 제거) 변경 사항
-### 파일 이름 변경
-- `ATTLA_T_CPU1/HAL/hal_Debug_cpu1.c` ➡️ `hal_Debug.c`
-- `ATTLA_T_CPU1/HAL/hal_Debug_cpu1.h` ➡️ `hal_Debug.h`
-- `ATTLA_T_CPU1/CSU/csu_Debug_cpu1.c` ➡️ `csu_Debug.c`
-- `ATTLA_T_CPU1/CSU/csu_Debug_cpu1.h` ➡️ `csu_Debug.h`
+### 2. Fix TX Descriptor Wrap-Around Bug
+- **Problem**: When the PC blasts TX packets (or if the link is down), `sendEthernetFrame` blindly queues descriptors using `s_ucTxPktDescIdx = (idx + 1) % 4`. If 5 packets are queued before the DMA finishes sending them, the 5th packet reuses Descriptor 0, truncating the driverlib's internal `waitQueue` and `descQueue`.
+- **Fix**: Introduce `s_ucTxDescAvailCount`. `sendEthernetFrame` will only send if `s_ucTxDescAvailCount > 0`. `App_ethTxCallback` will increment it upon completion.
 
-### 내부 참조 변경
-- **hal_Debug.h**: 헤더 가드를 `#ifndef HAL_DEBUG_H` 로 변경, 상단 주석 업데이트
-- **hal_Debug.c**: `#include "hal_Debug.h"` 로 변경, 상단 주석 업데이트
-- **csu_Debug.h**: 헤더 가드를 `#ifndef CSU_DEBUG_H` 로 변경, 상단 주석 업데이트
-- **csu_Debug.c**: `#include "csu_Debug.h"` 로 변경, 상단 주석 업데이트
-- **main_cpu1.h**: `#include "hal_Debug.h"` 및 `#include "csu_Debug.h"` 로 변경, 상단 주석 업데이트
+### 3. Fix TX Buffer Overwrite (Data Corruption)
+- **Problem**: `xEthDriver.txBuf` is a single shared array. If we queue a Boot Done packet and immediately queue an ARP reply, the second packet overwrites the payload of the first packet *while the DMA is still transmitting the first one*.
+- **Fix**: Change `txBuf` to a 2D array `txBuf[ETH_TX_NUM_PKT_DESC][ETH_TX_BUF_SIZE]`. Each TX descriptor will have its own dedicated payload buffer.
 
-## 비고
-- 각 모듈의 함수명(예: `Initial_TIMER`, `Debug_Init` 등)이나 변수명은 HAL 및 CSU 명명 규칙에 따라 원래 모듈명 접두어가 없었으므로 내부 로직의 변수/함수명 변경은 필요 없습니다.
-- 모든 파일은 인코딩 변경(UTF-8) 없이 안전하게 파일명 및 인클루드 경로만 치환됩니다.
+### 4. Fix Nested Interrupt Safety
+- **Problem**: `driverlib` internally disables and enables interrupts inside `Ethernet_removePacketsFromRxQueue` (called by `isr_EmacRx0`). Our `Platform_enableCoreInterrupt` blindly calls `__enable_irq()`, which globally re-enables interrupts *while we are still inside the RX ISR*. This allows new interrupts to nest unsafely, blowing up the stack.
+- **Fix**: Implement an interrupt nesting counter (`s_uiInterruptNestCount`) so `__enable_irq()` is only called when the outer-most disable is released.
+
+## Files to Modify
+
+### `ATTLA_T_CM/HAL/hal_Ethernet_cm.h`
+- Change `stEthDriverState.txBuf` to `uint8_t txBuf[ETH_TX_NUM_PKT_DESC][ETH_TX_BUF_SIZE];`
+- Add `bool Ethernet_isTxAvailable(void);`
+- Add `uint8_t* Ethernet_getTxBuffer(void);`
+
+### `ATTLA_T_CM/HAL/hal_Ethernet_cm.c`
+- Update `Platform_disableCoreInterrupt` and `Platform_enableCoreInterrupt` to use a nesting counter.
+- Set `pInitCfg->numBuildMsgs = ETH_RX_NUM_PKT_DESC;` in `Initial_Ethernet`.
+- Add `s_ucTxDescAvailCount` logic and `Ethernet_isTxAvailable` getter.
+- Fix `App_ethGetPacketBuffer` to track `s_ucRxDescAvailCount` and return `NULL` if depleted.
+- Increment `s_ucTxDescAvailCount` inside `App_ethTxCallback`.
+
+### `ATTLA_T_CM/CSU/csu_Ethernet_cm.c`
+- Change `sendEthernetFrame` to check `Ethernet_isTxAvailable()` and fetch the correct `txBuf` index.
+- Update `buildAndSendUdpPacket` and `sendAckResponse` to use the dynamically allocated `txBuf` index instead of sharing the static buffer.
