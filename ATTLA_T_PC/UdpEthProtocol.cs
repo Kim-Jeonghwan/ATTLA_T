@@ -6,7 +6,8 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-
+using System.Runtime.InteropServices;
+using System.Net.NetworkInformation;
 namespace ATTLA_T_PC
 {
     public class UdpEthProtocol : IProtocol
@@ -55,6 +56,37 @@ namespace ATTLA_T_PC
         public event Action<byte, bool>?        OnAckReceived;
         public bool IsConnected => _udpClient != null;
 
+        public string PcIp => LocalIpAddress;
+        public int PcPort => PcRxPort;
+        public string DspIp => DspIpAddress;
+        public int DspPort => DspRxPort;
+
+        public string GetLocalMacAddress()
+        {
+            try
+            {
+                foreach (NetworkInterface nic in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (nic.OperationalStatus == OperationalStatus.Up)
+                    {
+                        foreach (UnicastIPAddressInformation ip in nic.GetIPProperties().UnicastAddresses)
+                        {
+                            if (ip.Address.ToString() == LocalIpAddress)
+                            {
+                                byte[] macBytes = nic.GetPhysicalAddress().GetAddressBytes();
+                                string[] str = new string[macBytes.Length];
+                                for (int i = 0; i < macBytes.Length; i++)
+                                    str[i] = macBytes[i].ToString("X2");
+                                return string.Join(":", str);
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+            return "Unknown";
+        }
+
         public void Connect(string portName, int baudRate)
         {
             if (IsConnected) Disconnect();
@@ -83,8 +115,33 @@ namespace ATTLA_T_PC
 
         public void ReInit()
         {
-            Disconnect();
-            Connect("", 0);
+            _commError = false;
+        }
+
+        [DllImport("iphlpapi.dll", ExactSpelling = true)]
+        private static extern int SendARP(int DestIP, int SrcIP, byte[] pMacAddr, ref int PhyAddrLen);
+
+        public string GetConnectedMacAddress()
+        {
+            if (_dspEndPoint == null) return "Unknown";
+            try
+            {
+                byte[] macAddr = new byte[6];
+                int macAddrLen = macAddr.Length;
+                
+                if (SendARP(BitConverter.ToInt32(_dspEndPoint.Address.GetAddressBytes(), 0), 0, macAddr, ref macAddrLen) != 0)
+                    return "Unknown";
+
+                string[] str = new string[macAddrLen];
+                for (int i = 0; i < macAddrLen; i++)
+                    str[i] = macAddr[i].ToString("X2");
+
+                return string.Join(":", str);
+            }
+            catch
+            {
+                return "Unknown";
+            }
         }
 
         public void SendControlMessage(ControlMessageData ctrlDto)

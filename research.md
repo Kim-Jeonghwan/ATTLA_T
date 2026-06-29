@@ -1,71 +1,26 @@
-# ATTLA_T 하드웨어 변경 사항 반영 조사 보고서 (Research)
+# 통신망 가입 로직 분석 보고서
 
-## 1. 이더넷 PHY IC 및 부품 변경 사양
-### 1.1. CM 코어 이더넷 PHY IC
-- **적용 부품**: DP83822HFRHBT
-- **영향 범위**:
-  - `Architecture.md` 문서 내 CM 코어 이더넷 제어부 명세(4.1절)에 해당 부품명 기입 필요.
+본 보고서는 CM 코어의 이더넷 통신망 가입 및 유지 관련 로직(`csu_Ethernet_cm.c`, `csu_Ethernet_cm.h`)에 대한 분석 결과를 담고 있습니다.
 
-### 1.2. 트랜스포머 및 클럭 발진기 (PHY IC)
-- **트랜스포머**: HX1188NL (외부 커넥터 간 연결)
-- **입력 클럭(XI)**: 25 MHz (발진기: SIT2024BM-S2-33E-25.000000)
-- **영향 범위**:
-  - `Architecture.md` 1.1 주요 동작 주파수에 기입 필요.
+## 1. 통신망 가입 상태를 계속 확인하고 있는지?
+**네, 계속 확인하고 있습니다.**
+- **동작 방식**: 통신망 가입이 완료된 상태(`STATE_JOINED`)에서 100ms 주기로 동작하는 상태 머신(`Ethernet_StateMachine`)이 통신 두절을 감시합니다.
+- **감시 기준**: `xEthCtrl.TimeoutCount` 변수를 100ms마다 1씩 증가시키며, 정상적인 이더넷 패킷(상태 정보 등)이 수신될 때마다 이 카운터를 `0`으로 초기화합니다.
+- **두절 판정**: 이 카운터가 `ETH_DISCONNECT_LIMIT` (50, 즉 5초)에 도달할 때까지 아무 패킷도 수신하지 못하면 통신이 두절된 것으로 판정합니다.
 
-### 1.3. W6100 (디버그용 이더넷) 부품
-- **트랜스포머**: HX1188NL
-- **크리스탈**: ECS-250-8-37Q-RES-TR (25MHz)
-- **영향 범위**:
-  - `Architecture.md` W6100 사양(4.1절)에 부품 정보 추가 반영 필요.
+## 2. 프로그램상에서 초기화되어 통신망 가입을 다시 해야 한다는 것을 DSP는 어떻게 인지하나?
+DSP는 아래 두 가지 경우에 망 가입을 다시 해야 함(초기화)을 인지합니다.
+1. **수신 타임아웃 발생**: 위 1번에서 설명한 대로 5초 동안 어떠한 패킷도 수신하지 못하여 `TimeoutCount`가 50이 되면, 코드는 상태를 `STATE_WAIT_BOOT_ACK` (망 가입 대기 상태)로 강제 변경(롤백)하여 재가입이 필요함을 인지합니다.
+2. **송신 ACK 대기 초과(전송 실패)**: 중요한 패킷(ACK 요청 패킷)을 전송한 후, 일정 시간(100ms) 내에 ACK를 받지 못하면 최대 3회 재전송을 시도합니다. 총 4회 전송 후에도 ACK를 받지 못하면, 상대방과의 연결이 끊어졌다고 판단하고 상태를 `STATE_WAIT_BOOT_ACK`로 롤백합니다.
 
-## 2. GPIO 핀맵 할당 변경 (1차 그림 반영)
-다음 핀들은 실제 코드가 위치한 `hal_DspInit.c` 및 `hal_Spi.c` 에 변경 반영이 필요합니다.
+## 3. DSP 리셋 시 통신망 가입 신청을 계속 할 건데, 상대방이 이미 가입되어 있으면 어떻게 되나?
+- DSP가 물리적으로 리셋되면 내부 메모리(상태 머신 변수)가 초기화되므로 무조건 `STATE_BOOTING`을 거쳐 `STATE_WAIT_BOOT_ACK` 상태로 시작하게 됩니다.
+- 이 상태에서 DSP는 망 가입 요청인 `ETH_CODE_BOOT_DONE` 메시지를 500ms 주기로 발송합니다.
+- 상대방(화포통제컴퓨터 등)의 입장에서는 이미 가입된 상태로 알고 있더라도, DSP로부터 다시 `BOOT_DONE` 요청이 오면 이에 대한 ACK 응답을 주어 다시 연동을 맺게 되는 구조입니다.
+- 즉, DSP가 보낸 `BOOT_DONE` 메시지에 대해 상대방이 정상적으로 ACK를 회신하면 DSP는 `STATE_JOINED`로 넘어가면서 깔끔하게 통신망에 다시 가입(동기화)됩니다.
 
-| 신호명 | 기존 GPIO | 변경 GPIO | 비고 |
-| :--- | :--- | :--- | :--- |
-| DSP_BRAKE | 35 | 74 | `hal_DspInit.c` 내 GPIO 초기화 핀 번호 변경 |
-| DSP_nLIMIT1_NO | 36 | 75 (※임시 73) | TX_D0(75) 중복 문제로 평가보드 테스트 시에는 73으로 사용하고 주석 표기 요망 |
-| DSP_nLIMIT1_NC | 37 | 76 | `hal_DspInit.c` GPIO 초기화 변경 |
-| DSP_nLIMIT2_NO | 38 | 77 | `hal_DspInit.c` GPIO 초기화 변경 |
-| DSP_nLIMIT2_NC | 39 | 78 | `hal_DspInit.c` GPIO 초기화 변경 |
-| DSP_PM_n24V | 40 | 79 | `hal_DspInit.c` GPIO 초기화 변경 |
-| DSP_nCABLE_LOOP | 46 | 80 | 기존 `DSP_CABLE_LOOP`에서 이름 변경 포함 |
-| DSP_ENC_DATA | 51 | 70 | `hal_Spi.c` SPI-C SOMI 핀 매핑 변경 |
-| DSP_ENC_CLK | 52 | 71 | `hal_Spi.c` SPI-C CLK 핀 매핑 변경 |
-| DSP_DRV_SPIB_CLK | 58 | 65 | `DSP_SPIB_CLK` ➡️ `DSP_DRV_SPIB_CLK` (이름/핀 변경) |
-| DSP_DRV_SPIB_nCS | 59 | 66 | `DSP_SPIB_nCS` ➡️ `DSP_DRV_SPIB_nCS` (이름/핀 변경) |
-| DSP_DRV_SPIB_SIMO | 60 | 63 | `DSP_SPIB_SIMO` ➡️ `DSP_DRV_SPIB_SIMO` (이름/핀 변경) |
-| DSP_DRV_SPIB_SOMI | 61 | 64 | `DSP_SPIB_SOMI` ➡️ `DSP_DRV_SPIB_SOMI` (이름/핀 변경) |
-
-## 3. 이더넷 PHY 연결 GPIO 변경 (2차 그림 반영)
-현재는 평가보드 테스트를 위해 **기존 GPIO 핀맵을 그대로 유지**하며, 향후 변경될 핀 번호를 주석으로 상세히 표기할 예정입니다.
-대상 소스: `hal_DspInit.h` 내 `#define GPIO_PIN_ENET_...` 및 `hal_DspInit.c` `initEmacGpioPins()` 함수.
-
-| 신호명 | 유지 GPIO (테스트용) | 예정 GPIO (주석에 반영) |
-| :--- | :--- | :--- |
-| ENET_CRS | 109 | 34 |
-| ENET_COL | 110 | 35 |
-| ENET_MDC | 105 | 42 |
-| ENET_MDIO | 106 | 43 |
-| ENET_RX_CLK | 111 | 49 |
-| ENET_RX_DV | 112 | 50 |
-| ENET_RX_ER | 113 | 51 |
-| ENET_RX_D0 | 114 | 52 |
-| ENET_RX_D1 | 115 | 53 |
-| ENET_RX_D2 | 116 | 54 |
-| ENET_RX_D3 | 117 | 55 |
-| ENET_TX_EN | 118 | 56 |
-| ENET_TX_CLK | 44 | 58 |
-| ENET_TX_D0 | 75 | 59 |
-| ENET_TX_D1 | 122 | 60 |
-| ENET_TX_D2 | 123 | 61 |
-| ENET_TX_D3 | 124 | 62 |
-| ENET_RESET_N | 119 | 67 |
-| ENET_PWDN_N | 108 | 68 |
-
-## 4. 수행 계획 요약
-위 조사 내용을 바탕으로 다음 단계에서 실제 펌웨어 코드 및 문서 수정을 진행할 계획입니다.
-1. `Architecture.md` 업데이트: 주요 스펙에 부품명(DP83822HFRHBT, HX1188NL, 오실레이터 등) 반영.
-2. `hal_DspInit.h`: 이더넷 PHY 핀 할당 주석을 새 예정 핀으로 업데이트 (기존 코드는 유지).
-3. `hal_DspInit.c`: GPIO_35 ~ GPIO_46 입력/출력 핀 초기화 코드를 신규 핀(GPIO_73 ~ GPIO_80)으로 마이그레이션.
-4. `hal_Spi.c`: 엔코더 및 모터 드라이버용 SPI 통신 핀을 매뉴얼 규격에 맞게 핀 MUX 세팅 변경.
+## 4. 통신망 가입을 다시 해야 하면 DSP는 어떻게 하고 있나?
+통신망에 재가입해야 하는 상태(`STATE_WAIT_BOOT_ACK`)가 되면, DSP는 다음 동작을 수행합니다.
+- **주기적 가입 요청 송신**: 500ms 주기마다 `ETH_CODE_BOOT_DONE` (망 가입 요청 메시지)를 이더넷 UDP 패킷으로 만들어 조립 및 송신합니다. 이때 ACK 응답을 요구(`ETH_ACK_REQ`)합니다.
+- **ACK 응답 대기**: 송신 후에는 해당 메시지에 대한 정상적인 ACK 응답 패킷이 수신될 때까지 기다립니다.
+- **상태 전이**: 상대방으로부터 `ETH_CODE_BOOT_DONE`에 대한 수신 확인(ACK)을 성공적으로 받게 되면, 즉시 상태를 `STATE_JOINED` (통신망 가입 완료)로 변경하고 이후 CBIT 주기 전송 등의 정상 연동 상태로 진입합니다.

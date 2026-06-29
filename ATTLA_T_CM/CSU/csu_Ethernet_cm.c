@@ -264,6 +264,9 @@ void buildAndSendUdpPacket(uint32_t rxTimestamp, uint8_t msgCode, uint8_t reqAck
     uint8_t  *pTxBuffer = Ethernet_getTxBuffer(s_ucTxPktDescIdx);
     if (pTxBuffer == NULL) return;
 
+    /* 이전 패킷의 쓰레기값(특히 이더넷 패딩 구간)이 남지 않도록 0으로 초기화 (기존 static 버퍼 동작과 동일하게 맞춤) */
+    (void)memset(pTxBuffer, 0U, ETH_TX_BUF_SIZE);
+
     uint8_t  *pPayload = pTxBuffer + PAYLOAD_OFFSET;
     uint16_t  offset = 0U;
     uint16_t  totalPayloadLen = ETH_MSG_HEADER_SIZE + dataLen + ETH_CHECKSUM_SIZE;
@@ -599,6 +602,9 @@ void sendAckResponse(uint8_t ackResult, uint16_t ackInfo, uint32_t timestamp, ui
     uint8_t  *pTxBuffer = Ethernet_getTxBuffer(s_ucTxPktDescIdx);
     if (pTxBuffer == NULL) return;
 
+    /* 패딩 바이트 등 기존 static 버퍼의 0 초기화 특성을 완벽히 재현하기 위해 memset 추가 */
+    (void)memset(pTxBuffer, 0U, TX_ACK_FRAME_SIZE);
+
     uint8_t  *pPayload = pTxBuffer + PAYLOAD_OFFSET;
     uint16_t  offset = 0U;
     uint16_t  totalPayloadLen = ETH_MSG_HEADER_SIZE + ETH_ACK_DATA_SIZE + ETH_CHECKSUM_SIZE;
@@ -613,7 +619,7 @@ void sendAckResponse(uint8_t ackResult, uint16_t ackInfo, uint32_t timestamp, ui
     pPayload[offset++] = ETH_FC_ID;
     pPayload[offset++] = ETH_CODE_ACK;
     pPayload[offset++] = ackResult;      /* 0x10=ACK / 0x11=NACK */
-    pPayload[offset++] = ETH_PRIORITY_NORMAL; /* Priority */
+    pPayload[offset++] = 0U;             /* Priority (PC 통제기 예외 규격: ACK는 0이어야 수신됨) */
     pPayload[offset++] = 1U;             /* Send Count */
 
     pPayload[offset++] = (uint8_t)(ETH_ACK_DATA_SIZE & 0x00FFU);

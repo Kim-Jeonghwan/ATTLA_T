@@ -1,0 +1,5 @@
+- [x] 1단계: `MainForm.cs` 전역 변수에 `lstCommandHistory` 선언 추가
+- [x] 2단계: `AddCommandHistory` 헬퍼 함수 구현 추가
+- [x] 3단계: `BuildUI()`의 `pnlLog` 구성 시 `lstCommandHistory`와 제목 라벨 UI 배치 및 부착
+- [x] 4단계: 5가지 제어 명령 버튼(CBIT 설정적용, 시작, 중지 / IBIT 요청, 결과갱신) Click 이벤트에 이력 남기기 로직 통합
+- [x] 5단계: 컴파일 에러가 발생하지 않도록 정상 여부 코드 확인

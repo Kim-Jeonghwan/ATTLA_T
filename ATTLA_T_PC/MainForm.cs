@@ -2,7 +2,7 @@
  * File: MainForm.cs
  * Created: 2026-06-01 (Modified by Antigravity)
  * Description: ATTLA_T PC Monitoring Dashboard MainForm (Refactored for Layout and BIT requirements)
- * Last Updated: 2026. 06. 24.
+ * Last Updated: 2026. 06. 29. (CBIT 제어 버튼 잘림 레이아웃 수정)
  */
 
 using System;
@@ -67,6 +67,7 @@ namespace ATTLA_T_PC
         private LogForm _logForm;
         private Label lblLogRxInfo;
         private Label lblLogTxInfo;
+        private ListBox lstCommandHistory;
 
         // 프로토콜 선택 UI
         private RadioButton rdoSci;
@@ -167,7 +168,34 @@ namespace ATTLA_T_PC
             btnDisconnect.Click += (s, e) => _protocol.Disconnect();
 
             btnInit = CreateBorderedButton("초기화", 750, commY + 45, 100, 40); 
-            btnInit.Click += (s, e) => _protocol.ReInit();
+            btnInit.Click += (s, e) => 
+            {
+                _protocol.ReInit();
+                _firstStatusReceived = false;
+                _statusTimer.Stop();
+                lblBootStatus.Text = "통신망 가입 상태: 대기 중...";
+                lblBootStatus.ForeColor = Color.Yellow;
+                lblStatusInfo.Text = "통신 상태 확인: 대기 중";
+                lblStatusInfo.ForeColor = Color.Gray;
+                
+                _cbitCount = 0;
+                _ibitCount = 0;
+                lblCbitCount.Text = "누적 수행 횟수: 0회";
+                lblIbitCount.Text = "누적 수행 횟수: 0회";
+                
+                if (lblPbitFaults != null)
+                {
+                    for (int i = 0; i < lblPbitFaults.Length; i++)
+                    {
+                        lblPbitFaults[i].ForeColor = Color.Gray;
+                        lblCbitFaults[i].ForeColor = Color.Gray;
+                        lblIbitFaults[i].ForeColor = Color.Gray;
+                    }
+                }
+
+                if (_logForm != null && !_logForm.IsDisposed)
+                    _logForm.AddLog("[SYS] 통신망 가입 상태 및 BIT 결과 초기화됨 (대기 중)");
+            };
 
             /* 프로토콜 선택: SCI / UDP */
             rdoSci = new RadioButton
@@ -203,11 +231,14 @@ namespace ATTLA_T_PC
                 ForeColor = Color.Red
             };
 
+            lblPcNetInfo = new Label { Text = "PC  [IP: - / MAC: - / Port: -]", Location = new Point(450, commY + 95), AutoSize = true, Font = new Font("Consolas", 11, FontStyle.Regular), ForeColor = Color.LightGray };
+            lblDspNetInfo = new Label { Text = "DSP [IP: - / MAC: - / Port: -]", Location = new Point(450, commY + 120), AutoSize = true, Font = new Font("Consolas", 11, FontStyle.Regular), ForeColor = Color.LightGray };
+
             pnlComm.Controls.AddRange(new Control[] {
                 lblPort, lblBaud, cmbPorts, cmbBauds, btnRefresh,
                 btnConnect, btnDisconnect, btnInit,
                 lblPortConnected, lblCommReceiving,
-                rdoSci, rdoUdp, lblCommStatus
+                rdoSci, rdoUdp, lblCommStatus, lblPcNetInfo, lblDspNetInfo
             });
             mainLayout.Controls.Add(pnlComm, 0, 0);
 
@@ -217,12 +248,13 @@ namespace ATTLA_T_PC
             pnlStatus.Dock = DockStyle.Fill;
             pnlStatus.Margin = new Padding(10);
 
-            Label lblTempTitle = new Label { Text = "DSP 상태:", Location = new Point(40, 50), AutoSize = true, Font = new Font("맑은 고딕", 16, FontStyle.Bold), ForeColor = Color.Orange };
+            Label lblTempTitle = new Label { Text = "DSP 온도:", Location = new Point(40, 50), AutoSize = true, Font = new Font("맑은 고딕", 16, FontStyle.Bold), ForeColor = Color.Orange };
             lblBoardTemp = new Label { Text = "대기 중", Location = new Point(200, 48), AutoSize = true, Font = new Font("Consolas", 18, FontStyle.Bold), ForeColor = Color.White };
 
             lblBootStatus = new Label { Text = "통신망 가입 상태: 대기 중...", Location = new Point(730, 50), AutoSize = true, Font = new Font("맑은 고딕", 16, FontStyle.Bold), ForeColor = Color.Yellow };
+            lblMacAddress = new Label { Text = "MAC: 미확인", Location = new Point(350, 90), AutoSize = true, Font = new Font("Consolas", 14, FontStyle.Regular), ForeColor = Color.Gray };
             lblStatusInfo = new Label { Text = "통신 상태 확인: 대기 중", Location = new Point(1470, 50), AutoSize = true, Font = new Font("맑은 고딕", 16, FontStyle.Bold), ForeColor = Color.Gray };
-            pnlStatus.Controls.AddRange(new Control[] { lblTempTitle, lblBoardTemp, lblBootStatus, lblStatusInfo });
+            pnlStatus.Controls.AddRange(new Control[] { lblTempTitle, lblBoardTemp, lblBootStatus, lblMacAddress, lblStatusInfo });
 
             // Fault LEDs Setup
             string[] faultNames = { "Mot OVC", "Brk OVC", "Bd OVT", "28V OVV", "Brk24V OVV", "DRV Fault", "Stall", "OverSpeed", "Enc Error", "Enc Warn" };
@@ -287,6 +319,7 @@ namespace ATTLA_T_PC
             {
                 if (!(_protocol is UdpEthProtocol))
                 {
+                    AddCommandHistory("CBIT 설정", "차단됨 (UDP 모드 아님)");
                     MessageBox.Show("CBIT 설정은 UDP(Ethernet) 모드에서만 가능합니다.", "통신 모드 확인", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
@@ -299,24 +332,31 @@ namespace ATTLA_T_PC
                     payload[0] = (byte)(cbitPeriod & 0xFF);
                     payload[1] = (byte)((cbitPeriod >> 8) & 0xFF);
                     _protocol.SendEthCommand(0x16, payload); // ETH_CODE_CBIT_SET
+                    AddCommandHistory("CBIT 설정", "요청 전송 완료 (주기: " + cbitPeriod + "초)");
                 }
-                else MessageBox.Show("올바른 주기 값을 입력하세요.", "입력 오류");
+                else
+                {
+                    AddCommandHistory("CBIT 설정", "입력 오류 (주기 값)");
+                    MessageBox.Show("올바른 주기 값을 입력하세요.", "입력 오류");
+                }
             };
 
             lblCbitSetResult = new Label { Text = "대기 중", Location = new Point(380, 52), AutoSize = true, Font = new Font("맑은 고딕", 12, FontStyle.Bold), ForeColor = Color.Gray };
 
-            Button btnCbitReq = CreateBorderedButton("CBIT 시작", 570, 40, 120, 45);
+            Button btnCbitReq = CreateBorderedButton("CBIT 시작", 530, 40, 120, 45);
             btnCbitReq.BackColor = Color.CornflowerBlue;
             btnCbitReq.Click += (s, e) => {
-                if (!(_protocol is UdpEthProtocol)) return;
+                if (!(_protocol is UdpEthProtocol)) { AddCommandHistory("CBIT 시작", "차단됨 (UDP 모드 아님)"); return; }
                 _protocol.SendEthCommand(0x1C, null); // 0x1C : ETH_CODE_CBIT_REQ (시작)
+                AddCommandHistory("CBIT 시작", "요청 전송 완료");
             };
             
-            Button btnCbitStop = CreateBorderedButton("CBIT 중지", 700, 40, 120, 45);
+            Button btnCbitStop = CreateBorderedButton("CBIT 중지", 660, 40, 120, 45);
             btnCbitStop.BackColor = Color.OrangeRed;
             btnCbitStop.Click += (s, e) => {
-                if (!(_protocol is UdpEthProtocol)) return;
+                if (!(_protocol is UdpEthProtocol)) { AddCommandHistory("CBIT 중지", "차단됨 (UDP 모드 아님)"); return; }
                 _protocol.SendEthCommand(0x1B, null); // 0x1B : ETH_CODE_CBIT_STOP (중지)
+                AddCommandHistory("CBIT 중지", "요청 전송 완료");
             };
 
             grpCbitCtrl.Controls.AddRange(new Control[] { lblCbitInput, txtCbitPeriod, btnCbitSet, lblCbitSetResult, btnCbitReq, btnCbitStop });
@@ -342,6 +382,7 @@ namespace ATTLA_T_PC
             {
                 if (!(_protocol is UdpEthProtocol))
                 {
+                    AddCommandHistory("IBIT 수행요청", "차단됨 (UDP 모드 아님)");
                     MessageBox.Show("IBIT 요청은 UDP(Ethernet) 모드에서만 가능합니다.", "통신 모드 확인", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
@@ -353,13 +394,29 @@ namespace ATTLA_T_PC
                     payload[0] = (byte)(duration & 0xFF);
                     payload[1] = (byte)((duration >> 8) & 0xFF);
                     _protocol.SendEthCommand(0x14, payload); // ETH_CODE_IBIT_REQ
+                    AddCommandHistory("IBIT 수행요청", "요청 전송 완료 (시간: " + duration + "초)");
+                }
+                else
+                {
+                    AddCommandHistory("IBIT 수행요청", "입력 오류 (수행 시간)");
                 }
             };
             
             lblIbitReqStatus = new Label { Text = "대기 중", Location = new Point(520, 52), AutoSize = true, Font = new Font("맑은 고딕", 12, FontStyle.Bold), ForeColor = Color.Gray };
 
             Button btnIbitResReq = CreateBorderedButton("IBIT 결과 갱신", 750, 40, 160, 45);
-            btnIbitResReq.Click += (s, e) => _protocol.SendEthCommand(0x1A, null); // ETH_CODE_IBIT_RES_REQ
+            btnIbitResReq.Click += (s, e) => 
+            {
+                // IBIT 수행 중에는 결과 갱신 요청을 차단
+                if (lblIbitReqStatus.Text == "IBIT 수행 중..." || lblIbitReqStatus.Text == "요청 전송 중...")
+                {
+                    AddCommandHistory("IBIT 결과 갱신", "차단됨 (IBIT 수행 중)");
+                    MessageBox.Show("IBIT 수행 중에는 결과를 갱신할 수 없습니다.", "안내", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                _protocol.SendEthCommand(0x1A, null); // ETH_CODE_IBIT_RES_REQ
+                AddCommandHistory("IBIT 결과 갱신", "요청 전송 완료");
+            };
 
             grpIbitCtrl.Controls.AddRange(new Control[] { lblIbitInput, txtIbitDuration, btnIbitReq, lblIbitReqStatus, btnIbitResReq });
 
@@ -377,6 +434,25 @@ namespace ATTLA_T_PC
             lblLogRxInfo = new Label { Location = new Point(30, 55), AutoSize = true, Font = new Font("Consolas", 11, FontStyle.Bold), ForeColor = Color.Lime };
             lblLogTxInfo = new Label { Location = new Point(30, 115), AutoSize = true, Font = new Font("Consolas", 11, FontStyle.Bold), ForeColor = Color.Yellow };
 
+            Label lblHistoryTitle = new Label { 
+                Text = "■ 제어 명령 요청 이력", 
+                Location = new Point(30, 160), 
+                AutoSize = true, 
+                Font = new Font("맑은 고딕", 11, FontStyle.Bold), 
+                ForeColor = Color.Cyan 
+            };
+            
+            lstCommandHistory = new ListBox {
+                Location = new Point(30, 190),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                Width = 1450,
+                Height = 200,
+                BackColor = Color.FromArgb(30, 30, 30),
+                ForeColor = Color.LightGray,
+                Font = new Font("Consolas", 11),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+
             Button btnLogDetail = CreateBorderedButton("로그 상세 보기\n(6K History)", 0, 45, 180, 90);
             btnLogDetail.Anchor = AnchorStyles.Right | AnchorStyles.Top;
             btnLogDetail.Click += (s, e) =>
@@ -389,8 +465,14 @@ namespace ATTLA_T_PC
             pnlLog.Controls.Add(lblLogRxInfo);
             pnlLog.Controls.Add(lblLogTxInfo);
             pnlLog.Controls.Add(btnLogDetail);
+            pnlLog.Controls.Add(lblHistoryTitle);
+            pnlLog.Controls.Add(lstCommandHistory);
 
-            pnlLog.Resize += (s, e) => { btnLogDetail.Location = new Point(pnlLog.Width - 220, 45); };
+            pnlLog.Resize += (s, e) => { 
+                btnLogDetail.Location = new Point(pnlLog.Width - 220, 45); 
+                lstCommandHistory.Width = pnlLog.Width - 60;
+                lstCommandHistory.Height = pnlLog.Height - 210;
+            };
 
             mainLayout.Controls.Add(pnlLog, 0, 3);
 
@@ -510,6 +592,11 @@ namespace ATTLA_T_PC
                 {
                     /* UDP: portName/baudRate 인자는 무시됨 (클래스 내부 고정 IP 사용) */
                     _protocol.Connect("UDP", 0);
+                    if (_protocol is UdpEthProtocol udpProto)
+                    {
+                        lblPcNetInfo.Text = $"PC  [IP: {udpProto.PcIp} / MAC: {udpProto.GetLocalMacAddress()} / Port: {udpProto.PcPort}]";
+                        lblDspNetInfo.Text = $"DSP [IP: {udpProto.DspIp} / MAC: 대기중... / Port: {udpProto.DspPort}]";
+                    }
                 }
                 else
                 {
@@ -569,6 +656,9 @@ namespace ATTLA_T_PC
 
         private bool _firstStatusReceived = false;
         private bool _statusToggle = false;
+        private Label lblMacAddress;
+        private Label lblPcNetInfo;
+        private Label lblDspNetInfo;
 
         private void OnStatusReceived(StatusMessageData data)
         {
@@ -577,12 +667,25 @@ namespace ATTLA_T_PC
                 _lastRxTime = DateTime.Now;
                 lblCommReceiving.ForeColor = Color.Lime;
 
+                // DSP 온도 업데이트
+                if (_protocol is SciPcProtocol)
+                    lblBoardTemp.Text = $"{data.DspTemp:F1} ℃";
+                else
+                    lblBoardTemp.Text = "미지원 (UDP)";
+
                 if (data.IncNumber == 0) // Boot Done
                 {
                     lblBootStatus.Text = "통신망 가입 완료 (Boot Done 수신 및 ACK 전송)";
                     lblBootStatus.ForeColor = Color.Lime;
                     if (rdoUdp.Checked)
                     {
+                        if (_protocol is UdpEthProtocol udpProto)
+                        {
+                            string mac = udpProto.GetConnectedMacAddress();
+                            lblMacAddress.Text = $"MAC: {mac}";
+                            lblMacAddress.ForeColor = Color.Cyan;
+                            lblDspNetInfo.Text = $"DSP [IP: {udpProto.DspIp} / MAC: {mac} / Port: {udpProto.DspPort}]";
+                        }
                         System.Threading.Thread.Sleep(100); 
                         if (_logForm != null && !_logForm.IsDisposed)
                             _logForm.AddLog("[BOOT] 망 가입 성공 (100ms 통신 상태 확인 시작)");
@@ -614,7 +717,11 @@ namespace ATTLA_T_PC
         {
             BeginInvoke((Action)(() =>
             {
-                if (targetCode == 0x16) // CBIT_SET
+                if (targetCode == 0x11 && isAck) // ETH_CODE_STATUS_REQ
+                {
+                    OnStatusReceived(new StatusMessageData { IncNumber = 1 });
+                }
+                else if (targetCode == 0x16) // CBIT_SET
                 {
                     lblCbitSetResult.Text = isAck ? "주기 설정 완료" : "주기 설정 거부됨";
                     lblCbitSetResult.ForeColor = isAck ? Color.Lime : Color.Red;
@@ -626,8 +733,17 @@ namespace ATTLA_T_PC
                 }
                 else if (targetCode == 0x1C) // CBIT_REQ
                 {
-                    lblCbitSetResult.Text = isAck ? "수신 중" : "요청 거부됨";
-                    lblCbitSetResult.ForeColor = isAck ? Color.Lime : Color.Red;
+                    // IBIT 수행 중에 CBIT 시작을 누른 경우, 펌웨어가 IBIT 중이므로 'IBIT 중 일시정지' 상태로 표시
+                    if (isAck && lblIbitReqStatus.Text == "IBIT 수행 중...")
+                    {
+                        lblCbitSetResult.Text = "IBIT 중 일시정지";
+                        lblCbitSetResult.ForeColor = Color.Orange;
+                    }
+                    else
+                    {
+                        lblCbitSetResult.Text = isAck ? "수신 중" : "요청 거부됨";
+                        lblCbitSetResult.ForeColor = isAck ? Color.Lime : Color.Red;
+                    }
                 }
                 else if (targetCode == 0x14) // IBIT_REQ
                 {
@@ -635,8 +751,11 @@ namespace ATTLA_T_PC
                     lblIbitReqStatus.ForeColor = isAck ? Color.Orange : Color.Red;
                     if (isAck)
                     {
-                        lblCbitSetResult.Text = "IBIT 중 일시정지";
-                        lblCbitSetResult.ForeColor = Color.Orange;
+                        if (lblCbitSetResult.Text != "중지 완료" && lblCbitSetResult.Text != "대기 중")
+                        {
+                            lblCbitSetResult.Text = "IBIT 중 일시정지";
+                            lblCbitSetResult.ForeColor = Color.Orange;
+                        }
                     }
                 }
                 else if (targetCode == 0x1A) // IBIT_RES_REQ
@@ -737,11 +856,38 @@ namespace ATTLA_T_PC
 
         private void Timer_Tick(object sender, EventArgs e)
         {
-            // 통신 수신 인디케이터 관리 (500ms 무응답 시 회색)
+            // 통신 수신 인디케이터 관리 (500ms 무응답 시 회색 및 두절 표시)
             if ((DateTime.Now - _lastRxTime).TotalMilliseconds > 500)
             {
                 lblCommReceiving.ForeColor = Color.Gray;
+                if (lblStatusInfo.Text.Contains("정상 연결 중"))
+                {
+                    lblStatusInfo.Text = "통신 상태 확인: 수신 대기 중 (연결 두절)";
+                    lblStatusInfo.ForeColor = Color.Red;
+                }
             }
+        }
+
+        private void AddCommandHistory(string command, string status)
+        {
+            if (lstCommandHistory == null || lstCommandHistory.IsDisposed) return;
+            
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => AddCommandHistory(command, status)));
+                return;
+            }
+
+            string timeStr = DateTime.Now.ToString("HH:mm:ss.fff");
+            string logMsg = $"[{timeStr}] [{command}] {status}";
+            lstCommandHistory.Items.Add(logMsg);
+
+            if (lstCommandHistory.Items.Count > 1000)
+            {
+                lstCommandHistory.Items.RemoveAt(0);
+            }
+
+            lstCommandHistory.TopIndex = lstCommandHistory.Items.Count - 1;
         }
 
         // Custom UI Control Helpers
