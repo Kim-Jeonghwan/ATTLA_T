@@ -62,8 +62,8 @@ float32_t PID_Calculate(PID_Controller_t* pid, float32_t setpoint, float32_t fee
     if (pid != NULL)
     {
         float32_t error = setpoint - feedback;
-        float32_t pOut;
-        float32_t iOut;
+        float32_t pOut = 0.0f;
+        float32_t iOut = 0.0f;
         float32_t dOut = 0.0f;
 
         // P Control (PI-IP 혼합식 적용)
@@ -97,6 +97,10 @@ float32_t PID_Calculate(PID_Controller_t* pid, float32_t setpoint, float32_t fee
             pid->output = pid->minOutput;
             // Anti-windup (Clamping)
             pid->integral -= error * pid->dt;
+        }
+        else
+        {
+            // 방어 코드
         }
 
         retVal = pid->output;

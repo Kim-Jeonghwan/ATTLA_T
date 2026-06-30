@@ -230,6 +230,10 @@ void MotorCtrl_Run(void)
             {
                 currentCmd = PID_Calculate(&speedPid, speedCmd, xMotorCtrl.currentSpeedRpm);
             }
+            else
+            {
+                // 방어 코드
+            }
             loop1msCnt = 0U;
         }
 

@@ -436,6 +436,14 @@ uint8_t* Ethernet_getTxBuffer(uint8_t descIdx)
     return NULL;
 }
 
+/*
+@function    void Ethernet_consumeTxBuffer(void)
+@brief      TX 버퍼 가용 카운트 차감
+@param      void
+@return     void
+@remark
+    - 송신 완료 후 사용된 TX 디스크립터 버퍼 갯수를 차감합니다.
+*/
 void Ethernet_consumeTxBuffer(void)
 {
     if (s_ucTxDescAvailCount > 0U)

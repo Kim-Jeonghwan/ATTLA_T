@@ -112,32 +112,33 @@ void Debug_SendMessage(uint8_t code, uint8_t *pData, uint16_t dataLen)
     uint16_t checksum;
     
     if (totalLen > sizeof(xDbgCtrl.TxBuffer)) return; // 버퍼 초과 방지
-    if (xDbgCtrl.isActive == 0U) return; // 활성화되지 않았으면 송신 불가
-    
-    // 1. 헤더 직렬화
-    Serialize_Uint32(0x00000000, xDbgCtrl.TxBuffer, &offset); // Timestamp
-    Serialize_Uint8(DBG_MY_ID, xDbgCtrl.TxBuffer, &offset);
-    Serialize_Uint8(DBG_PC_ID, xDbgCtrl.TxBuffer, &offset);
-    Serialize_Uint8(code, xDbgCtrl.TxBuffer, &offset);
-    Serialize_Uint8(0xFF, xDbgCtrl.TxBuffer, &offset);        // Request_ACK (미사용)
-    Serialize_Uint8(0, xDbgCtrl.TxBuffer, &offset);           // Priority
-    Serialize_Uint8(1, xDbgCtrl.TxBuffer, &offset);           // Send_Count
-    Serialize_Uint16(dataLen, xDbgCtrl.TxBuffer, &offset);
-    
-    // 2. 페이로드 복사
-    if (dataLen > 0 && pData != NULL) {
-        uint16_t i;
-        for (i = 0; i < dataLen; i++) {
-            Serialize_Uint8(pData[i], xDbgCtrl.TxBuffer, &offset);
+    if (xDbgCtrl.isActive != 0U)
+    {
+        // 1. 헤더 직렬화
+        Serialize_Uint32(0x00000000, xDbgCtrl.TxBuffer, &offset); // Timestamp
+        Serialize_Uint8(DBG_MY_ID, xDbgCtrl.TxBuffer, &offset);
+        Serialize_Uint8(DBG_PC_ID, xDbgCtrl.TxBuffer, &offset);
+        Serialize_Uint8(code, xDbgCtrl.TxBuffer, &offset);
+        Serialize_Uint8(0xFF, xDbgCtrl.TxBuffer, &offset);        // Request_ACK (미사용)
+        Serialize_Uint8(0, xDbgCtrl.TxBuffer, &offset);           // Priority
+        Serialize_Uint8(1, xDbgCtrl.TxBuffer, &offset);           // Send_Count
+        Serialize_Uint16(dataLen, xDbgCtrl.TxBuffer, &offset);
+        
+        // 2. 페이로드 복사
+        if (dataLen > 0 && pData != NULL) {
+            uint16_t i;
+            for (i = 0; i < dataLen; i++) {
+                Serialize_Uint8(pData[i], xDbgCtrl.TxBuffer, &offset);
+            }
         }
+        
+        // 3. 체크섬 연산 및 직렬화
+        checksum = Debug_CalculateChecksum(xDbgCtrl.TxBuffer, totalLen);
+        Serialize_Uint16(checksum, xDbgCtrl.TxBuffer, &offset);
+        
+        // 4. 전송 (동적 캡처된 PC IP, Port 사용)
+        sendto_W6x00(SOCK_UDP_DBG, xDbgCtrl.TxBuffer, totalLen, xDbgCtrl.targetIp, xDbgCtrl.targetPort, 4);
     }
-    
-    // 3. 체크섬 연산 및 직렬화
-    checksum = Debug_CalculateChecksum(xDbgCtrl.TxBuffer, totalLen);
-    Serialize_Uint16(checksum, xDbgCtrl.TxBuffer, &offset);
-    
-    // 4. 전송 (동적 캡처된 PC IP, Port 사용)
-    sendto_W6x00(SOCK_UDP_DBG, xDbgCtrl.TxBuffer, totalLen, xDbgCtrl.targetIp, xDbgCtrl.targetPort, 4);
 }
 
 /*
@@ -146,49 +147,49 @@ void Debug_SendMessage(uint8_t code, uint8_t *pData, uint16_t dataLen)
 */
 void Debug_StateMachine(void)
 {
-    // 하드웨어(W6100) 미연결 시 동작 중지
-    if (isW6100Connected == 0) {
-        return;
-    }
-
-    xDbgCtrl.TickCount100ms++;
-    
-    if (xDbgCtrl.isActive == 1U)
+    // 하드웨어(W6100) 연결 시에만 동작
+    if (isW6100Connected != 0)
     {
-        // 1. 통신 두절 감시 (5초 동안 요청 패킷이 안오면 연결 해제)
-        xDbgCtrl.TimeoutCount++;
-        if (xDbgCtrl.TimeoutCount >= DBG_DISCONNECT_LIMIT)
+        xDbgCtrl.TickCount100ms++;
+        
+        if (xDbgCtrl.isActive == 1U)
         {
-            xDbgCtrl.isActive = 0U;
-            xDbgCtrl.TimeoutCount = 0U;
-            return;
+            // 1. 통신 두절 감시 (5초 동안 요청 패킷이 안오면 연결 해제)
+            xDbgCtrl.TimeoutCount++;
+            if (xDbgCtrl.TimeoutCount >= DBG_DISCONNECT_LIMIT)
+            {
+                xDbgCtrl.isActive = 0U;
+                xDbgCtrl.TimeoutCount = 0U;
+            }
+            else
+            {
+                // 2. 주기적 텔레메트리 송신
+                stDbgTelemetry tData;
+                tData.systemTick = xDbgCtrl.TickCount100ms;
+                
+                // 임시 모터 데이터 매핑 (구체적인 구조는 향후 확정)
+                tData.currentA = 0.0f; // 실제 측정 변수로 대체 요망
+                tData.currentB = 0.0f;
+                tData.currentC = 0.0f;
+                tData.faultStatus = xBit.informAll; // 현재 BIT 진단 결과 (xBit.informAll 등)
+
+                uint8_t payload[20];
+                uint16_t offset = 0;
+                Serialize_Uint32(tData.systemTick, payload, &offset);
+                
+                // C28x DSP에서 float는 32비트. 임시로 uint32_t 캐스팅 직렬화 적용
+                uint32_t ca = *((uint32_t*)&tData.currentA);
+                uint32_t cb = *((uint32_t*)&tData.currentB);
+                uint32_t cc = *((uint32_t*)&tData.currentC);
+                
+                Serialize_Uint32(ca, payload, &offset);
+                Serialize_Uint32(cb, payload, &offset);
+                Serialize_Uint32(cc, payload, &offset);
+                Serialize_Uint32(tData.faultStatus, payload, &offset);
+
+                Debug_SendMessage(DBG_CODE_TELEMETRY, payload, offset);
+            }
         }
-        
-        // 2. 주기적 텔레메트리 송신
-        stDbgTelemetry tData;
-        tData.systemTick = xDbgCtrl.TickCount100ms;
-        
-        // 임시 모터 데이터 매핑 (구체적인 구조는 향후 확정)
-        tData.currentA = 0.0f; // 실제 측정 변수로 대체 요망
-        tData.currentB = 0.0f;
-        tData.currentC = 0.0f;
-        tData.faultStatus = xBit.informAll; // 현재 BIT 진단 결과 (xBit.informAll 등)
-
-        uint8_t payload[20];
-        uint16_t offset = 0;
-        Serialize_Uint32(tData.systemTick, payload, &offset);
-        
-        // C28x DSP에서 float는 32비트. 임시로 uint32_t 캐스팅 직렬화 적용
-        uint32_t ca = *((uint32_t*)&tData.currentA);
-        uint32_t cb = *((uint32_t*)&tData.currentB);
-        uint32_t cc = *((uint32_t*)&tData.currentC);
-        
-        Serialize_Uint32(ca, payload, &offset);
-        Serialize_Uint32(cb, payload, &offset);
-        Serialize_Uint32(cc, payload, &offset);
-        Serialize_Uint32(tData.faultStatus, payload, &offset);
-
-        Debug_SendMessage(DBG_CODE_TELEMETRY, payload, offset);
     }
 }
 
@@ -199,54 +200,53 @@ void Debug_StateMachine(void)
 void Debug_ParsePacket(uint8_t *pRxBuf, uint16_t length, uint8_t *pSenderIp, uint16_t senderPort)
 {
     // 최소 길이 (Header 12 + Checksum 2) 검증
-    if (length < 14) return;
-    
-    // [동적 IP 라우팅] 송신자(PC) IP와 Port를 백업하여 응답용 타겟으로 설정
-    xDbgCtrl.isActive = 1U;
-    xDbgCtrl.TimeoutCount = 0U;
-    
-    xDbgCtrl.targetIp[0] = pSenderIp[0];
-    xDbgCtrl.targetIp[1] = pSenderIp[1];
-    xDbgCtrl.targetIp[2] = pSenderIp[2];
-    xDbgCtrl.targetIp[3] = pSenderIp[3];
-    xDbgCtrl.targetPort = senderPort;
-    
-    uint16_t offset = 0;
-    
-    // 1. 역직렬화 (헤더 파싱)
-    stDbgHeader header;
-    header.Timestamp   = Deserialize_Uint32(pRxBuf, &offset);
-    header.Source_ID   = Deserialize_Uint8(pRxBuf, &offset);
-    header.Dest_ID     = Deserialize_Uint8(pRxBuf, &offset);
-    header.Code        = Deserialize_Uint8(pRxBuf, &offset);
-    header.Request_ACK = Deserialize_Uint8(pRxBuf, &offset);
-    header.Priority    = Deserialize_Uint8(pRxBuf, &offset);
-    header.Send_Count  = Deserialize_Uint8(pRxBuf, &offset);
-    header.Data_Length = Deserialize_Uint16(pRxBuf, &offset);
-    
-    // 2. 체크섬 검증
-    uint16_t csOffset = length - 2;
-    uint16_t recvChecksum = Deserialize_Uint16(pRxBuf, &csOffset);
-    uint16_t calcChecksum = Debug_CalculateChecksum(pRxBuf, length);
-    
-    if (recvChecksum != calcChecksum)
+    if (length >= 14)
     {
-        return; // 오류 시 무시
-    }
-    
-    // 3. 명령어(Code) 분기 처리
-    switch (header.Code)
-    {
-        case DBG_CODE_REQ_STATE:
-            // 별도의 1회성 상태 요청인 경우 텔레메트리 수동 송신 처리 (필요 시 구현)
-            break;
-            
-        case DBG_CODE_CLR_FAULT:
-            // PC로부터의 폴트 리셋(Clear Fault) 명령 처리
-            Bit_FaultReset(1U);
-            break;
-            
-        default:
-            break;
+        // [동적 IP 라우팅] 송신자(PC) IP와 Port를 백업하여 응답용 타겟으로 설정
+        xDbgCtrl.isActive = 1U;
+        xDbgCtrl.TimeoutCount = 0U;
+        
+        xDbgCtrl.targetIp[0] = pSenderIp[0];
+        xDbgCtrl.targetIp[1] = pSenderIp[1];
+        xDbgCtrl.targetIp[2] = pSenderIp[2];
+        xDbgCtrl.targetIp[3] = pSenderIp[3];
+        xDbgCtrl.targetPort = senderPort;
+        
+        uint16_t offset = 0;
+        
+        // 1. 역직렬화 (헤더 파싱)
+        stDbgHeader header;
+        header.Timestamp   = Deserialize_Uint32(pRxBuf, &offset);
+        header.Source_ID   = Deserialize_Uint8(pRxBuf, &offset);
+        header.Dest_ID     = Deserialize_Uint8(pRxBuf, &offset);
+        header.Code        = Deserialize_Uint8(pRxBuf, &offset);
+        header.Request_ACK = Deserialize_Uint8(pRxBuf, &offset);
+        header.Priority    = Deserialize_Uint8(pRxBuf, &offset);
+        header.Send_Count  = Deserialize_Uint8(pRxBuf, &offset);
+        header.Data_Length = Deserialize_Uint16(pRxBuf, &offset);
+        
+        // 2. 체크섬 검증
+        uint16_t csOffset = length - 2;
+        uint16_t recvChecksum = Deserialize_Uint16(pRxBuf, &csOffset);
+        uint16_t calcChecksum = Debug_CalculateChecksum(pRxBuf, length);
+        
+        if (recvChecksum == calcChecksum)
+        {
+            // 3. 명령어(Code) 분기 처리
+            switch (header.Code)
+            {
+                case DBG_CODE_REQ_STATE:
+                    // 별도의 1회성 상태 요청인 경우 텔레메트리 수동 송신 처리 (필요 시 구현)
+                    break;
+                    
+                case DBG_CODE_CLR_FAULT:
+                    // PC로부터의 폴트 리셋(Clear Fault) 명령 처리
+                    Bit_FaultReset(1U);
+                    break;
+                    
+                default:
+                    break;
+            }
+        }
     }
 }

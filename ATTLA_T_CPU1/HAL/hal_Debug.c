@@ -162,4 +162,8 @@ void Debug_Process(void)
     {
         socket(SOCK_UDP_DBG, Sn_MR_UDP, PORT_UDP_DBG, 0x00);
     }
+    else
+    {
+        // 방어 코드
+    }
 }

@@ -1,8 +1,16 @@
+/**********************************************************************
+   Nexcom Co., Ltd.
+   Filename         : MainForm.cs
+   Version          : 00.01
+   Description      : ATTLA_T PC Monitoring Dashboard MainForm
+   Programmer       : Kim Jeonghwan
+   Last Updated     : 2026. 06. 30. (UI 깜빡임 방지를 위한 컨트롤 AutoSize 속성 해제 및 DoubleBuffered 적용)
+**********************************************************************/
 /*
- * File: MainForm.cs
- * Created: 2026-06-01 (Modified by Antigravity)
- * Description: ATTLA_T PC Monitoring Dashboard MainForm (Refactored for Layout and BIT requirements)
- * Last Updated: 2026. 06. 29. (CBIT 제어 버튼 잘림 레이아웃 수정)
+ * Modification History
+ * --------------------
+ * 2026. 06. 30. - CBIT, IBIT 제어부 UI 글자 겹침 현상 수정을 위해 컨트롤 좌표 및 너비 조정
+ * 2026. 06. 30. - UI 깜빡임 방지를 위한 컨트롤 AutoSize 속성 해제 및 DoubleBuffered 적용
  */
 
 using System;
@@ -84,6 +92,7 @@ namespace ATTLA_T_PC
             this.BackColor = colorBg;
             this.ForeColor = colorText;
             this.Font = new Font("맑은 고딕", 9F);
+            this.DoubleBuffered = true; // UI 깜빡임(Flickering) 방지
 
             _logForm = new LogForm();
 
@@ -299,7 +308,7 @@ namespace ATTLA_T_PC
             pnlCtrl.Margin = new Padding(10);
 
             // CBIT Controls
-            GroupBox grpCbitCtrl = new GroupBox { Text = "CBIT 제어", Location = new Point(40, 50), Size = new Size(800, 150), ForeColor = Color.MediumSpringGreen, Font = new Font("맑은 고딕", 12, FontStyle.Bold) };
+            GroupBox grpCbitCtrl = new GroupBox { Text = "CBIT 제어", Location = new Point(40, 50), Size = new Size(900, 150), ForeColor = Color.MediumSpringGreen, Font = new Font("맑은 고딕", 12, FontStyle.Bold) };
             
             Label lblCbitInput = new Label { Text = "주기 (초):", Location = new Point(20, 50), AutoSize = true, Font = new Font("맑은 고딕", 14, FontStyle.Bold), ForeColor = Color.White };
             txtCbitPeriod = new TextBox { 
@@ -343,7 +352,7 @@ namespace ATTLA_T_PC
 
             lblCbitSetResult = new Label { Text = "대기 중", Location = new Point(380, 52), AutoSize = true, Font = new Font("맑은 고딕", 12, FontStyle.Bold), ForeColor = Color.Gray };
 
-            Button btnCbitReq = CreateBorderedButton("CBIT 시작", 530, 40, 120, 45);
+            Button btnCbitReq = CreateBorderedButton("CBIT 시작", 620, 40, 120, 45);
             btnCbitReq.BackColor = Color.CornflowerBlue;
             btnCbitReq.Click += (s, e) => {
                 if (!(_protocol is UdpEthProtocol)) { AddCommandHistory("CBIT 시작", "차단됨 (UDP 모드 아님)"); return; }
@@ -351,7 +360,7 @@ namespace ATTLA_T_PC
                 AddCommandHistory("CBIT 시작", "요청 전송 완료");
             };
             
-            Button btnCbitStop = CreateBorderedButton("CBIT 중지", 660, 40, 120, 45);
+            Button btnCbitStop = CreateBorderedButton("CBIT 중지", 760, 40, 120, 45);
             btnCbitStop.BackColor = Color.OrangeRed;
             btnCbitStop.Click += (s, e) => {
                 if (!(_protocol is UdpEthProtocol)) { AddCommandHistory("CBIT 중지", "차단됨 (UDP 모드 아님)"); return; }
@@ -363,11 +372,11 @@ namespace ATTLA_T_PC
 
 
             // IBIT Controls
-            GroupBox grpIbitCtrl = new GroupBox { Text = "IBIT 제어", Location = new Point(880, 50), Size = new Size(950, 150), ForeColor = Color.DodgerBlue, Font = new Font("맑은 고딕", 12, FontStyle.Bold) };
+            GroupBox grpIbitCtrl = new GroupBox { Text = "IBIT 제어", Location = new Point(980, 50), Size = new Size(1000, 150), ForeColor = Color.DodgerBlue, Font = new Font("맑은 고딕", 12, FontStyle.Bold) };
 
             Label lblIbitInput = new Label { Text = "수행 시간 (초):", Location = new Point(20, 50), AutoSize = true, Font = new Font("맑은 고딕", 14, FontStyle.Bold), ForeColor = Color.White };
             txtIbitDuration = new TextBox { 
-                Location = new Point(260, 48), 
+                Location = new Point(240, 48), 
                 Width = 60, 
                 BackColor = Color.FromArgb(60, 60, 60), 
                 ForeColor = Color.White, 
@@ -376,7 +385,7 @@ namespace ATTLA_T_PC
                 Font = new Font("Consolas", 14) 
             };
 
-            Button btnIbitReq = CreateBorderedButton("IBIT 수행 요청", 340, 40, 160, 45);
+            Button btnIbitReq = CreateBorderedButton("IBIT 수행 요청", 320, 40, 160, 45);
             btnIbitReq.BackColor = Color.DodgerBlue;
             btnIbitReq.Click += (s, e) => 
             {
@@ -402,9 +411,9 @@ namespace ATTLA_T_PC
                 }
             };
             
-            lblIbitReqStatus = new Label { Text = "대기 중", Location = new Point(520, 52), AutoSize = true, Font = new Font("맑은 고딕", 12, FontStyle.Bold), ForeColor = Color.Gray };
+            lblIbitReqStatus = new Label { Text = "대기 중", Location = new Point(500, 52), AutoSize = true, Font = new Font("맑은 고딕", 12, FontStyle.Bold), ForeColor = Color.Gray };
 
-            Button btnIbitResReq = CreateBorderedButton("IBIT 결과 갱신", 750, 40, 160, 45);
+            Button btnIbitResReq = CreateBorderedButton("IBIT 결과 갱신", 800, 40, 160, 45);
             btnIbitResReq.Click += (s, e) => 
             {
                 // IBIT 수행 중에는 결과 갱신 요청을 차단
@@ -431,8 +440,8 @@ namespace ATTLA_T_PC
             pnlLog.Dock = DockStyle.Fill;
             pnlLog.Margin = new Padding(5);
 
-            lblLogRxInfo = new Label { Location = new Point(30, 55), AutoSize = true, Font = new Font("Consolas", 11, FontStyle.Bold), ForeColor = Color.Lime };
-            lblLogTxInfo = new Label { Location = new Point(30, 115), AutoSize = true, Font = new Font("Consolas", 11, FontStyle.Bold), ForeColor = Color.Yellow };
+            lblLogRxInfo = new Label { Location = new Point(30, 55), AutoSize = false, Size = new Size(1800, 55), Font = new Font("Consolas", 11, FontStyle.Bold), ForeColor = Color.Lime };
+            lblLogTxInfo = new Label { Location = new Point(30, 115), AutoSize = false, Size = new Size(1800, 40), Font = new Font("Consolas", 11, FontStyle.Bold), ForeColor = Color.Yellow };
 
             Label lblHistoryTitle = new Label { 
                 Text = "■ 제어 명령 요청 이력", 
