@@ -1,50 +1,77 @@
-# 매크로 상수의 디버그용 튜닝 변수 구조체화 리서치 (Research Report)
+# 모터 제어 및 통신 펌웨어(ATTLA_T) CSU/HAL 계층 주석 및 코드 구조 분석 리포트
 
-## 1. 개요 및 목적
-사용자 요청(101 단축키 포함)에 따라 CPU1, CM 등 전체 프로젝트 파일 구조(CSU, HAL, main)를 다시 파악하였으며, 디버깅 과정에서 실시간으로 튜닝이 필요한 주요 매크로 상수들을 변수(구조체)화하기 위한 방안을 조사하였습니다.
-목표는 기존에 `#define`으로 고정되어 있던 한계값(Limit)이나 지연시간 등을 CCS 디버거에서 실시간으로 변경 가능하도록 전역 변수 구조체(이름이 `x`로 시작)로 관리하는 것입니다.
+## 1. 개요
+사용자의 지시(단축 명령어 `101`)에 따라, 현재 ATTLA_T 프로젝트의 CPU1 코어 및 CM 코어에 존재하는 모든 CSU(Control & Service Unit) 및 HAL(Hardware Abstraction Layer) 계층의 소스 코드와 헤더 파일을 분석하였습니다. (단, 외부 라이브러리인 W6100 관련 모듈은 대상에서 제외하였습니다.)
+본 조사는 각 계층의 주요 함수와 전역 변수/구조체의 역할 및 현황을 파악하고, 추후 코딩 규칙(GEMINI.md)에 의거하여 한국어 주석을 상세하게 추가하기 위한 사전 구현 조사 리포트입니다.
 
-## 2. 튜닝 대상 상수 분석 현황
-소스 코드를 분석한 결과, 각 모듈에 분산된 튜닝 대상 매크로 상수들은 다음과 같습니다.
+## 2. 조사 대상 모듈 목록 및 주요 역할
 
-### 2.1. `csu_Bit.h` (BIT 임계값)
-- **과전류/과열/과전압**: `BIT_LIMIT_OVC_MOT_MAX` (10A), `BIT_LIMIT_OVC_BRK_MAX` (1.5A), `BIT_LIMIT_OVT_BD_MAX` (80도), `BIT_LIMIT_OVV_28V_MAX` (32V)
-- **스톨 판단**: `BIT_LIMIT_STALL_CURR_MIN` (5A), `BIT_LIMIT_STALL_RPM_LIMIT` (10RPM), `BIT_LIMIT_STALL_TIME_CNT` (1초)
-- **과속 판단**: `BIT_LIMIT_SPEED_MOT_MAX` / `MIN` (3240 RPM), `BIT_LIMIT_OVS_TIME_CNT` (100ms)
-- **타이머 필터**: `BIT_LIMIT_OVV_BRK_TIME_CNT` (100ms), `BIT_CNT_FILTER_REF` (100ms)
+### 2.1 CPU1 코어 (ATTLA_T_CPU1)
 
-### 2.2. `csu_LimitSwitch.h` (리미트 스위치 감지 설정)
-- **오프셋 및 데드존**: `LIMIT_OFFSET_COUNT` (1000.0f), `LIMIT_DEADZONE_COUNT` (100.0f)
-- **오류 판단 지연**: `SENSOR_ERROR_TIME_MS` (50ms) -> `SENSOR_ERROR_TICK_100US`
+#### 2.1.1 CSU 계층 (비즈니스 로직 및 제어 알고리즘)
+- **csu_Adc**: 아날로그 센서 데이터 수집 및 변환 로직 처리
+- **csu_Bit**: 비트 조작 및 플래그 상태 관리
+- **csu_Control**: 전체 시스템의 상태 머신 및 주 제어 흐름 관리
+- **csu_Debug**: 디버깅용 메시지 포맷팅 및 상태 모니터링
+- **csu_Dio**: 디지털 입출력 논리 상태 제어
+- **csu_Encoder**: 엔코더 펄스 데이터 기반 위치 및 속도 연산
+- **csu_Ipc_cpu1**: CPU1 <-> CM 간 통신 페이로드 조립 및 큐 관리
+- **csu_Led**: 상태 표시 LED 제어 로직
+- **csu_LimitSwitch**: 리미트 스위치 감지 시퀀스 및 인터락(Fault) 처리
+- **csu_MotorCtrl**: 모터 속도/위치/전류 PID 루프 제어 및 안전 타이머 (브레이크, 영점 설정) 관리
+- **csu_MotorDriver**: 모터 드라이버 IC 전용 상위 제어 시퀀스
+- **csu_Pid**: 범용 PID 제어기 수학적 연산 모델
+- **csu_SciPc**: PC와의 직렬 통신 프로토콜 조립 및 파싱
 
-### 2.3. `csu_MotorCtrl.h` (모터 제어 소프트 리미트 및 딜레이)
-- **위치/속도/전류 리미트**: `LIMIT_POS_MAX`/`MIN`, `LIMIT_SPEED_MAX`/`MIN`, `LIMIT_CURRENT_MAX`/`MIN`, `LIMIT_CURRENT_RATIO`
-- **브레이크 딜레이**: `BRAKE_RELEASE_DELAY_MS` (150ms), `BRAKE_ENGAGE_DELAY_MS` (100ms)
-- **안전 인터락 타이머**: `SAFE_ZERO_SET_TICK_100US` (500ms)
-- **듀티 최대치**: `MOTOR_DUTY_MAX` (100.0f)
+#### 2.1.2 HAL 계층 (하드웨어 제어 및 Driverlib 래핑)
+- **hal_Adc**: ADC 주변장치 초기화 및 인터럽트 설정
+- **hal_Common**: 공통 하드웨어 설정 및 시스템 유틸리티
+- **hal_Debug**: 디버깅용 SCI 포트 초기화 및 하드웨어 송수신
+- **hal_DspInit**: C28x DSP 코어 클럭, GPIO, PIE(인터럽트) 등 기본 초기화
+- **hal_Encoder**: eQEP 주변장치 초기화 및 레지스터 접근
+- **hal_Epwm**: ePWM 타이머 설정 및 듀티비 하드웨어 업데이트
+- **hal_Fram**: FRAM 메모리 SPI 통신 읽기/쓰기 하드웨어 제어
+- **hal_Ipc_cpu1**: IPC Message RAM 할당 및 IPC 플래그 인터럽트 설정
+- **hal_MotorDriver**: 모터 드라이버 핀 제어 및 구동 신호 인가
+- **hal_Ramfuncs**: 플래시에서 RAM으로 복사되어 실행되는 중요 함수(ISR 등) 설정
+- **hal_Sci**: SCI 통신 포트 초기화 및 바이트 송수신
+- **hal_Spi**: SPI 통신 포트 초기화
+- **hal_Timer**: CPU 타이머 기반 주기적 인터럽트(ISR) 생성
 
-### 2.4. PID 계수, 구동 모드, 타겟 위치
-- **현황**: 분석 결과, 이미 전역 변수(구조체) 형태로 구현되어 있습니다.
-  - **PID 계수**: `csu_MotorCtrl.h`에 `stPidGain xPidGain;` 형태로 존재하여 `xPidGain.pos.Kp`, `xPidGain.spd.Ki` 등을 실시간으로 수정할 수 있습니다.
-  - **구동 모드 및 타겟 위치**: `csu_MotorCtrl.h`에 `stMotorCtrlState xMotorCtrl;` 형태로 존재하여 `xMotorCtrl.mode`, `xMotorCtrl.targetPosition`, `xMotorCtrl.targetSpeedRpm` 등을 디버거에서 수정하여 모터를 구동할 수 있습니다.
+### 2.2 CM 코어 (ATTLA_T_CM)
 
-## 3. 구현 방향 제안 (Implementation Strategy)
+#### 2.2.1 CSU 계층
+- **csu_Ethernet_cm**: 이더넷 통신 비즈니스 로직, W6100 소켓 관리 및 데이터 패킷 파싱
+- **csu_Ipc_cm**: CM <-> CPU1 간 IPC 데이터 교환 로직 및 동기화
 
-이 상수들을 어떻게 구조체로 관리할지에 대한 두 가지 옵션을 제안합니다.
+#### 2.2.2 HAL 계층
+- **hal_Ethernet_cm**: W6100 하드웨어 리셋, SPI 접근 등의 하위 제어
+- **hal_Ipc_cm**: CM 코어용 IPC 레지스터 및 인터럽트 초기화
+- **hal_Timer_cm**: ARM Cortex-M SysTick 및 내부 타이머 초기화
 
-### Option 1: 각 모듈별 개별 튜닝 구조체 생성 [추천]
-기존 모듈의 독립성을 유지하면서 튜닝 가능한 한계값들을 각 모듈의 구조체로 묶습니다.
-- **csu_Bit.h**: `stBitLimit xBitLimit;` 구조체를 생성하고 내부 멤버로 `ovcMotMax`, `stallCurrMin` 등을 포함시킵니다.
-- **csu_LimitSwitch.h**: `stLimitSwitchLimit xLimitSwitchLimit;` 구조체 생성 (`offsetCount`, `deadzoneCount` 등 포함).
-- **csu_MotorCtrl.h**: `stMotorCtrlLimit xMotorCtrlLimit;` 구조체 생성 (`posMax`, `brakeReleaseDelayMs` 등 포함).
-- **장점**: 모듈 간 의존성이 낮아 유지보수(객체지향 설계)에 유리합니다. 사용자는 CCS Expressions 뷰에서 `xBitLimit`, `xMotorCtrlLimit`, `xPidGain`, `xMotorCtrl` 등 관련된 변수들을 올려두고 실시간으로 조정할 수 있습니다.
+## 3. 발견된 코드 현황 및 개선 필요 사항 (코딩 규칙 관점)
 
-### Option 2: 통합 디버그 튜닝 구조체 생성 (`xDebugTuning`)
-튜닝 가능한 모든 한계값(모터, BIT, 리미트 등)을 하나의 거대한 디버그 구조체 `stDebugTuning xDebugTuning;` 에 몰아넣습니다.
-- **장점**: CCS Expressions 창에 `xDebugTuning` 하나만 등록하여 모든 파라미터를 트리 구조로 한눈에 볼 수 있습니다.
-- **단점**: 모듈 간 의존성이 높아지며(모든 모듈이 전역 튜닝 구조체 헤더를 인클루드해야 함), `csu_Debug.h` 쪽에 방대한 변수들이 집중됩니다.
+1. **상세 주석의 부재**: 다수의 함수와 구조체/변수에 Doxygen 방식이나 기능 설명 주석이 부족하거나, 파라미터(`@param`), 반환값(`@return`) 포맷이 누락되어 있습니다.
+2. **한국어 주석 적용 필요**: 코딩 규칙상 주석은 한국어(한글)로 작성해야 하나, 일부 영문 주석이나 코드가 혼재되어 있습니다.
+3. **매크로/전역 변수 위치 확인**: 모든 매크로와 구조체 선언이 소스(`.c`)가 아닌 헤더(`.h`)에 위치해야 한다는 규칙에 따라 점검이 필요합니다.
+4. **CM 코어 코딩 스타일 준수 여부 점검**: CM 코어 내에 DSP 방식의 데이터 타입 선언이나 인터럽트 선언이 있는지, `uint32_t` 등 명시적 타입으로 되어 있는지 주석을 달며 확인할 필요가 있습니다.
 
-## 4. 진행 여부 확인
-추천해 드린 **Option 1(각 모듈별 개별 튜닝 구조체 생성)** 방식으로 진행하고자 합니다. PID 제어 및 타겟 이동을 위한 변수(`xPidGain`, `xMotorCtrl.targetPosition` 등)는 이미 존재하므로, 이를 제외한 위 분석된 매크로 상수들을 각 모듈의 초기화 함수(`_Init()`)에서 초기값을 할당받는 구조체로 전환하겠습니다.
+## 4. 향후 작업 계획 (주석 작성 가이드)
 
-이 방향에 동의하시거나, 혹은 Option 2(통합 구조체) 방식을 원하신다면 알려주십시오. 확인되는 대로 Plan 문서 작성 후 적용을 시작하겠습니다.
+추후 사용자의 승인이 완료되어 계획(plan) 및 구현을 시작하게 되면 다음과 같은 규칙으로 주석을 추가합니다.
+
+*   **파일 최상단 헤더 주석 템플릿**: 파일 수정 이력을 남기고 버전을 00.01 씩 증가
+*   **함수 주석 템플릿**:
+    ```c
+    /**
+     * @brief      [함수명] 의 역할과 주요 동작 요약 (한글)
+     * @param      매개변수 설명
+     * @return     반환값 설명
+     */
+    ```
+*   **변수 및 매크로 주석**: 구조체 멤버와 전역 변수 선언 시 옆에 한글로 단위와 역할을 명시
+*   **인코딩 확인**: 파일 저장 시 반드시 UTF-8 포맷으로 저장 및 깨짐 유무 확인
+*   작업은 CPU1 코어의 CSU/HAL, 그리고 CM 코어의 CSU/HAL 순서로 단계적으로 진행.
+
+---
+**주의:** GEMINI.md 지침에 따라 리서치 완료 후 본 문서를 작성하였으며, 사용자의 명시적인 승인 전까지는 계획 문서(plan.md) 생성 및 실제 주석 작성(코드 수정)을 진행하지 않습니다.

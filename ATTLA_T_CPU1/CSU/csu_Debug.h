@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Debug.h
-    Version          : 00.05
+    Version          : 00.06
     Description      : 노트북 디버깅망 동적 IP 라우팅 프로토콜 및 텔레메트리 정의
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 26. (모듈명 변경 및 디버깅 전용망 분리)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 26. - 파일명에서 _cpu1 제거 (리팩토링)
  * 2026. 06. 26. - 모듈명을 csu_Ethernet_cpu1에서 csu_Debug_cpu1으로 변경
  * 2026. 06. 26. - 기존 체계연동(FC) 통제안 로직 전면 삭제 및 노트북 디버그용 상태머신 적용
@@ -39,35 +40,35 @@
 
 /* 패킷 헤더 (12 Bytes, 체계 연동 통제안 구조를 호환 유지) */
 typedef struct {
-    uint32_t Timestamp;     // PC Tickcount 또는 0
-    uint8_t Source_ID;      // 송신 장치 ID
-    uint8_t Dest_ID;        // 수신 목적지 장치 ID
-    uint8_t Code;           // 메시지 명령어 코드
-    uint8_t Request_ACK;    // ACK 요청 플래그 (디버그망에서는 현재 미사용)
-    uint8_t Priority;       // 우선순위
-    uint8_t Send_Count;     // 전송 횟수
-    uint16_t Data_Length;   // Data 필드의 크기 (Byte)
+    uint32_t Timestamp;     // 송신 시점의 틱 카운트 또는 0 (단위: 시스템 틱)
+    uint8_t Source_ID;      // 송신 장치 고유 ID (예: 0x11 ATTLA_T)
+    uint8_t Dest_ID;        // 수신 목적지 고유 ID (예: 0x10 PC)
+    uint8_t Code;           // 메시지 명령어 식별 코드 (예: 텔레메트리, 폴트 초기화 등)
+    uint8_t Request_ACK;    // 수신 응답(ACK) 요청 플래그 (현재 미사용)
+    uint8_t Priority;       // 메시지 전송 우선순위 레벨
+    uint8_t Send_Count;     // 현재 메시지의 전송 시도 횟수
+    uint16_t Data_Length;   // 뒤따르는 페이로드(Data)의 바이트 길이 (단위: Byte)
 } stDbgHeader;
 
 /* 디버그 텔레메트리 구조체 (임의 정의 - 확장 가능) */
 typedef struct {
-    uint32_t systemTick;    // 시스템 100ms 틱 카운트
-    float currentA;         // 모터 A상 전류 (A)
-    float currentB;         // 모터 B상 전류 (A)
-    float currentC;         // 모터 C상 전류 (A)
-    uint32_t faultStatus;   // 현재 폴트/에러 상태 비트 (bitInformAll 등)
+    uint32_t systemTick;    // 시스템 구동 후 누적된 100ms 틱 카운트 (단위: 100ms)
+    float currentA;         // A상 인버터 출력 모터 전류 (단위: A)
+    float currentB;         // B상 인버터 출력 모터 전류 (단위: A)
+    float currentC;         // C상 인버터 출력 모터 전류 (단위: A)
+    uint32_t faultStatus;   // 현재 모터 및 시스템의 폴트/에러 상태 통합 비트맵
 } stDbgTelemetry;
 
 /* 상태 머신 관리 구조체 */
 typedef struct {
-    uint8_t     isActive;           // 1: PC가 연결되어 통신 활성화 상태, 0: 대기
-    uint8_t     targetIp[4];        // 동적 캡처된 수신자(PC) IP 주소
-    uint16_t    targetPort;         // 동적 캡처된 수신자(PC) Port
+    uint8_t     isActive;           // 통신 활성화 상태 플래그 (1: PC 연결 및 활성화, 0: 대기)
+    uint8_t     targetIp[4];        // 동적 캡처된 통신 대상(PC)의 IP 주소 배열
+    uint16_t    targetPort;         // 동적 캡처된 통신 대상(PC)의 UDP 포트 번호
     
-    uint16_t    TimeoutCount;       // 통신 두절 감지 타이머 (100ms 기준)
-    uint16_t    TickCount100ms;     // 100ms 단위 시스템 틱
+    uint16_t    TimeoutCount;       // 통신 두절을 감지하기 위한 대기 카운터 (단위: 100ms 틱)
+    uint16_t    TickCount100ms;     // 모듈 내부에서 관리하는 100ms 단위 타이머 틱 카운트
     
-    uint8_t     TxBuffer[1024];     // 송신용 버퍼
+    uint8_t     TxBuffer[1024];     // UDP 송신용 데이터를 직렬화하기 위한 임시 버퍼 (단위: Byte)
 } stDbgControl;
 
 extern stDbgControl xDbgCtrl;

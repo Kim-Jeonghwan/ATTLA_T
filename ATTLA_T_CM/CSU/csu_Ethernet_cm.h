@@ -1,15 +1,16 @@
 /**********************************************************************
    Nexcom Co., Ltd.
    Filename         : csu_Ethernet_cm.h
-   Version          : 00.08
+   Version          : 00.09
    Description      : CM 코어 체계 이더넷(Raw UDP) 연동통제안 및 프로토콜 정의
    Programmer       : Kim Jeonghwan
-   Last Updated     : 2026. 06. 29. (사용자 요청으로 초기 PC MAC 주소 원복)
+   Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가 및 헤더 버전 동기화)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 및 헤더 버전 동기화 (GEMINI 코딩 규칙 적용)
  * 2026. 06. 29. - 사용자 요청으로 초기 PC MAC 주소 원복 (EC:9A:0C:14:E8:4B)
  * 2026. 06. 29. - 초기 PC MAC 주소 브로드캐스트로 변경하여 통신 가입 지연 해결
  * 2026. 06. 24. - 파일명 리팩토링 (_cm 분리)
@@ -146,24 +147,23 @@ typedef enum {
 
 /* 상태 머신 관리 구조체 */
 typedef struct {
-    EthState_e  State;              /* 현재 망 가입 상태 */
-    uint32_t    LastRecvTimestamp;  /* 화포통제컴퓨터가 보낸 가장 최근 Timestamp 유지 */
-    uint16_t    TickCount100ms;     /* 100ms 단위로 증가하는 타이머 틱 */
-    uint16_t    TimeoutCount;       /* 통신 두절(상태정보 미수신) 100ms 카운트 (최대 50) */
-    uint16_t    RetryCount;         /* 패킷 재전송 횟수 (1 ~ 4) */
-    uint16_t    WaitAckTimer;       /* ACK 대기 타이머 */
+    EthState_e  State;              /* 현재 망 가입 상태 (부팅 대기, ACK 대기, 통신망 가입 완료 등) */
+    uint32_t    LastRecvTimestamp;  /* 화포통제컴퓨터가 보낸 가장 최근 Timestamp 유지 (연속성 검증용) */
+    uint16_t    TickCount100ms;     /* 100ms 단위로 증가하는 타이머 틱 카운터 */
+    uint16_t    TimeoutCount;       /* 통신 두절(상태정보 미수신) 상태를 감지하기 위한 100ms 카운트 (최대 50회 누적 시 두절) */
+    uint16_t    RetryCount;         /* 패킷 재전송 시도 횟수 (1회 ~ 최대 4회) */
+    uint16_t    WaitAckTimer;       /* 특정 메시지 전송 후 ACK 응답을 기다리는 타이머 */
     
-    uint16_t    CbitPeriodSec;      /* CBIT 전송 주기(초 단위) */
-    uint16_t    CbitTimer100ms;     /* CBIT 송신 타이머 카운트 */
-    uint8_t     CbitTxFlag;         /* CBIT 결과 주기 전송 상태 (1: 전송중, 0: 중지) */
-    uint8_t     IbitInProgress;     /* IBIT 수행 중 플래그 */
-    uint16_t    IbitTimer;          /* IBIT 수행 시뮬레이션 지연 타이머 */
-    uint16_t    IbitDuration;       /* IBIT 수행 지정 시간(초) */
+    uint16_t    CbitPeriodSec;      /* CBIT(연속 자체 점검) 메시지 전송 주기(초 단위 설정값) */
+    uint16_t    CbitTimer100ms;     /* CBIT 메시지 주기 송신 타이머 카운트 */
+    uint8_t     CbitTxFlag;         /* CBIT 결과 주기적 전송 상태 플래그 (1: 전송 진행 중, 0: 전송 중지 상태) */
+    uint8_t     IbitInProgress;     /* IBIT(초기화 자체 점검) 수행 상태 플래그 (1: 진행 중, 2: 완료 대기, 0: 종료) */
+    uint16_t    IbitTimer;          /* IBIT 수행 소요 시간을 시뮬레이션하기 위한 지연 타이머 */
+    uint16_t    IbitDuration;       /* 통제 컴퓨터가 지정한 IBIT 수행 소요 시간(초 단위) */
 
-    
-    uint8_t     WaitAckCode;        /* 현재 ACK를 기다리고 있는 Code */
-    uint8_t     TxBuffer[256];      /* 재전송용 패킷 버퍼 보관 */
-    uint16_t    TxSize;             /* 재전송 패킷 크기 */
+    uint8_t     WaitAckCode;        /* 현재 시스템이 응답 ACK를 기다리고 있는 대상 메시지 Code */
+    uint8_t     TxBuffer[256];      /* 재전송 실패 시 재전송을 수행하기 위해 마지막 패킷을 임시 보관하는 버퍼 */
+    uint16_t    TxSize;             /* 버퍼에 저장된 재전송 패킷의 실제 크기 */
 } stEthControl;
 
 extern stEthControl xEthCtrl;
@@ -172,17 +172,17 @@ extern stEthControl xEthCtrl;
  * CM↔CPU1 공유 데이터 구조체
  * --------------------------------------------------------------- */
 typedef struct {
-    float32_t WaveVal;              /* 파형 값 (C28x 계산값) */
-    uint16_t  DspTemp;              /* 온도 x10 스케일 */
-    uint8_t   SeqNum;               /* 시퀀스 번호 */
-    uint8_t   WaveType;             /* 선택된 파형 종류 */
+    float32_t WaveVal;              /* CPU1(C28x)에서 계산된 파형 데이터 값 */
+    uint16_t  DspTemp;              /* DSP 내부 온도 센서 측정값 (실제 온도 * 10 스케일 적용) */
+    uint8_t   SeqNum;               /* 통신 데이터 동기화를 위한 8비트 시퀀스 카운터 번호 */
+    uint8_t   WaveType;             /* 통제기에서 선택된 파형의 종류 (사인파, 구형파 등) 식별자 */
 } stEthSharedData;
 
 typedef struct {
-    stEthSharedData txData;         /* CPU1 → CM 데이터 */
-    stEthSharedData rxData;         /* CM → CPU1 데이터 */
-    uint8_t realPcMac[6];           /* 동적 학습된 PC MAC 주소 */
-    uint16_t lastRxSrcPort;         /* 마지막 수신 패킷의 출발지 포트 */
+    stEthSharedData txData;         /* CPU1에서 CM 코어로 전달되어 이더넷으로 송신될 데이터 블록 */
+    stEthSharedData rxData;         /* CM 코어가 이더넷으로 수신하여 CPU1으로 전달할 데이터 블록 */
+    uint8_t realPcMac[6];           /* ARP 또는 수신 패킷을 통해 동적으로 학습된 화포통제컴퓨터 실제 물리 MAC 주소 */
+    uint16_t lastRxSrcPort;         /* 마지막으로 수신된 UDP 패킷의 출발지 포트 (가변 포트 대응용 응답 목적지) */
 } stEthAppState;
 
 extern stEthAppState xEthApp;

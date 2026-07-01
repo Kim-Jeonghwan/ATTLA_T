@@ -1,15 +1,16 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : hal_Sci.c
- Version          : 00.01
+ Version          : 00.02
  Description      : SCI (시리얼 통신) 하드웨어 제어
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 12. (GPIO 핀 매크로 및 큐 변수 선언 헤더로 이동)
+ Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 12. - 통신 포트/핀 관련 매크로 및 xQueSCI_PC 선언 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 08. - 주석 템플릿 일괄 적용
@@ -51,9 +52,9 @@ static uint16_t dequeueSci(stQsci *pstQ, uint16_t *pData);
 */
 void Initial_SCI(void)
 {
-	initScia_SCI_PC();
+	initScia_SCI_PC(); // SCIA 하드웨어 포트, 핀, 인터럽트 및 통신 파라미터(115200bps 등) 초기화
 
-	memset(&xQueSCI_PC, 0u, sizeof(xQueSCI_PC));
+	memset(&xQueSCI_PC, 0u, sizeof(xQueSCI_PC)); // PC 송신용 원형 큐 버퍼를 0으로 초기화하여 통신 시작 전 깨끗한 상태 확보
 }
 
 

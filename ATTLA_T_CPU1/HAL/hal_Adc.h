@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Adc.h
-    Version          : 00.06
+    Version          : 00.07
     Description      : ADC 및 내부 온도 센서 하드웨어 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 12. - MAVE 카운트 및 PWM 주파수 매크로 헤더로 이동 (글로벌 룰 적용)
  * 2026. 06. 12. - AdcaIsr 선언 제거
@@ -47,12 +48,12 @@
 
 /* ************************** [[   struct   ]]  *********************************************************** */
 typedef struct {
-    uint16_t isenMot;
-    uint16_t isenBrk;
-    uint16_t vsen28v;
-    uint16_t vsen5vd;
-    uint16_t vsenRef;
-    uint16_t tsenBd;
+    uint16_t isenMot;      // 모터 드라이버 구동 전류 아날로그 계측 RAW 값 (ADC-A SOC2)
+    uint16_t isenBrk;      // 브레이크 코일 구동 전류 아날로그 계측 RAW 값 (ADC-A SOC3)
+    uint16_t vsen28v;      // 28V 메인 시스템 인가 전압 아날로그 계측 RAW 값 (ADC-A SOC4)
+    uint16_t vsen5vd;      // 5V 내부 로직 전압 아날로그 계측 RAW 값 (ADC-A SOC5)
+    uint16_t vsenRef;      // ADC 및 연산증폭기 레퍼런스 전압 계측 RAW 값 (ADC-B SOC1)
+    uint16_t tsenBd;       // 기판(Board) NTC 써미스터 온도 아날로그 계측 RAW 값 (ADC-B SOC3)
 } AdcRawData_t;
 
 /* ************************** [[   global   ]]  *********************************************************** */

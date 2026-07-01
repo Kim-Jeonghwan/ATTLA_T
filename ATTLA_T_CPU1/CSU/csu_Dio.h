@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Dio.h
-    Version          : 00.04
+    Version          : 00.05
     Description      : 이산신호(DIO) 입력 처리 및 디바운싱 필터 모듈 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 30. (상태 LED용 출력 제어 함수 원형 추가)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 30. - 시스템 상태(LednNormal, LednFault) 반영을 위한 Dio_UpdateOutput 함수 원형 추가
  * 2026. 06. 30. - stDioState 멤버 변수명 리팩토링 (Active Low 표기 적용)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
@@ -26,16 +27,16 @@
 #define DIO_CNT_DEBOUNCE_REF   10U    // 1ms 신호 입력 식별 디바운싱 카운트 (10kHz 100us 기준)
 
 typedef struct {
-    uint16_t nLimit1No;
-    uint16_t nLimit1Nc;
-    uint16_t nLimit2No;
-    uint16_t nLimit2Nc;
-    uint16_t Pmn24V;
-    uint16_t nCableLoop;
-    uint16_t DrvnFault;
-    uint16_t nHallA;
-    uint16_t nHallB;
-    uint16_t nHallC;
+    uint16_t nLimit1No;      // 리미트 스위치 1번 NO (Normally Open) 접점 입력 상태 (Active Low)
+    uint16_t nLimit1Nc;      // 리미트 스위치 1번 NC (Normally Closed) 접점 입력 상태 (Active Low)
+    uint16_t nLimit2No;      // 리미트 스위치 2번 NO (Normally Open) 접점 입력 상태 (Active Low)
+    uint16_t nLimit2Nc;      // 리미트 스위치 2번 NC (Normally Closed) 접점 입력 상태 (Active Low)
+    uint16_t Pmn24V;         // 브레이크 전원 24V 이상 유무 감지 입력 (Active Low)
+    uint16_t nCableLoop;     // 외부 통신/전원 케이블 연결 상태 감지 루프백 입력 (Active Low)
+    uint16_t DrvnFault;      // DRV8343 모터 드라이버 하드웨어 결함(nFAULT) 상태 입력 (Active Low)
+    uint16_t nHallA;         // 모터 홀센서 A상 입력 상태 (Active Low)
+    uint16_t nHallB;         // 모터 홀센서 B상 입력 상태 (Active Low)
+    uint16_t nHallC;         // 모터 홀센서 C상 입력 상태 (Active Low)
 } stDioState;
 
 extern volatile stDioState xDio;

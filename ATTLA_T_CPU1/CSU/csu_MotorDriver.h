@@ -1,15 +1,16 @@
 /**********************************************************************
   Nexcom Co., Ltd.
   Filename         : csu_MotorDriver.h
-  Version          : 00.03
+  Version          : 00.04
   Description      : DRV8343 모터 드라이버 제어 어플리케이션 계층
   Programmer       : Kim Jeonghwan
-  Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+  Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
  **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stMotorDriverState 구조체(xMotorDriver)로 통합
@@ -33,7 +34,7 @@ extern "C" {
 //---------------------------------------------------------------------------
 // 모터 에러 상태를 저장하는 구조체
 typedef struct {
-    uint16_t faultStatus;
+    uint16_t faultStatus;      // DRV8343의 FAULT_STATUS_1 등 결함 상태 레지스터 값을 저장하는 변수 (비트 단위 에러 플래그 포함)
 } stMotorDriverState;
 
 extern stMotorDriverState xMotorDriver;

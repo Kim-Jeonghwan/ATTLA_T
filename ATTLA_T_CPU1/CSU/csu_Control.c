@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.12
+    Version          : 00.13
     Description      : 시스템 제어 흐름 및 상태 관리 로직 구현부
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 30. (Dio_UpdateOutput 추가)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 30. - 제어 메인 루프 끝단에 이산신호 출력 제어(Dio_UpdateOutput) 추가
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링 반영
  * 2026. 06. 22. - 리미트 스위치 모듈 초기화(LimitSwitch_Init) 호출 추가
@@ -35,13 +36,13 @@ volatile stControlState xSysCtrl;
 void Control_Init(void)
 {
     // 구조체 명시적 초기화
-    Dio_Init();
-    LimitSwitch_Init();
-    xSysCtrl.isOffsetCalibrated = 0U;
-    xSysCtrl.isPbitComplete = 0U;
-    xSysCtrl.offsetCount = 0U;
-    xSysCtrl.sumMot = 0.0f;
-    xSysCtrl.sumBrk = 0.0f;
+    Dio_Init();                         // 디지털 입출력 초기화 함수 호출
+    LimitSwitch_Init();                 // 리미트 스위치 모듈 초기화 함수 호출
+    xSysCtrl.isOffsetCalibrated = 0U;   // 오프셋 보정 미완료(0) 상태 초기화
+    xSysCtrl.isPbitComplete = 0U;       // PBIT 미완료(0) 상태 초기화
+    xSysCtrl.offsetCount = 0U;          // 오프셋 누적 카운터 0 초기화
+    xSysCtrl.sumMot = 0.0f;             // 모터 전류 오프셋 누적합 0.0으로 초기화
+    xSysCtrl.sumBrk = 0.0f;             // 브레이크 전류 오프셋 누적합 0.0으로 초기화
 }
 
 /*

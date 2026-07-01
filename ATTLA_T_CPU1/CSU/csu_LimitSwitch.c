@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_LimitSwitch.c
-    Version          : 00.03
+    Version          : 00.04
     Description      : 리미트 스위치 상태 감지 및 고장 진단 모듈 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 30. (xDio 참조 변수명 리팩토링 - Active Low 표기 적용)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 30. - xDio 참조 변수명 리팩토링 (Active Low 표기 적용)
  * 2026. 06. 30. - Active Low(0U) 감지 기준으로 로직 전면 수정
  * 2026. 06. 30. - 리미트 데드존 및 오프셋 제한 로직 구현 (100us ISR 기준 딜레이)
@@ -31,22 +32,22 @@ stLimitSwitchLimit xLimitSwitchLimit;
 void LimitSwitch_Init(void)
 {
     // 양방향 매핑 스위치 기본 설정 (추후 TBD)
-    xLimitSwitchConfig.mappedSwitchForPosDir = 1U; // 1번 스위치를 Positive 방향 제한으로 사용
-    xLimitSwitchConfig.mappedSwitchForNegDir = 2U; // 2번 스위치를 Negative 방향 제한으로 사용
+    xLimitSwitchConfig.mappedSwitchForPosDir = 1U; // 1번 스위치를 양의 방향(Positive) 제한용으로 매핑 할당
+    xLimitSwitchConfig.mappedSwitchForNegDir = 2U; // 2번 스위치를 음의 방향(Negative) 제한용으로 매핑 할당
     
     // 상태 및 오프셋 초기화
-    xLimitSwitch.isFaultActive = false;
-    xLimitSwitch.faultCode = LS_FAULT_NONE;
+    xLimitSwitch.isFaultActive = false;            // 고장 없음 상태로 초기화
+    xLimitSwitch.faultCode = LS_FAULT_NONE;        // 고장 코드 없음으로 초기화
     
-    xLimitSwitch.activeDirection = 0U;
-    xLimitSwitch.isLimitReached = false;
-    xLimitSwitch.limitBasePos = 0.0f;
+    xLimitSwitch.activeDirection = 0U;             // 감지된 방향 없음(0)으로 초기화
+    xLimitSwitch.isLimitReached = false;           // 제한 거리 초과 도달 안함 상태로 초기화
+    xLimitSwitch.limitBasePos = 0.0f;              // 최초 스위치 감지 기준 위치 0.0으로 초기화
     
     // 튜닝 파라미터 초기화
-    xLimitSwitchLimit.offsetCount = 1000.0f;
-    xLimitSwitchLimit.deadzoneCount = 100.0f;
-    xLimitSwitchLimit.sensorErrorTimeMs = 50U;
-    xLimitSwitchLimit.sensorErrorTick100us = (50U * 10U);
+    xLimitSwitchLimit.offsetCount = 1000.0f;       // 리미트 감지 후 추가 진입 허용 거리를 1000.0으로 초기화
+    xLimitSwitchLimit.deadzoneCount = 100.0f;      // 데드존 최소 탈출 거리를 100.0으로 초기화
+    xLimitSwitchLimit.sensorErrorTimeMs = 50U;     // 센서 이상 진단 유지 시간을 50ms로 초기화
+    xLimitSwitchLimit.sensorErrorTick100us = (50U * 10U); // 50ms를 100us 틱 카운트로 변환하여(500) 초기화
 }
 
 /**

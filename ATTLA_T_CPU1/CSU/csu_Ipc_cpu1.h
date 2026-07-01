@@ -1,15 +1,16 @@
 /**********************************************************************
    Nexcom Co., Ltd.
    Filename         : csu_Ipc_cpu1.h
-   Version          : 00.01
+   Version          : 00.02
    Description      : CPU1 IPC 및 공유 메모리 통신 프로토콜 정의
    Programmer       : Kim Jeonghwan
-   Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+   Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 23. - CM 코어 IPC 통신용 구조체 및 버퍼 정의
  */
@@ -21,19 +22,19 @@
 
 /* IPC 통신용 공용 데이터 구조체 (32비트 정렬) */
 typedef struct {
-    uint32_t seqCount;      /* 동기화용 Seqlock 카운터 (짝수=완료, 홀수=쓰기중) */
-    uint32_t Command;       /* 명령어 */
-    uint32_t Status;        /* 상태 플래그 */
-    uint32_t Address;       /* 메모리 주소 */
+    uint32_t seqCount;      /* 동기화용 Seqlock 카운터 (짝수=데이터 쓰기 완료 및 유효 상태, 홀수=데이터 쓰는 중) */
+    uint32_t Command;       /* 통신 메시지의 명령어 코드 (예: IPC_CMD_CPU1_ETH_TX_DATA) */
+    uint32_t Status;        /* 통신 메시지의 부가 상태 플래그 */
+    uint32_t Address;       /* 공유할 데이터의 메모리 시작 주소 (포인터 전달 시 사용) */
     union {
-        uint32_t PayloadRaw[16];   /* 실제 데이터 배열 */
+        uint32_t PayloadRaw[16];   /* 실제 데이터 배열 (최대 16워드 할당) */
         struct {
-            uint32_t bitInformAll;     /* xBit.informAll (결함 비트맵) 전송용 */
-            float32_t adcTemperature;  /* 보드 온도 센서값 */
+            uint32_t bitInformAll;     /* CPU1이 진단한 결함 상태 비트맵(xBit.informAll) 전송용 */
+            float32_t adcTemperature;  /* ADC로 측정한 제어보드 온도 센서값 전송용 (단위: 섭씨) */
         } TxData;
         struct {
-            uint32_t reserved1;       /* 예약 필드 (구 270V 전원 상태) */
-            uint32_t ibitClearReq;    /* IBIT 수행 시작 시 에러 초기화 요청 플래그 (1=요청) */
+            uint32_t reserved1;       /* 예약 필드 (구 270V 전원 상태용, 현재 미사용) */
+            uint32_t ibitClearReq;    /* IBIT(초기화 점검) 수행 시 에러 초기화 요청 플래그 (1=요청) */
         } RxData;
     } Payload;
 } stIpcDataPacket;
@@ -54,8 +55,8 @@ extern volatile stIpcDataPacket *pxDataCmToCpu1;
 
 /* CM 코어로부터 수신된 체계 이더넷 수신 데이터 구조체 */
 typedef struct {
-    uint8_t seqNum;
-    uint8_t reserved1;
+    uint8_t seqNum;         /* 체계 이더넷 수신 메시지의 시퀀스 번호 */
+    uint8_t reserved1;      /* 예약(패딩) 바이트 */
 } stEthRxData;
 
 extern volatile stEthRxData xEthRxData;

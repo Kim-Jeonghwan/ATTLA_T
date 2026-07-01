@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_LimitSwitch.h
-    Version          : 00.02
+    Version          : 00.03
     Description      : 리미트 스위치 상태 감지 및 고장 진단 모듈 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 30. (리미트 스위치 데드존 및 오프셋 거리 제어 로직 추가)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 30. - 리미트 스위치 데드존 및 오프셋 거리 제어 로직 추가
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 22. - 파일 생성 및 기본 구조 작성
@@ -22,10 +23,10 @@
 
 // 리미트 스위치 디버깅 튜닝 파라미터 구조체
 typedef struct {
-    float32_t offsetCount;           // 리미트 감지 후 진입 허용 제한 거리
-    float32_t deadzoneCount;         // 오프셋 재설정을 방지하기 위한 데드존 최소 이동 거리
-    uint16_t sensorErrorTimeMs;      // 센서 이상 상태 판단 유지 시간 (ms)
-    uint16_t sensorErrorTick100us;   // 센서 이상 상태 판단 100us 기준 틱 수 (500틱)
+    float32_t offsetCount;           // 스위치 감지 후 추가 이동을 허용하는 제한 거리(모터 카운트 기준)
+    float32_t deadzoneCount;         // 스위치 접점의 기계적 진동(채터링)으로 인한 오프셋 재설정을 방지하기 위한 탈출 데드존 최소 이동 거리
+    uint16_t sensorErrorTimeMs;      // 센서 이상 상태(단선 등) 판단을 확정하기까지의 유지 시간 (단위: ms)
+    uint16_t sensorErrorTick100us;   // 센서 이상 상태를 판단하기 위한 100us 기준 누적 틱 수 (예: 50ms = 500틱)
 } stLimitSwitchLimit;
 
 extern stLimitSwitchLimit xLimitSwitchLimit;
@@ -40,19 +41,19 @@ typedef enum {
 
 // 리미트 스위치 설정 데이터 구조체
 typedef struct {
-    uint16_t mappedSwitchForPosDir;  // 양의 방향(Positive) 매핑 스위치 (기본 1)
-    uint16_t mappedSwitchForNegDir;  // 음의 방향(Negative) 매핑 스위치 (기본 2)
+    uint16_t mappedSwitchForPosDir;  // 모터의 양의 방향(Positive) 회전 시 감지할 리미트 스위치 매핑 번호 (기본 1)
+    uint16_t mappedSwitchForNegDir;  // 모터의 음의 방향(Negative) 회전 시 감지할 리미트 스위치 매핑 번호 (기본 2)
 } stLimitSwitchConfig;
 
 // 리미트 스위치 상태 진단 구조체
 typedef struct {
-    bool isFaultActive;                   // 현재 리미트 스위치 고장 발생 여부
-    LimitSwitchFaultCode_t faultCode;     // 구체적인 에러 원인 코드
+    bool isFaultActive;                   // 현재 리미트 스위치 센서 자체의 고장 발생 여부 플래그
+    LimitSwitchFaultCode_t faultCode;     // 구체적인 에러 원인 코드 (LimitSwitchFaultCode_t 참조)
     
     // 오프셋 및 데드존 차단 로직용 상태
-    uint16_t activeDirection;             // 감지된 방향 (0: 없음, 1: Positive, 2: Negative)
-    bool isLimitReached;                  // 제한 거리(LIMIT_OFFSET_COUNT) 초과 도달 여부
-    float32_t limitBasePos;               // 스위치가 최초 감지된 시점의 기준 위치
+    uint16_t activeDirection;             // 현재 스위치가 감지된 이동 방향 (0: 없음, 1: Positive, 2: Negative)
+    bool isLimitReached;                  // 허용된 제한 거리(offsetCount)를 초과하여 최종 도달했는지 여부 플래그
+    float32_t limitBasePos;               // 스위치가 최초 감지되어 눌린 시점의 모터 기준 위치
 } stLimitSwitchState;
 
 extern stLimitSwitchConfig xLimitSwitchConfig;

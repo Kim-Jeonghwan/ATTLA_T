@@ -1,15 +1,16 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : hal_Fram.c
- Version          : 00.01
+ Version          : 00.02
  Description      : FRAM (CY15B256Q) 제어 모듈 로직 구현부
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+ Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
@@ -38,11 +39,11 @@ static void Fram_WriteStatusRegister(uint16_t statusRegister);
 */
 void Fram_Init(void)
 {
-    // 쓰기 활성화 (WREN)
-    Fram_WriteEnable();
+    // 쓰기 활성화 (WREN: Write Enable Latch)
+    Fram_WriteEnable(); // FRAM의 쓰기 보호를 일시적으로 해제하여 상태 레지스터나 메모리에 쓸 수 있도록 허용
 
     // 상태 레지스터 쓰기 (보호 영역 해제 BP0=0, BP1=0)
-    Fram_WriteStatusRegister(STATUS_REG_EX_FRAM);
+    Fram_WriteStatusRegister(STATUS_REG_EX_FRAM); // 0x00을 기록하여 블록 보호(Block Protect) 비트들을 모두 클리어, 전체 메모리 영역 쓰기 가능 상태로 초기화
 }
 
 /*

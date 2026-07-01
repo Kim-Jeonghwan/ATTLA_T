@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Debug.c
-    Version          : 00.07
+    Version          : 00.08
     Description      : 노트북 디버깅망 동적 IP 라우팅 프로토콜 및 텔레메트리 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 26. (모듈명 변경 및 디버깅 전용망 분리)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 26. - 파일명에서 _cpu1 제거 (리팩토링)
  * 2026. 06. 26. - csu_Ethernet_cpu1 에서 csu_Debug_cpu1 으로 모듈명 변경
  * 2026. 06. 26. - 체계 연동(FC) 통제안(Boot Ack, CBIT, IBIT 등) 로직 전면 삭제
@@ -27,17 +28,17 @@ stDbgControl xDbgCtrl;
 */
 void Debug_ProtocolInit(void)
 {
-    xDbgCtrl.isActive = 0U;
+    xDbgCtrl.isActive = 0U;             // 초기 통신 대기 상태(비활성화)로 설정
     
     // 기본 타겟을 임의의 노트북 IP로 설정 (첫 패킷 수신 전까지는 송신하지 않음)
-    xDbgCtrl.targetIp[0] = 192;
-    xDbgCtrl.targetIp[1] = 168;
-    xDbgCtrl.targetIp[2] = 200;
-    xDbgCtrl.targetIp[3] = 100;
-    xDbgCtrl.targetPort = PORT_UDP_DBG;
+    xDbgCtrl.targetIp[0] = 192;         // 타겟 IP 1번째 자리 할당
+    xDbgCtrl.targetIp[1] = 168;         // 타겟 IP 2번째 자리 할당
+    xDbgCtrl.targetIp[2] = 200;         // 타겟 IP 3번째 자리 할당
+    xDbgCtrl.targetIp[3] = 100;         // 타겟 IP 4번째 자리 할당
+    xDbgCtrl.targetPort = PORT_UDP_DBG; // 디버그용 UDP 포트 초기화
     
-    xDbgCtrl.TimeoutCount = 0U;
-    xDbgCtrl.TickCount100ms = 0U;
+    xDbgCtrl.TimeoutCount = 0U;         // 통신 두절 감지 타이머 0으로 초기화
+    xDbgCtrl.TickCount100ms = 0U;       // 100ms 시스템 틱 카운터 0으로 초기화
 }
 
 /* ========================================================================== */

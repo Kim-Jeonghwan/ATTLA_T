@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Encoder.h
-    Version          : 00.06
+    Version          : 00.07
     Description      : AksIM-2 엔코더 어플리케이션 기능 처리 모듈
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 12. - 롤오버 및 스케일 매직넘버 상수화하여 헤더(.h)로 분리 (글로벌 룰 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
@@ -41,18 +42,18 @@ extern "C" {
 //---------------------------------------------------------------------------
 typedef struct {
     // 1. 수신 원시 데이터 관련
-    uint64_t fullFrame;   // SPI에서 수신된 64비트 전체 데이터
-    uint64_t rawPos;      // 파싱된 34비트 Position 원시값
-    uint8_t  errBit;      // 파싱된 Error 비트 (Active Low)
-    uint8_t  warnBit;     // 파싱된 Warning 비트
-    uint8_t  crcRecv;     // 파싱된 수신 CRC (6비트)
-    uint8_t  crcCalc;     // 자체 계산한 CRC (6비트)
+    uint64_t fullFrame;   // SPI 통신으로 수신된 64비트 전체 원시 프레임 데이터
+    uint64_t rawPos;      // 파싱된 34비트 물리적 위치(Position) 원시 데이터
+    uint8_t  errBit;      // 센서 하드웨어 에러 상태 비트 (Active Low, 0: 에러, 1: 정상)
+    uint8_t  warnBit;     // 센서 경고 상태 비트 (온도, 자기장 세기 등)
+    uint8_t  crcRecv;     // 센서에서 송신하여 수신된 원본 CRC-6 값
+    uint8_t  crcCalc;     // 수신 데이터(36비트)를 기반으로 자체 계산한 검증용 CRC-6 값
 
     // 2. 어플리케이션 상태
-    uint64_t offset;      // 제로셋 오프셋 값
-    uint64_t position;    // 오프셋 적용 및 롤오버가 반영된 실시간 위치
-    float32_t angleDeg;   // 360도 환산 기계각
-    bool      isValid;    // Error 비트 및 CRC 검증 결과에 따른 최종 유효성
+    uint64_t offset;      // 제로셋(Zero-set)을 위해 FRAM에서 로드된 영점 오프셋 기준값
+    uint64_t position;    // 오프셋 적용 및 34비트 롤오버 연산이 반영된 최종 실시간 위치 카운트
+    float32_t angleDeg;   // 환산된 모터의 기계각 (단위: Degree, 0~360도 범위)
+    bool      isValid;    // Error 비트 상태 및 CRC 검증을 모두 통과하여 현재 데이터가 유효한지 여부 플래그
 } stEncoderState;
 
 extern stEncoderState xEncoder;

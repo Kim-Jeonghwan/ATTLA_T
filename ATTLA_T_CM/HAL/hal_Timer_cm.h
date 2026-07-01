@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Timer_cm.h
-    Version          : 00.02
+    Version          : 00.03
     Description      : CM Core SysTick 타이머 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (코딩 규칙 준수 정비)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가 및 헤더 버전 동기화)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 및 헤더 버전 동기화 (코딩 규칙 적용)
  * 2026. 06. 26. - hal_Timer_cm 으로 파일명 리팩토링
  * 2026. 06. 23. - 코딩 규칙 준수 정비 (매크로 상수 이동 및 작성자 기입)
  * 2026. 06. 05. - 코드 주석 포맷팅 및 한글화
@@ -27,14 +28,14 @@
 
 typedef struct
 {
-    uint16_t Cycle_2ms;    // 2ms 주기 - UDP 송신 전용 (Timer0)
-    uint16_t Cycle_1ms;
-    uint16_t Cycle_10ms;
-    uint16_t Cycle_100ms;
-    uint16_t Cycle_1000ms;
+    uint16_t Cycle_2ms;    // 2ms 단위 주기를 생성하여 UDP 패킷 송신 간격을 제어하기 위한 카운터 (Timer0 전용)
+    uint16_t Cycle_1ms;    // 1ms 단위 주기를 생성하여 가장 빠른 백그라운드 태스크를 제어하기 위한 카운터 (Timer1 기반)
+    uint16_t Cycle_10ms;   // 10ms 단위 주기를 생성하기 위해 매 1ms마다 누적되는 카운터
+    uint16_t Cycle_100ms;  // 100ms 단위 주기를 생성하기 위해 매 1ms마다 누적되는 카운터 (상태 정보 송수신 점검용)
+    uint16_t Cycle_1000ms; // 1000ms(1초) 단위 주기를 생성하기 위해 매 1ms마다 누적되는 카운터
 
-    uint16_t Hzcnt;
-    uint16_t Hz;
+    uint16_t Hzcnt;        // 메인 루프에서 연산 속도를 계측하기 위해 자유롭게 누적되는 임시 카운터
+    uint16_t Hz;           // 매 1초(Timer2)마다 Hzcnt 값을 복사하여 실시간 메인 루프 반복 주파수를 나타내는 계측값
 } stTimer;
 
 extern volatile stTimer xTimer;

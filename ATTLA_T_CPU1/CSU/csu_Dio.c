@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Dio.c
-    Version          : 00.05
+    Version          : 00.06
     Description      : 이산신호(DIO) 입력 처리 및 디바운싱 필터 모듈 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 30. (Dio_UpdateOutput 구현 추가)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 30. - 시스템 상태 연동 DIO 출력 제어 (Dio_UpdateOutput) 함수 추가
  * 2026. 06. 30. - 디바운싱 내부 카운터(cnt_) 변수명 리팩토링 적용
  * 2026. 06. 30. - stDioState 멤버 변수명 리팩토링 (Active Low 표기 적용)
@@ -33,16 +34,16 @@ volatile stDioState xDio;
 void Dio_Init(void)
 {
     // 구조체 변수 명시적 초기화 (기본 High 상태로 초기화)
-    xDio.nLimit1No = 1U;
-    xDio.nLimit1Nc = 1U;
-    xDio.nLimit2No = 1U;
-    xDio.nLimit2Nc = 1U;
-    xDio.Pmn24V = 1U;
-    xDio.nCableLoop = 1U;
-    xDio.DrvnFault = 1U;
-    xDio.nHallA = 1U;
-    xDio.nHallB = 1U;
-    xDio.nHallC = 1U;
+    xDio.nLimit1No = 1U;      // 리미트 스위치 1번 NO 기본값 초기화
+    xDio.nLimit1Nc = 1U;      // 리미트 스위치 1번 NC 기본값 초기화
+    xDio.nLimit2No = 1U;      // 리미트 스위치 2번 NO 기본값 초기화
+    xDio.nLimit2Nc = 1U;      // 리미트 스위치 2번 NC 기본값 초기화
+    xDio.Pmn24V = 1U;         // 브레이크 전압 이상 유무 기본값 초기화
+    xDio.nCableLoop = 1U;     // 케이블 루프백 기본값 초기화
+    xDio.DrvnFault = 1U;      // 드라이버 결함 핀 기본값 초기화
+    xDio.nHallA = 1U;         // 홀센서 A상 기본값 초기화
+    xDio.nHallB = 1U;         // 홀센서 B상 기본값 초기화
+    xDio.nHallC = 1U;         // 홀센서 C상 기본값 초기화
 }
 
 /**

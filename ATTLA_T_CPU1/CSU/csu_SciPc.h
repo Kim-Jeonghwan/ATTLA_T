@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_SciPc.h
-    Version          : 00.02
+    Version          : 00.03
     Description      : PC 인터페이스 통신 (SCI_PC) 프로토콜 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
@@ -58,13 +59,13 @@ typedef union {
 typedef struct
 {
     /* --- 1. Sequence Number (1 byte) --- */
-    uint16_t          IncNumber:8u;   // Byte 3: Sequence Number (0~255)
+    uint16_t          IncNumber:8u;   // Byte 3: Sequence Number (0~255) 통신 메시지의 순차적인 패킷 번호를 나타내는 8비트 카운터
     
     /* --- 2. 상태 및 에러 플래그 (Status - 1 byte) --- */
-    uint16_t          Status:8u;      // Byte 4: MCU 상태 필드 (개별 bit 제어)
+    uint16_t          Status:8u;      // Byte 4: MCU 상태 필드 (개별 bit 제어) MCU의 전반적인 동작 상태(알람, 경고, 정상 등)를 PC에 보고하기 위한 8비트 플래그
 
     /* --- 3. 데이터 필드 (DspTemp - 2 bytes) --- */
-    uint16_t          DspTemp;        // Byte 5~6: DSP 정션 온도 (소수점 한자리 표현용 ×10 스케일링 값)
+    uint16_t          DspTemp;        // Byte 5~6: DSP 정션 온도 (소수점 한자리 표현용 ×10 스케일링 값) (현재 센서 제거로 인해 항상 0 전송 중)
 } stXmtSciPcMsg1;
 
 

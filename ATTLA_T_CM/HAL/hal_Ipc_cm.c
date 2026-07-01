@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Ipc_cm.c
-    Version          : 00.02
+    Version          : 00.03
     Description      : CM Core IPC Device Driver
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 22. (GSRAM 잔재 주석을 MSGRAM 기준으로 수정)
+    Last Updated     : 2026. 07. 01. (소스 버전 동기화)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 소스 버전 동기화 (코딩 규칙 적용)
  * 2026. 06. 22. - GSRAM 잔재 주석을 MSGRAM 기준으로 수정
  * 2026. 06. 22. - CPU1의 송신이 MSGRAM 폴링으로 변경됨에 따라 recvIpcCpu1Message 호출 제거
  */

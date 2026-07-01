@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Adc.c
-    Version          : 00.06
+    Version          : 00.07
     Description      : ADC 데이터 필터링 및 10ms 주기 데이터 처리 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (매크로 상수명 추상화: ADC_SCALE_REF_VOLT 반영)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 12. - 매크로 상수명 추상화 (ADC_SCALE_REF_VOLT) 반영
  * 2026. 06. 12. - ADC 스케일 팩터 및 필터 상수를 헤더 파일로 이동 (매직넘버 제거)
  * 2026. 06. 12. - 내부 온도 센서 미사용에 따른 관련 변수 및 로직 제거
@@ -43,14 +44,14 @@ stAdcState xAdc;
 void Initial_Adc(void)
 {
     // 구조체 명시적 초기화 (CWE-457 방지 및 시스템 리셋 시 클리어 목적)
-    xAdc.isenMotLpf = 0.0f;
-    xAdc.isenBrkLpf = 0.0f;
-    xAdc.vsen28VLpf = 0.0f;
-    xAdc.vsen5VDLpf = 0.0f;
-    xAdc.vsenRefLpf = 0.0f;
-    xAdc.tsenBdLpf = 0.0f;
-    xAdc.isenMotOffset = ADC_OFFSET_ISEN_MOT_DEFAULT;
-    xAdc.isenBrkOffset = ADC_OFFSET_ISEN_BRK_DEFAULT;
+    xAdc.isenMotLpf = 0.0f;                             // 모터 전류 필터값 0A 초기화
+    xAdc.isenBrkLpf = 0.0f;                             // 브레이크 전류 필터값 0A 초기화
+    xAdc.vsen28VLpf = 0.0f;                             // 28V 메인 전압 필터값 0V 초기화
+    xAdc.vsen5VDLpf = 0.0f;                             // 5V 로직 전압 필터값 0V 초기화
+    xAdc.vsenRefLpf = 0.0f;                             // 기준 전압 필터값 0V 초기화
+    xAdc.tsenBdLpf = 0.0f;                              // 보드 표면 온도 필터값 0도 초기화
+    xAdc.isenMotOffset = ADC_OFFSET_ISEN_MOT_DEFAULT;   // 모터 전류 센서 영점 오프셋 기본값(약 1.5V) 할당
+    xAdc.isenBrkOffset = ADC_OFFSET_ISEN_BRK_DEFAULT;   // 브레이크 전류 센서 영점 오프셋 기본값(약 1.5V) 할당
 }
 
 

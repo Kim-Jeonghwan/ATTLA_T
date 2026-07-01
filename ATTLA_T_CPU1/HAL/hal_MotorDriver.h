@@ -1,15 +1,16 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : hal_MotorDriver.h
- Version          : 00.02
+ Version          : 00.03
  Description      : DRV8343 모터 드라이버 하드웨어 초기화 (SPI-B)
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+ Last Updated     : 2026. 07. 01. (헤더 버전 동기화 및 템플릿 유지)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 헤더 버전 동기화 및 템플릿 유지 (코딩 규칙 적용)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 15. - SPI 핀 매크로 제거 및 hal_Spi.h로 통합 이관
  * 2026. 06. 11. - DRV_ENABLE GPIO 2 제어 로직 추가 (unresolved symbol 에러 해결)

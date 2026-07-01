@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Spi.h
-    Version          : 00.08
+    Version          : 00.09
     Description      : SPI 하드웨어 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 26. (SPI-B 및 SPI-C 핀맵 재할당)
+    Last Updated     : 2026. 07. 01. (헤더 버전 동기화 및 템플릿 유지)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 헤더 버전 동기화 및 템플릿 유지 (코딩 규칙 적용)
  * 2026. 06. 26. - SPI-B 및 SPI-C 통신 핀맵 재할당 (GPIO 63~66, 70, 71)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 15. - cs_sel, spi_read_byte 등 W6100 전용 래퍼 함수에 spia_ 접두어 추가

@@ -1,15 +1,16 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : hal_Sci.h
- Version          : 00.02
+ Version          : 00.03
  Description      : SCI (시리얼 통신) 하드웨어 헤더
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+ Last Updated     : 2026. 07. 01. (구조체 변수 상세 주석 및 헤더 버전 동기화)
  **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 주석 및 헤더 버전 동기화 (코딩 규칙 적용)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 12. - 통신 포트/핀 관련 매크로 및 xQueSCI_PC 선언 헤더(.h)로 이동 (글로벌 룰 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
@@ -58,9 +59,9 @@ typedef struct
 
 typedef struct
 {
-    uint16_t front;
-    uint16_t rear;
-    uint16_t Data[QUEUE_MAX_SCI];
+    uint16_t front; // 큐의 데이터를 꺼낼 위치를 가리키는 포인터 인덱스
+    uint16_t rear;  // 큐에 새로운 데이터를 저장할 위치를 가리키는 포인터 인덱스
+    uint16_t Data[QUEUE_MAX_SCI]; // 실제 송신 데이터를 저장하는 원형 큐 버퍼 배열
 } stQsci;
 
 

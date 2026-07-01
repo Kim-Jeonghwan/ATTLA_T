@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Debug.c
-    Version          : 00.11
+    Version          : 00.12
     Description      : 이더넷(W6100) 하드웨어 제어 로직 (디버그 통신망)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 26. (모듈명 변경 및 디버깅 전용망 분리)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 26. - 파일명에서 _cpu1 제거 (리팩토링)
  * 2026. 06. 26. - hal_Ethernet_cpu1 에서 hal_Debug_cpu1 으로 모듈명 변경
  * 2026. 06. 24. - 파일명 리팩토링 (_cpu1 분리)
@@ -44,13 +45,13 @@ int8_t Initial_W6100(void)
 
     // 3. MAC 주소 및 고정 IP 설정 (IPv4)
     wiz_NetInfo netinfo = {
-        .mac = {0x00, 0x08, 0xDC, 0x11, 0x22, 0x33}, // WIZnet OUI MAC
-        .ip = {192, 168, 200, 11},
-        .sn = {255, 255, 255, 0},
-        .gw = {192, 168, 200, 1},
-        .dns = {8, 8, 8, 8},
-        .ipmode = NETINFO_STATIC_V4,
-        .dhcp = NETINFO_STATIC
+        .mac = {0x00, 0x08, 0xDC, 0x11, 0x22, 0x33}, // WIZnet OUI가 적용된 물리적 MAC 주소 (디바이스 고유 식별자)
+        .ip = {192, 168, 200, 11},                   // 디버그 통신망에 할당할 정적 IP 주소
+        .sn = {255, 255, 255, 0},                    // 서브넷 마스크 (네트워크 대역 분리용)
+        .gw = {192, 168, 200, 1},                    // 게이트웨이 IP 주소
+        .dns = {8, 8, 8, 8},                         // DNS 서버 주소 (구글 공용 DNS)
+        .ipmode = NETINFO_STATIC_V4,                 // IPv4 정적 IP 할당 모드 명시
+        .dhcp = NETINFO_STATIC                       // DHCP 서버를 거치지 않고 수동으로 고정 IP 설정
     };
 
     // IPv6 및 기타 필드 0 초기화를 위해 ctlnetwork 사용 가능

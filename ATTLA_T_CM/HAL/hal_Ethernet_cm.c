@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Ethernet_cm.c
-    Version          : 00.03
+    Version          : 00.04
     Description      : EMAC 드라이버 초기화 및 Rx 하드웨어 인터럽트 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 24. (파일명 리팩토링)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 변수 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 24. - 파일명 리팩토링 (_cm 분리)
  * 2026. 06. 19. - 변수명 규칙 적용 (xHalEth -> xEthDriver 변경)
  * 2026. 06. 19. - 이더넷 전역 변수 캡슐화 적용
@@ -50,9 +51,9 @@
 
 /* HAL 계층 이더넷 상태 인스턴스 초기화 */
 stEthDriverState xEthDriver = {
-    .hEMAC = (Ethernet_Handle)0U,
-    .txBuf = {0U},
-    .initRet = 0U
+    .hEMAC = (Ethernet_Handle)0U, // 초기 생성 시 MAC 핸들 주소를 0(NULL)으로 명시적 초기화하여 무효 상태 표시
+    .txBuf = {0U}, // 모든 송신용 패킷 디스크립터 버퍼 배열 영역을 0으로 안전하게 초기화
+    .initRet = 0U // 초기화 함수 반환값 0(기본값)으로 세팅
 };
 
 /* Rx 버퍼 및 디스크립터 풀 */

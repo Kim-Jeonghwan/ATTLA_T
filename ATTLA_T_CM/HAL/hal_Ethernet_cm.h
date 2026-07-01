@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Ethernet_cm.h
-    Version          : 00.02
+    Version          : 00.03
     Description      : Ethernet EMAC 드라이버 계층 헤더 (MII 모드, DP8382 PHY)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 24. (파일명 리팩토링)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가 및 헤더 버전 동기화)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 및 헤더 버전 동기화 (코딩 규칙 적용)
  * 2026. 06. 24. - 파일명 리팩토링 (_cm 분리)
  * 2026. 06. 19. - 변수명 규칙 적용 (xHalEth -> xEthDriver 변경)
  * 2026. 06. 19. - 이더넷 전역 변수 캡슐화 적용
@@ -37,9 +38,9 @@
  * HAL 계층 이더넷 상태 구조체 캡슐화
  * --------------------------------------------------------------- */
 typedef struct {
-    Ethernet_Handle hEMAC;
-    uint8_t txBuf[ETH_TX_NUM_PKT_DESC][ETH_TX_BUF_SIZE];
-    uint32_t initRet;
+    Ethernet_Handle hEMAC; // LLD (Low Level Driver) 단에서 반환된 이더넷 MAC 모듈 제어용 인스턴스 핸들
+    uint8_t txBuf[ETH_TX_NUM_PKT_DESC][ETH_TX_BUF_SIZE]; // 송신 데이터를 임시로 담아두는 버퍼 (디스크립터와 1:1 매칭)
+    uint32_t initRet; // 이더넷 초기화 API 수행 후 반환된 결과 코드 저장 (에러 트래킹용)
 } stEthDriverState;
 
 /* 구조체 인스턴스 (csu_Ethernet.c 등에서 사용) */

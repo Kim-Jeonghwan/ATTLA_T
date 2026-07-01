@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Pid.c
-    Version          : 00.02
+    Version          : 00.03
     Description      : 표준 PID 제어기 (안티와인드업 및 PI-IP 혼합 제어 포함)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (코딩 규칙 및 구조 불일치 사항 리팩토링 반영)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
  * 2026. 06. 22. - PI-IP 혼합 제어 지원 로직 추가 (Ks 파라미터 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
@@ -33,17 +34,17 @@ void PID_Init(PID_Controller_t* pid, float32_t kp, float32_t ki, float32_t kd, f
 {
     if (pid != NULL)
     {
-        pid->Kp = kp;
-        pid->Ki = ki;
-        pid->Kd = kd;
-        pid->Ks = ks;
-        pid->dt = dt;
-        pid->maxOutput = max_out;
-        pid->minOutput = min_out;
+        pid->Kp = kp;                  // 비례 게인 설정
+        pid->Ki = ki;                  // 적분 게인 설정
+        pid->Kd = kd;                  // 미분 게인 설정
+        pid->Ks = ks;                  // PI-IP 가중치 게인 설정
+        pid->dt = dt;                  // 루프 샘플링 주기 설정
+        pid->maxOutput = max_out;      // 출력값 상한 클램핑 설정
+        pid->minOutput = min_out;      // 출력값 하한 클램핑 설정
         
-        pid->integral = 0.0f;
-        pid->prevError = 0.0f;
-        pid->output = 0.0f;
+        pid->integral = 0.0f;          // 누적 오차 0.0으로 초기화
+        pid->prevError = 0.0f;         // 이전 오차 0.0으로 초기화
+        pid->output = 0.0f;            // 초기 출력 0.0으로 초기화
     }
 }
 

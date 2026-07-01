@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Bit.h
-    Version          : 00.08
+    Version          : 00.09
     Description      : 1x PWM 구조용 간소화된 BIT 로직 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 12. - 과속 판단 기준을 모터 정격과 동일한 3240 RPM으로 하향 조정
  * 2026. 06. 12. - 매크로 상수명 추상화: BIT_CNT_FILTER_REF 반영
@@ -28,37 +29,37 @@
 
 // BIT 디버깅 튜닝 파라미터 구조체
 typedef struct {
-    float32_t ovcMotMax;         // 모터 과전류 (10A)
-    float32_t ovcBrkMax;         // 브레이크 과전류 (1.5A)
-    float32_t ovtBdMax;          // 보드 과열 (80도)
-    float32_t ovv28VMax;         // 28V 과전압 (32V)
-    float32_t stallCurrMin;      // 스톨 판단 전류 하한치 (5.0A)
-    float32_t stallRpmLimit;     // 스톨 판단 속도 상한치 (10.0 RPM)
-    Uint16 stallTimeCnt;         // 스톨 반응 시간 (TDU 기준 1.0초, 100us * 10000)
-    float32_t speedMotMax;       // 모터 과속 제한 (3240 RPM)
-    float32_t speedMotMin;       // 모터 과속 제한 (-3240 RPM)
-    Uint16 ovsTimeCnt;           // 과속 감지 지연시간 (100ms, 100us * 1000)
-    Uint16 ovvBrkTimeCnt;        // 브레이크 전압 감지 지연시간 (100ms, 100us * 1000)
-    Uint16 cntFilterRef;         // 100ms 누적 필터 카운트 기준 (100us * 1000)
+    float32_t ovcMotMax;         // 모터 과전류 판단 임계값 (단위: A)
+    float32_t ovcBrkMax;         // 브레이크 과전류 판단 임계값 (단위: A)
+    float32_t ovtBdMax;          // 보드 과열 판단 임계값 (단위: °C)
+    float32_t ovv28VMax;         // 28V 과전압 판단 임계값 (단위: V)
+    float32_t stallCurrMin;      // 스톨 판단을 위한 모터 전류 하한치 (단위: A)
+    float32_t stallRpmLimit;     // 스톨 판단을 위한 모터 속도 상한치 (단위: RPM)
+    Uint16 stallTimeCnt;         // 스톨 상태 유지 판단 시간 (단위: 100us 틱 카운트)
+    float32_t speedMotMax;       // 모터 정방향 과속 제한 임계값 (단위: RPM)
+    float32_t speedMotMin;       // 모터 역방향 과속 제한 임계값 (단위: RPM)
+    Uint16 ovsTimeCnt;           // 과속 감지 판단 지연시간 (단위: 100us 틱 카운트)
+    Uint16 ovvBrkTimeCnt;        // 브레이크 전압 감지 판단 지연시간 (단위: 100us 틱 카운트)
+    Uint16 cntFilterRef;         // 100ms 누적 필터링 판단 기준값 (단위: 100us 틱 카운트)
 } stBitLimit;
 
 extern stBitLimit xBitLimit;
 
 typedef struct {
-    Uint32 informAll;
-    Uint16 startFlagSet;
-    Uint16 faultFlagSet;
-    Uint16 faultOvCurrMot;
-    Uint16 faultOvCurrBrk;
-    Uint16 faultOvTempBd;
-    Uint16 faultOvVolt28V;
-    Uint16 faultOvVoltBrk;
-    Uint16 faultDrv8343nFault;
-    Uint16 faultStall;
-    Uint16 faultOverSpeed;
-    Uint16 faultEncError;
-    Uint16 warnEncWarning;
-    Uint16 stallCheckCnt;
+    Uint32 informAll;            // 전체 결함 상태를 비트맵 형태로 모아둔 변수 (상위 통신용)
+    Uint16 startFlagSet;         // 시스템 시작 정상 플래그 (1: 정상)
+    Uint16 faultFlagSet;         // 전체 결함 통합 플래그 (1: 하나 이상의 결함 발생)
+    Uint16 faultOvCurrMot;       // 모터 과전류 결함 플래그 (1: 결함)
+    Uint16 faultOvCurrBrk;       // 브레이크 과전류 결함 플래그 (1: 결함)
+    Uint16 faultOvTempBd;        // 보드 과열 결함 플래그 (1: 결함)
+    Uint16 faultOvVolt28V;       // 28V 전원 과전압 결함 플래그 (1: 결함)
+    Uint16 faultOvVoltBrk;       // 브레이크 구동 전압 이상 결함 플래그 (1: 결함)
+    Uint16 faultDrv8343nFault;   // DRV8343 모터 드라이버 자체 하드웨어 결함 플래그 (1: 결함)
+    Uint16 faultStall;           // 모터 구속(Stall) 결함 플래그 (1: 결함)
+    Uint16 faultOverSpeed;       // 모터 과속 결함 플래그 (1: 결함)
+    Uint16 faultEncError;        // 엔코더 통신/데이터 에러 결함 플래그 (1: 결함)
+    Uint16 warnEncWarning;       // 엔코더 상태 워닝 플래그 (1: 경고)
+    Uint16 stallCheckCnt;        // 구속(Stall) 상태 카운팅 변수 (단위: 100us 틱)
 } stBitState;
 
 extern stBitState xBit;

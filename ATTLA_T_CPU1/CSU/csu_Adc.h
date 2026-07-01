@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Adc.h
-    Version          : 00.04
+    Version          : 00.05
     Description      : ADC 데이터 처리 로직 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 12. - 매크로 상수명 추상화 (ADC_SCALE_REF_VOLT)
  * 2026. 06. 12. - ADC 스케일 팩터 및 필터 상수를 헤더로 통합
@@ -56,14 +57,14 @@
 
 /* ************************** [[   global   ]]  *********************************************************** */
 typedef struct {
-    float32_t isenMotLpf;
-    float32_t isenBrkLpf;
-    float32_t vsen28VLpf;
-    float32_t vsen5VDLpf;
-    float32_t vsenRefLpf;
-    float32_t tsenBdLpf;
-    float32_t isenMotOffset;
-    float32_t isenBrkOffset;
+    float32_t isenMotLpf;      // 필터링된 모터 구동 전류 센싱 값 (단위: A)
+    float32_t isenBrkLpf;      // 필터링된 브레이크 제어 전류 센싱 값 (단위: A)
+    float32_t vsen28VLpf;      // 필터링된 28V 메인 전원 전압 센싱 값 (단위: V)
+    float32_t vsen5VDLpf;      // 필터링된 5V 로직 전원 전압 센싱 값 (단위: V)
+    float32_t vsenRefLpf;      // 필터링된 2.048V 레퍼런스 전압 센싱 값 (단위: V)
+    float32_t tsenBdLpf;       // 필터링된 보드 표면 온도 센싱 값 (단위: °C)
+    float32_t isenMotOffset;   // 모터 전류 영점(Zero-point) 오프셋 전압 (단위: V)
+    float32_t isenBrkOffset;   // 브레이크 전류 영점(Zero-point) 오프셋 전압 (단위: V)
 } stAdcState;
 
 extern stAdcState xAdc;

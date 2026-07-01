@@ -1,15 +1,16 @@
 /**********************************************************************
    Nexcom Co., Ltd.
    Filename         : csu_Ethernet_cm.c
-   Version          : 00.08
+   Version          : 00.09
    Description      : CM 코어 체계 이더넷(Raw UDP) 연동통제안 및 프로토콜 구현
    Programmer       : Kim Jeonghwan
-   Last Updated     : 2026. 06. 26. (컴파일 에러 픽스 - 중괄호 오타 수정)
+   Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 변수 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 26. - 컴파일 에러 픽스 (buildAndSendUdpPacket 닫는 중괄호 오타 수정)
  * 2026. 06. 24. - 파일명 리팩토링 (_cm 분리)
  * 2026. 06. 23. - 체계 연동통제안(ICD) 상태머신 및 메시지 처리 구현
@@ -26,10 +27,10 @@ static uint8_t s_ucTxPktDescIdx = 0U;
 
 /* 공유 데이터 전역 변수 */
 stEthAppState xEthApp = {
-    .txData = {0.0f, 0U, 0U, 0U},
-    .rxData = {0.0f, 0U, 0U, 0U},
-    .realPcMac = {ETH_PC_MAC0, ETH_PC_MAC1, ETH_PC_MAC2, ETH_PC_MAC3, ETH_PC_MAC4, ETH_PC_MAC5},
-    .lastRxSrcPort = 0U
+    .txData = {0.0f, 0U, 0U, 0U}, // 송신용 데이터 0으로 명시적 초기화
+    .rxData = {0.0f, 0U, 0U, 0U}, // 수신용 데이터 0으로 명시적 초기화
+    .realPcMac = {ETH_PC_MAC0, ETH_PC_MAC1, ETH_PC_MAC2, ETH_PC_MAC3, ETH_PC_MAC4, ETH_PC_MAC5}, // 기본 통제기 MAC 주소로 배열 초기화 (ARP를 통해 추후 동적 갱신됨)
+    .lastRxSrcPort = 0U // 초기 송신 포트 미지정 상태 (0 할당 시 기본 포트 사용)
 };
 
 /* 이더넷 활동(Tx/Rx) LED 표시용 타이머 (1ms 주기 감소) */

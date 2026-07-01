@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Led.h
-    Version          : 00.06
+    Version          : 00.07
     Description      : 시스템 상태 표시 LED 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 30. (eLED_nG 할당 핀 번호 변경: 31 -> 145)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 30. - eLED_nG 매핑 핀 번호를 145로 변경 (기존 31)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 15. - stLed 구조체의 비트필드(총 24비트로 C2000 16비트 경계 초과 버그 유발) 제거 및 일반 자료형 변경
@@ -52,11 +53,11 @@ typedef enum
  */
 typedef struct
 {
-    uint16_t Index;       // GPIO Index (eLed 타입 저장)
-    uint16_t Time;        // Toggle 주기 설정
-    uint16_t Temp;        // 카운트 다운용 임시 변수
-    uint16_t State;       // 현재 점등 상태 (LED_ON: 0, LED_OFF: 1)
-    uint16_t Toggle;      // 토글 모드 활성 (LED_NONE: 0, LED_TOGGLE: 1)
+    uint16_t Index;       // LED가 연결된 GPIO 핀 번호 (eLed 열거형 값 할당)
+    uint16_t Time;        // LED 점멸(토글) 주기 설정값 (100ms 단위, 예: 4 = 500ms)
+    uint16_t Temp;        // 점멸 주기를 계산하기 위한 내부 카운트다운 타이머 변수
+    uint16_t State;       // LED의 현재 점등 상태 (0: LED_ON, 1: LED_OFF, Active Low 기준)
+    uint16_t Toggle;      // LED 점멸 모드 활성화 상태 (1: LED_TOGGLE, 0: LED_NONE)
 } stLed;
 
 /**

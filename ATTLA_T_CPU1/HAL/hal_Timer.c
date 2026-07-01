@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Timer.c
-    Version          : 00.00
+    Version          : 00.01
     Description      : CPU 타이머 하드웨어 제어
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 11. (주석 표준화 및 레거시 코드 정리)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
  */
@@ -46,29 +47,29 @@ void Initial_TIMER(void)
 	//	  
 	// 각 CPU 타이머 인터럽트의 ISR 등록
 	//    
-	Interrupt_register(INT_TIMER0, &isr_CpuTimer0);
-    Interrupt_register(INT_TIMER1, &isr_CpuTimer1);
-    Interrupt_register(INT_TIMER2, &isr_CpuTimer2);
+	Interrupt_register(INT_TIMER0, &isr_CpuTimer0); // 초고속 작업을 위한 100us 타이머 0 인터럽트 벡터 연결
+    Interrupt_register(INT_TIMER1, &isr_CpuTimer1); // 백그라운드 태스크 시간 측정용 1ms 타이머 1 인터럽트 벡터 연결
+    Interrupt_register(INT_TIMER2, &isr_CpuTimer2); // 시스템 주파수 모니터링용 1s 타이머 2 인터럽트 벡터 연결
 
 	//
 	// 디바이스 주변 장치를 초기화합니다. 여기서는 CPU 타이머만 초기화합니다.
 	//
-	initCPUTimers();
+	initCPUTimers(); // 타이머 레지스터 초기화 및 프리스케일러(1분주) 설정, 타이머 정지 대기 상태 진입
 
 	//
 	// CPU 타이머 0, 1, 2가 각각 100us, 1ms, 1000ms 주기로 인터럽트를 발생하도록 구성합니다.
 	//
-	configCPUTimer(CPUTIMER0_BASE, DEVICE_SYSCLK_FREQ, 100.0f);	 	// 100 us
-	configCPUTimer(CPUTIMER1_BASE, DEVICE_SYSCLK_FREQ, 1000.0f);		// 1 ms
-	configCPUTimer(CPUTIMER2_BASE, DEVICE_SYSCLK_FREQ, 1000000.0f);	// 1000 ms
+	configCPUTimer(CPUTIMER0_BASE, DEVICE_SYSCLK_FREQ, 100.0f);	 	// 100 us 주기 설정
+	configCPUTimer(CPUTIMER1_BASE, DEVICE_SYSCLK_FREQ, 1000.0f);		// 1 ms 주기 설정
+	configCPUTimer(CPUTIMER2_BASE, DEVICE_SYSCLK_FREQ, 1000000.0f);	// 1000 ms (1s) 주기 설정
 
 	//
 	// CPU 타이머 0, 1, 2에 연결된 CPU 인터럽트들을 활성화합니다.
 	// PIE에서 TINT0(Group 1, Interrupt 7)을 활성화합니다.
 	//
-	Interrupt_enable(INT_TIMER0);
-	Interrupt_enable(INT_TIMER1);
-	Interrupt_enable(INT_TIMER2);
+	Interrupt_enable(INT_TIMER0); // 타이머 0 인터럽트 활성화
+	Interrupt_enable(INT_TIMER1); // 타이머 1 인터럽트 활성화
+	Interrupt_enable(INT_TIMER2); // 타이머 2 인터럽트 활성화
 
 	//
 	// CPU 타이머 0, 1, 2를 구동(카운트 시작)합니다.

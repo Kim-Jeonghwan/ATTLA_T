@@ -1,15 +1,16 @@
 /**********************************************************************
    Nexcom Co., Ltd.
    Filename         : csu_Ipc_cpu1.c
-   Version          : 00.00
+   Version          : 00.01
    Description      : CM Core IPC 통신 프로토콜 및 공유 메모리 구현
    Programmer       : Kim Jeonghwan
-   Last Updated     : 2026. 06. 23. (MSGRAM 영역 포인터 매핑 및 수신 공유 변수 할당)
+   Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 23. - MSGRAM 영역 포인터 매핑 및 수신 공유 변수 할당
  */
 
@@ -20,4 +21,4 @@ volatile stIpcDataPacket *pxDataCpu1ToCm = (volatile stIpcDataPacket *)IPC_CPU1_
 volatile stIpcDataPacket *pxDataCmToCpu1 = (volatile stIpcDataPacket *)IPC_CM_TO_CPU1_MSGRAM_ADDR;
 
 /* CM→CPU1 수신 공유 변수 */
-volatile stEthRxData xEthRxData = {0U, 0U};
+volatile stEthRxData xEthRxData = {0U, 0U}; // 수신 시퀀스 번호 및 예약 필드 0으로 초기화

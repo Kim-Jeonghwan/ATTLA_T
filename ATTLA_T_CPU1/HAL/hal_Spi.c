@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Spi.c
-    Version          : 00.07
+    Version          : 00.08
     Description      : SPI 통신 하드웨어 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 26. (SPI-B 및 SPI-C 핀맵 MUX 설정 변경)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 26. - SPI-B 및 SPI-C 통신 핀맵 재할당 (GPIO 63~66, 70, 71)
  * 2026. 06. 17. - 수동 CS 오해로 인한 SPI_enableTriWire 설정 제거 (W6100 및 FRAM 수신 에러 해결)
  * 2026. 06. 15. - cs_sel, spi_read_byte 등 W6100 전용 외부 콜백 함수에 spia_ 접두어 추가
@@ -51,10 +52,10 @@ static void InitSpid(void);
     - FRAM용 SPI-D 모듈 초기화를 호출합니다.
 */
 void Initial_SPI(void) {
-	InitSpia(); // W6100
-    InitSpib(); // Motor Driver
-    InitSpic(); // SSI
-    InitSpid(); // FRAM
+	InitSpia(); // W6100 이더넷 컨트롤러용 SPI-A 초기화 (10MHz, 8-bit, Mode 0)
+    InitSpib(); // Motor Driver (DRV8343) 제어용 SPI-B 초기화 (1MHz, 16-bit, Mode 1)
+    InitSpic(); // SSI 엔코더(AksIM-2) 데이터 수신용 SPI-C 초기화 (2.5MHz, 16-bit, Mode 2)
+    InitSpid(); // 비휘발성 메모리(FRAM) 제어용 SPI-D 초기화 (1MHz, 8-bit, Mode 3)
 }
 
 /* ========================================================================================================

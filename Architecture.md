@@ -60,18 +60,18 @@
 - **동작 전류**: 최대 1.0 A
 - **제어 핀**: `DSP_BRAKE` (GPIO 35, Active High - High 출력 시 브레이크 잠금 해제, Low 출력 시 기계적 잠금 유지)
 - **로직 구현 (전자식 브레이크 시퀀스)**: `csu_MotorCtrl.c`의 `MotorCtrl_Run()`(100us ISR) 내 상태 머신으로 구현됨.
-  - **기동 시퀀스 (`RELEASING`)**: 구동 명령 시 브레이크 해제(High) 출력과 동시에 모터 제자리를 유지하기 위한 토크(PID)를 인가하며 150ms(`BRAKE_RELEASE_DELAY_MS`) 대기 후 `FREE` 상태로 전환.
-  - **정지 시퀀스 (`ENGAGING`)**: 정지 명령 수신 후 속도가 0에 근접(1.0 RPM 미만)하면 브레이크 체결(Low) 출력 후 100ms(`BRAKE_ENGAGE_DELAY_MS`) 대기. 대기 완료 시 토크(전류 PID) 출력을 차단(Servo Off)하여 `LOCKED` 상태로 전이.
+  - **기동 시퀀스 (`RELEASING`)**: 구동 명령 시 브레이크 해제(High) 출력과 동시에 모터 제자리를 유지하기 위한 토크(PID)를 인가하며 150ms(`xMotorCtrlLimit.brakeReleaseDelayMs`) 대기 후 `FREE` 상태로 전환.
+  - **정지 시퀀스 (`ENGAGING`)**: 정지 명령 수신 후 속도가 0에 근접(1.0 RPM 미만)하면 브레이크 체결(Low) 출력 후 100ms(`xMotorCtrlLimit.brakeEngageDelayMs`) 대기. 대기 완료 시 토크(전류 PID) 출력을 차단(Servo Off)하여 `LOCKED` 상태로 전이.
 - **회로 구성**: DSP(3.3V) ➡️ NPN TR(MMBT489LT1G) ➡️ TLP293(광절연) ➡️ P-Ch MOSFET(SPD15P10PLGBTMA1) ➡️ 24V 브레이크 구동. 역기전력 방어용 쇼트키 다이오드(V8PAM10HM3/I) 탑재.
 - **모니터링**: 브레이크용 TMCS1126 개별 전류 센서를 통해 동작 및 고장 상태 진단.
 
 ### 2.4 리미트 스위치 오프셋 차단 및 전류 억제 로직
-- **에러 판단 지연**: 스위치 동시 감지 또는 단선 오류 발생 시 즉각 정지하지 않고, 노이즈 필터링을 위해 100us 주기로 50ms(`SENSOR_ERROR_TIME_MS`) 이상 결함 상태가 지속될 때만 Fault로 처리(`MOTOR_MODE_FAULT_STOP` 강제 전환).
-- **오프셋 제한 거리 (LIMIT_OFFSET_COUNT)**: 
+- **에러 판단 지연**: 스위치 동시 감지 또는 단선 오류 발생 시 즉각 정지하지 않고, 노이즈 필터링을 위해 100us 주기로 50ms(`xLimitSwitchLimit.sensorErrorTimeMs`) 이상 결함 상태가 지속될 때만 Fault로 처리(`MOTOR_MODE_FAULT_STOP` 강제 전환).
+- **오프셋 제한 거리 (`xLimitSwitchLimit.offsetCount`)**: 
   - 스위치 감지 시점의 엔코더 위치를 `limitBasePos`로 래치하고, 해당 시점부터 진입 방향으로 설정된 제한 거리(1000.0f) 초과 진입 시 지령을 원천 차단(해당 방향의 허용 전류 한도를 0.0f로 클램핑).
-  - 반대(탈출) 방향 이동 시 전류 한도는 정상 100% 한도(`LIMIT_CURRENT_MAX/MIN`)로 자동 복구됨.
-- **안전 전류 억제 (LIMIT_CURRENT_RATIO)**: 리미트 스위치가 눌려 오프셋 거리 이내에서 진입 중인 경우, 기구적 충돌 및 부하 최소화를 위해 진입 방향의 구속 전류 한도를 정상 최대치의 25%(`LIMIT_CURRENT_RATIO`) 수준으로 즉시 제한.
-- **진동 방지 (Dead-zone)**: 스위치가 해제('0')될 때, 감지된 기준 위치로부터 `LIMIT_DEADZONE_COUNT`(100.0f) 이상 반대 방향으로 충분히 빠져나오지 못했다면 기계적 진동으로 간주하여 오프셋 래치 상태를 초기화하지 않음.
+  - 반대(탈출) 방향 이동 시 전류 한도는 정상 100% 한도(`xMotorCtrlLimit.currentMax`/`Min`)로 자동 복구됨.
+- **안전 전류 억제 (`xMotorCtrlLimit.currentRatio`)**: 리미트 스위치가 눌려 오프셋 거리 이내에서 진입 중인 경우, 기구적 충돌 및 부하 최소화를 위해 진입 방향의 구속 전류 한도를 정상 최대치의 25%(`xMotorCtrlLimit.currentRatio`) 수준으로 즉시 제한.
+- **진동 방지 (Dead-zone)**: 스위치가 해제('0')될 때, 감지된 기준 위치로부터 `xLimitSwitchLimit.deadzoneCount`(100.0f) 이상 반대 방향으로 충분히 빠져나오지 못했다면 기계적 진동으로 간주하여 오프셋 래치 상태를 초기화하지 않음.
 
 - **모터 구동 및 제어 연산 방식 (`csu_MotorCtrl`)**:
   - **제어 주기**: 100us (EPWM1 인터럽트 기반 동적 주기 제어)
@@ -86,9 +86,9 @@
     - 기존 100us 미분 시 발생하는 이산 노이즈를 억제하기 위해 **1ms 분주(Decimation)** 로직 적용 (`DECIMATION_SPEED_CTRL`).
     - 연산식: `posDiff * MOTOR_SCALE_SPEED_RPM` (166.6667f, (1/0.001)*60/360)
   - **PID 제어 루프 (3-Stage Cascade) 및 제약 (Soft Limit)** (`csu_Pid` 범용 제어기 적용):
-    - **위치 지령 클램핑**: 체계 명령 또는 목표 위치(`targetPosition`)는 `LIMIT_POS_MIN` (0.0f) ~ `LIMIT_POS_MAX` (15840.0f, 44바퀴 × 360°) 범위 내로 강제 제한됨.
-    - **위치 제어기 (`posPid`)**: **PD 제어** 적용. dt=0.005s (`PID_POS_DT`, 5ms 분주 `DECIMATION_POS_CTRL`: 5U, 5ms / 1ms) / 출력 제한 `LIMIT_SPEED_MAX` (±3240.0 RPM)
-    - **속도 제어기 (`speedPid`)**: **PI-IP 혼합 제어** 적용(`Ks` 계수 연동). dt=0.001s (`PID_SPD_DT`, 1ms 분주 `DECIMATION_SPEED_CTRL`: 10U, 1ms / 100us) / 출력 제한 `LIMIT_CURRENT_MAX` (±9.34 A)
+    - **위치 지령 클램핑**: 체계 명령 또는 목표 위치(`targetPosition`)는 `xMotorCtrlLimit.posMin` (0.0f) ~ `xMotorCtrlLimit.posMax` (15840.0f, 44바퀴 × 360°) 범위 내로 강제 제한됨.
+    - **위치 제어기 (`posPid`)**: **PD 제어** 적용. dt=0.005s (`PID_POS_DT`, 5ms 분주 `DECIMATION_POS_CTRL`: 5U, 5ms / 1ms) / 출력 제한 `xMotorCtrlLimit.speedMax` (±3240.0 RPM)
+    - **속도 제어기 (`speedPid`)**: **PI-IP 혼합 제어** 적용(`Ks` 계수 연동). dt=0.001s (`PID_SPD_DT`, 1ms 분주 `DECIMATION_SPEED_CTRL`: 10U, 1ms / 100us) / 출력 제한 `xMotorCtrlLimit.currentMax` (±9.34 A)
     - **전류 제어기 (`currPid`)**: **PI 제어** 적용. dt=0.0001s (`PID_CURR_DT`) / 출력 제한 `-MOTOR_DUTY_MAX` ~ `+MOTOR_DUTY_MAX` (±100.0f %) (**부호 연산 기반 4상한 제어**)
     - **제어 파라미터 전역 튜닝 (`xPidGain`)**: 실시간 제어 튜닝을 위해 3단 제어기의 파라미터(Kp, Ki, Kd, Ks)가 매크로 하드코딩에서 벗어나 `xPidGain` 전역 구조체(`xPidGain.pos.Kp`, `xPidGain.spd.Ki` 등)로 통합 관리되어 매 제어 루프 반영됨.
     - **제어 순서**: 위치 지령 ➡️ `posPid` ➡️ 목표 속도 ➡️ `speedPid` ➡️ 목표 전류량 ➡️ `currPid` (절댓값 변환 없이 부호 유지) ➡️ 최종 목표 Duty 도출.
@@ -134,14 +134,15 @@
 | **보드 온도** | ADCB SOC3 (B3) | MAX6605 내부 온도 센서. -55℃ ~ +125℃. 수식: `(V_in * 84.033613f) - 55.0f` |
 
 ### 3.3 내장 테스트 (BIT) 결함 임계치 및 Fail-Safe (Fault Limits)
-- **모터 과전류 (OVC_MOT)**: `10.0 A` 임계치.
-- **브레이크 과전류 (OVC_BRK)**: `1.5 A` 임계치.
-- **28V 과전압 (OVV_28V)**: `32.0 V` 임계치.
-- **보드 과열 (OVT_BD)**: `80.0 ℃` 임계치.
-- **모터 과속 (OVS_MOT)**: 모터 정격과 동일한 `3240.0 RPM` 임계치. (100ms 지연 필터)
-- **모터 구속 (STALL)**: 전류가 `5.0 A` 초과이면서 속도가 `10 RPM` 미만으로 유지될 때. (기구적 끼임 사고 대비, 1.0초 지연 필터)
+> 💡 이제 모든 BIT 임계값은 하드코딩 매크로에서 `xBitLimit` 구조체(`stBitLimit`) 기반으로 변경되어 실시간 디버깅 및 튜닝이 가능합니다.
+- **모터 과전류 (OVC_MOT)**: `xBitLimit.ovcMotMax` (기본 `10.0 A`) 임계치.
+- **브레이크 과전류 (OVC_BRK)**: `xBitLimit.ovcBrkMax` (기본 `1.5 A`) 임계치.
+- **28V 과전압 (OVV_28V)**: `xBitLimit.ovv28VMax` (기본 `32.0 V`) 임계치.
+- **보드 과열 (OVT_BD)**: `xBitLimit.ovtBdMax` (기본 `80.0 ℃`) 임계치.
+- **모터 과속 (OVS_MOT)**: `xBitLimit.speedMotMax` (기본 정격 `3240.0 RPM`) 임계치. (100ms 지연 필터)
+- **모터 구속 (STALL)**: 전류가 `xBitLimit.stallCurrMin` (`5.0 A`) 초과이면서 속도가 `xBitLimit.stallRpmLimit` (`10.0 RPM`) 미만으로 유지될 때. (기구적 끼임 사고 대비, 1.0초 지연 필터)
 - **엔코더 및 드라이버 결함**: 통신 에러 및 DRV8343 하드웨어 폴트 감지 (디바운싱 후 즉각 반영).
-  > 💡 **참고**: 각 고장 판정에는 일시적 노이즈에 의한 오탐지를 방지하기 위해 누적 지연 필터 카운터(예: `BIT_CNT_FILTER_REF` 100ms)가 적용되어 있으며, 최종 결함 확정 시 `xBit.faultFlagSet`이 세트되어 구동기가 즉시 차단(Fail-Safe)됩니다.
+  > 💡 **참고**: 각 고장 판정에는 일시적 노이즈에 의한 오탐지를 방지하기 위해 누적 지연 필터 카운터(예: `xBitLimit.cntFilterRef` 100ms)가 적용되어 있으며, 최종 결함 확정 시 `xBit.faultFlagSet`이 세트되어 구동기가 즉시 차단(Fail-Safe)됩니다.
 
 ---
 

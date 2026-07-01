@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Encoder.c
-    Version          : 00.07
+    Version          : 00.08
     Description      : AksIM-2 엔코더 어플리케이션 기능 처리 모듈
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 30. (FRAM CRC-16 도입 및 안전 인터락 반영)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 30. - FRAM CRC-16 계산(CCITT) 및 저장/로드 로직 추가
  * 2026. 06. 30. - Encoder_SetZero 시 안전 인터락(MotorCtrl_IsSafeToZeroSet) 검증 로직 반영
  * 2026. 06. 12. - 롤오버 및 스케일 매직넘버 상수화하여 헤더(.h)로 분리 (글로벌 룰 적용)
@@ -46,16 +47,16 @@ static uint16_t Encoder_CalcCrc16(const uint8_t* data, uint16_t length);
 void Encoder_Init(void)
 {
     // 구조체 명시적 초기화
-    xEncoder.fullFrame = 0;
-    xEncoder.rawPos = 0;
-    xEncoder.errBit = 0;
-    xEncoder.warnBit = 0;
-    xEncoder.crcRecv = 0;
-    xEncoder.crcCalc = 0;
-    xEncoder.offset = 0;
-    xEncoder.position = 0;
-    xEncoder.angleDeg = 0.0f;
-    xEncoder.isValid = false;
+    xEncoder.fullFrame = 0;      // 64비트 전체 수신 프레임 0으로 초기화
+    xEncoder.rawPos = 0;         // 34비트 위치 원시값 0으로 초기화
+    xEncoder.errBit = 0;         // 에러 비트 기본값 0(에러 상태) 초기화
+    xEncoder.warnBit = 0;        // 경고 비트 기본값 0 초기화
+    xEncoder.crcRecv = 0;        // 수신된 CRC 값 0으로 초기화
+    xEncoder.crcCalc = 0;        // 자체 계산 CRC 값 0으로 초기화
+    xEncoder.offset = 0;         // 영점 오프셋 값 0으로 초기화
+    xEncoder.position = 0;       // 최종 연산된 위치값 0으로 초기화
+    xEncoder.angleDeg = 0.0f;    // 환산 기계각 0.0도로 초기화
+    xEncoder.isValid = false;    // 데이터 유효성 기본값 비유효(false)로 초기화
 
     // HAL 초기화 호출 (SPI-C 설정 및 100ms 지연)
     Encoder_Init_Hardware();

@@ -1,24 +1,38 @@
-# 작업 목록 (Task List)
+# 상세 주석 추가 작업 트래커 (ATTLA_T)
 
-- [ ] `csu_Bit.h` / `csu_Bit.c` 리팩토링
-  - [ ] `stBitLimit` 구조체 정의 및 상세 주석 작성
-  - [ ] 전역 변수 `xBitLimit` 선언
-  - [ ] 기존 매크로 상수 제거
-  - [ ] `Bit_Init()`에서 구조체 변수 초기화
-  - [ ] `csu_Bit.c` 로직 내 매크로를 구조체 변수로 치환
+- `[x]` Phase 1: CPU1 코어 CSU 계층
+  - `[x]` csu_Adc
+  - `[x]` csu_Bit
+  - `[x]` csu_Control
+  - `[x]` csu_Debug
+  - `[x]` csu_Dio
+  - `[x]` csu_Encoder
+  - `[x]` csu_Ipc_cpu1
+  - `[x]` csu_Led
+  - `[x]` csu_LimitSwitch
+  - `[x]` csu_MotorCtrl
+  - `[x]` csu_MotorDriver
+  - `[x]` csu_Pid
+  - `[x]` csu_SciPc
 
-- [ ] `csu_LimitSwitch.h` / `csu_LimitSwitch.c` 리팩토링
-  - [ ] `stLimitSwitchLimit` 구조체 정의 및 상세 주석 작성
-  - [ ] 전역 변수 `xLimitSwitchLimit` 선언
-  - [ ] 기존 매크로 상수 제거 (틱 변환 매크로 포함)
-  - [ ] `LimitSwitch_Init()`에서 구조체 변수 초기화
-  - [ ] 관련 로직(`LimitSwitch_CheckFaults` 등) 내 매크로를 구조체 변수 및 직접 연산으로 치환
+- `[/]` Phase 2: CPU1 코어 HAL 계층
+  - `[x]` hal_Adc
+  - `[x]` hal_Common
+  - `[x]` hal_Debug
+  - `[x]` hal_DspInit
+  - `[x]` hal_Encoder
+  - `[x]` hal_Epwm
+  - `[x]` hal_Fram
+  - `[x]` hal_Ipc_cpu1
+  - `[x]` hal_MotorDriver
+  - `[x]` hal_Ramfuncs
+  - `[x]` hal_Sci
+  - `[x]` hal_Spi
+  - `[x]` hal_Timer
 
-- [ ] `csu_MotorCtrl.h` / `csu_MotorCtrl.c` 리팩토링
-  - [ ] `stMotorLimit` 구조체 정의 및 상세 주석 작성
-  - [ ] 전역 변수 `xMotorLimit` 선언
-  - [ ] 기존 매크로 상수 제거 (틱 변환 매크로 포함)
-  - [ ] `MotorCtrl_Init()`에서 구조체 변수 초기화
-  - [ ] `MotorCtrl_Run()` 및 `csu_Pid.c` 호출부의 매크로를 구조체 변수 참조로 치환
-
-- [ ] `walkthrough.md` 작성 및 보고
+- `[x]` Phase 3: CM 코어 CSU & HAL 계층
+  - `[x]` csu_Ethernet_cm
+  - `[x]` csu_Ipc_cm
+  - `[x]` hal_Ethernet_cm
+  - `[x]` hal_Ipc_cm
+  - `[x]` hal_Timer_cm

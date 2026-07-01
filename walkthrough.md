@@ -1,35 +1,50 @@
-# 구현 완료 리포트: 매크로 상수의 디버그 튜닝용 구조체 변환 (Walkthrough)
+# 주석 추가 및 리팩토링 구현 완료 리포트
 
-## 1. 개요 (Overview)
-사용자의 `plan.md` 승인 지시에 따라, 기존에 `#define`으로 하드코딩되어 있던 시스템 한계값 및 튜닝용 매크로 상수들을 CCS 디버거에서 실시간으로 변경하고 테스트할 수 있도록 전역 변수(구조체) 형태로 전환하는 작업을 완료하였습니다. 각 모듈의 독립성을 유지하기 위해 `Option 1` 방식을 채택하여 모듈별로 튜닝 구조체를 분리 적용했습니다.
+## 1. 개요
+사용자의 요청에 따라 `ATTLA_T` 프로젝트의 CPU1 코어 및 CM 코어에 속한 모든 CSU, HAL 계층 모듈(단, W6100 관련 모듈 제외)에 대해 **구조체 변수 상세 한글 주석 추가 및 초기화 구문 주석 보강**을 성공적으로 완료하였습니다.
 
-## 2. 변경된 주요 파일 (Modified Files)
-
-### 2.1 BIT 결함 진단 임계값 리팩토링
-- **[csu_Bit.h](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_Bit.h) / [csu_Bit.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_Bit.c)**
-  - 기존 과전류, 과열, 스톨, 과속 판단 등에 사용되던 매크로 상수들을 주석 처리하고 `stBitLimit` 구조체를 신규 정의했습니다.
-  - 전역 변수 `xBitLimit`를 선언하고, `Bit_Init()` 함수 내부에서 기존 매크로와 동일한 값으로 멤버들을 초기화하도록 코드를 추가했습니다.
-  - 전류/전압/속도 체크 함수들 내부의 판단 로직을 매크로 상수에서 `xBitLimit.xxx` 형태로 치환했습니다.
-
-### 2.2 리미트 스위치 감지 설정 리팩토링
-- **[csu_LimitSwitch.h](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_LimitSwitch.h) / [csu_LimitSwitch.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_LimitSwitch.c)**
-  - 오프셋/데드존 거리 제한 및 센서 결함 지연시간 상수들을 주석 처리하고 `stLimitSwitchLimit` 구조체를 신규 정의했습니다.
-  - 전역 변수 `xLimitSwitchLimit`를 선언하고, `LimitSwitch_Init()`에서 기본값 튜닝 세팅을 부여했습니다.
-  - 제어 루프 내부에서 스위치 거리 및 지연 시간을 판단하는 로직을 구조체 멤버로 치환했습니다.
-
-### 2.3 모터 제어 소프트 리미트 리팩토링
-- **[csu_MotorCtrl.h](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_MotorCtrl.h) / [csu_MotorCtrl.c](file:///d:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/CSU/csu_MotorCtrl.c)**
-  - 모터의 위치, 속도, 전류 상/하한선 및 브레이크 딜레이 시퀀스 타이머 매크로 상수들을 `stMotorCtrlLimit` 구조체로 변경했습니다.
-  - 전역 변수 `xMotorCtrlLimit`를 선언하고 `MotorCtrl_Init()`에서 해당 값들을 초기화했습니다.
-  - `PID_Init()` 시 적용되는 출력 리미트 및 런타임에 동적으로 변경되는 전류 구속 로직(`LIMIT_CURRENT_RATIO` 등)에 `xMotorCtrlLimit` 멤버 변수를 연동시켰습니다.
-
-## 3. 유의 사항 (Important Notes)
 > [!NOTE]
-> PID 계수 제어를 위한 `xPidGain`과 목표 위치/속도 제어를 위한 `xMotorCtrl` 구조체는 기존에도 전역 변수 형태로 잘 구성되어 있었으므로, 별도 수정 없이 유지되었습니다.
+> GEMINI 코딩 규칙에 맞추어 모든 변경 사항에는 `Modification History`를 갱신하였으며, 파일 상단 헤더 버전을 일관되게 증가시켰습니다.
 
-## 4. 검증 항목 (Verification Checklist)
-- [ ] **빌드 무결성 확인**: CCS 환경에서 Rebuild를 수행하여 문법 오류나 정의 누락 에러가 없는지 확인합니다.
-- [ ] **실시간 디버그 튜닝 테스트**: 
-  - 코드를 플래싱한 뒤 Debug 모드에 진입합니다.
-  - CCS Expressions 뷰 창에 `xBitLimit`, `xLimitSwitchLimit`, `xMotorCtrlLimit`, `xPidGain`, `xMotorCtrl` 변수를 등록합니다.
-  - 장비 구동 중 `xBitLimit.ovcMotMax`나 `xMotorCtrlLimit.posMax` 등의 값을 변경하여 실시간으로 리미트 동작이나 제어 반응이 바뀌는지 확인해 주십시오.
+## 2. 주요 변경 사항 요약
+
+### Phase 1: CPU1 코어 CSU 계층
+- `csu_AdcCtrl`
+- `csu_BIT`
+- `csu_MotorCtrl` (이전 세션에서 완료)
+
+### Phase 2: CPU1 코어 HAL 계층
+아래 모듈들의 `.h` 및 `.c` 파일에 대한 주석 보강이 완료되었습니다.
+- `hal_Adc`
+- `hal_Common`
+- `hal_Debug`
+- `hal_DspInit`
+- `hal_Encoder`
+- `hal_Epwm`
+- `hal_Fram`
+- `hal_Ipc_cpu1`
+- `hal_MotorDriver`
+- `hal_Ramfuncs`
+- `hal_Sci`
+- `hal_Spi`
+- `hal_Timer`
+
+### Phase 3: CM 코어 CSU & HAL 계층
+ARM Cortex-M4F 기반의 CM 코어 모듈들에 대해서도 꼼꼼하게 주석을 반영하였습니다.
+- `csu_Ethernet_cm`
+- `csu_Ipc_cm`
+- `hal_Ethernet_cm`
+- `hal_Ipc_cm`
+- `hal_Timer_cm`
+
+## 3. 세부 작업 내역
+- **구조체 변수 주석**: 단위(Unit), 스케일(Scale 팩터), 상태값, 플래그의 명확한 용도 등을 설명하는 구체적인 한국어 주석을 모든 구조체 멤버 변수(예: `stEthControl`, `stIpcDataPacket`, `stTimer` 등) 우측에 추가하였습니다.
+- **초기화 구문 주석**: 구조체나 전역 변수를 `0` 또는 기본값으로 초기화하는 구문(예: `memset` 등)이 포함된 `_Init()` 함수나 전역 선언부 위쪽에 초기화의 목적(예: 쓰레기값 방지, 상태 플래그 리셋 등)을 상세히 설명하는 주석을 추가하였습니다.
+- **버전 및 이력 관리**: 각 파일의 최상단 주석 블록에서 `Version`을 명시적으로 `00.01`씩 증가시켰고, `Modification History` 섹션에 수정 날짜와 내용("구조체 변수 상세 한글 주석 추가" 등)을 일관되게 기록하였습니다.
+
+## 4. 후속 작업 제안 및 확인 사항
+> [!IMPORTANT]
+> 모든 코드는 정적 분석 및 동작에 영향을 주지 않는 주석(Comment) 범위 내에서만 수정되었으나, 변경된 파일이 많으므로 전체 빌드를 통해 문법 오류(Syntax Error)나 실수로 발생할 수 있는 오타가 없는지 한 번 점검을 권장합니다.
+
+- Code Composer Studio (CCS)를 사용하여 **CPU1** 및 **CM** 프로젝트의 클린 빌드를 수행해 주시기 바랍니다.
+- 기능 확인이 완료되면 현재까지의 변경 내역을 바탕으로 커밋 메시지 생성(`/456` 또는 `456` 입력)을 요청하실 수 있습니다.

@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.c
-    Version          : 00.16
+    Version          : 00.17
     Description      : 1x PWM 모드 기반 모터 제어 모듈
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 07. 01. (speedPid 구조체 멤버명 오타 수정)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 07. 01. - speedPid 구조체 멤버명(maxOut, minOut -> maxOutput, minOutput) 오타 수정
  * 2026. 06. 30. - 엔코더 영점 설정 안전 인터락 타이머(safeToZeroTimerTick) 로직 및 판단 함수 추가
  * 2026. 06. 30. - 전자식 브레이크 지연 시퀀스 (기동/정지 100us ISR 기준 딜레이) 추가
@@ -66,33 +67,33 @@ PID_Controller_t posPid;
 void MotorCtrl_Init(void)
 {
     // 구조체 명시적 초기화
-    xMotorCtrl.mode = MOTOR_MODE_STOP;
-    xMotorCtrl.targetSpeedRpm = 0.0f;
-    xMotorCtrl.targetPosition = 0.0f;
-    xMotorCtrl.currentSpeedRpm = 0.0f;
-    xMotorCtrl.currentPosition = 0.0f;
+    xMotorCtrl.mode = MOTOR_MODE_STOP;               // 초기 구동 모드를 완전 정지 상태로 설정
+    xMotorCtrl.targetSpeedRpm = 0.0f;                // 목표 속도 지령 0.0으로 초기화
+    xMotorCtrl.targetPosition = 0.0f;                // 목표 위치 지령 0.0으로 초기화
+    xMotorCtrl.currentSpeedRpm = 0.0f;               // 피드백 현재 속도 0.0으로 초기화
+    xMotorCtrl.currentPosition = 0.0f;               // 피드백 현재 위치 0.0으로 초기화
     
     // 브레이크 초기 상태
-    xMotorCtrl.brakeState = BRAKE_STATE_LOCKED;
-    xMotorCtrl.brakeTimerTick = 0U;
-    xMotorCtrl.safeToZeroTimerTick = 0U;
+    xMotorCtrl.brakeState = BRAKE_STATE_LOCKED;      // 초기 구동 시 물리적 브레이크 잠김 상태로 설정
+    xMotorCtrl.brakeTimerTick = 0U;                  // 브레이크 천이 딜레이 카운터 0으로 초기화
+    xMotorCtrl.safeToZeroTimerTick = 0U;             // 영점 설정 안전 대기 카운터 0으로 초기화
 
     // 튜닝 파라미터 초기화
-    xMotorCtrlLimit.posMin = 0.0f;
-    xMotorCtrlLimit.posMax = 15840.0f;
-    xMotorCtrlLimit.speedMax = 3240.0f;
-    xMotorCtrlLimit.speedMin = -3240.0f;
-    xMotorCtrlLimit.currentMax = 9.34f;
-    xMotorCtrlLimit.currentMin = -9.34f;
-    xMotorCtrlLimit.currentRatio = 0.25f;
-    xMotorCtrlLimit.brakeReleaseDelayMs = 150U;
-    xMotorCtrlLimit.brakeEngageDelayMs = 100U;
-    xMotorCtrlLimit.brakeReleaseTick100us = (150U * 10U);
-    xMotorCtrlLimit.brakeEngageTick100us = (100U * 10U);
-    xMotorCtrlLimit.safeZeroSetTick100us = 5000U;
+    xMotorCtrlLimit.posMin = 0.0f;                   // 기구부 최소 위치 0도(하한치) 셋업
+    xMotorCtrlLimit.posMax = 15840.0f;               // 기구부 최대 위치 44회전(15840도, 상한치) 셋업
+    xMotorCtrlLimit.speedMax = 3240.0f;              // 정방향 최대 소프트 리미트 속도 3240 RPM 셋업
+    xMotorCtrlLimit.speedMin = -3240.0f;             // 역방향 최대 소프트 리미트 속도 -3240 RPM 셋업
+    xMotorCtrlLimit.currentMax = 9.34f;              // 정방향 최대 소프트 리미트 전류 9.34A 셋업
+    xMotorCtrlLimit.currentMin = -9.34f;             // 역방향 최대 소프트 리미트 전류 -9.34A 셋업
+    xMotorCtrlLimit.currentRatio = 0.25f;            // 리미트 감지 시 구속 전류 제한을 정격의 25%로 억제 설정
+    xMotorCtrlLimit.brakeReleaseDelayMs = 150U;      // 브레이크 해제 시 기계적 딜레이 150ms 셋업
+    xMotorCtrlLimit.brakeEngageDelayMs = 100U;       // 브레이크 체결 시 기계적 딜레이 100ms 셋업
+    xMotorCtrlLimit.brakeReleaseTick100us = (150U * 10U); // 150ms를 100us 루프 틱 수(1500틱)로 환산
+    xMotorCtrlLimit.brakeEngageTick100us = (100U * 10U);  // 100ms를 100us 루프 틱 수(1000틱)로 환산
+    xMotorCtrlLimit.safeZeroSetTick100us = 5000U;    // 완전 정지 확인 안전 대기 시간을 500ms(5000틱)로 셋업
 
     // 하위 Driver 상태 초기화
-    MotorDriver_Init();
+    MotorDriver_Init();                              // DRV8343 모터 드라이버 하드웨어 초기화 래퍼 호출
     
     // PID 초기화 (Kp, Ki, Kd, Ks, dt, max_out, min_out)
     // 전류 제어기는 100us (0.0001s) 루프에서 동작 (표준 PI)

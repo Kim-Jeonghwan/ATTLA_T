@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.h
-    Version          : 00.09
+    Version          : 00.10
     Description      : 시스템 제어 모듈 (PBIT, CBIT, 오프셋 조정 등) 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 17. - 명명 규칙 위반 리팩토링 및 헤더 인클루드 수정
  * 2026. 06. 12. - 매크로 상수명 추상화: ADC_SCALE_REF_VOLT
@@ -30,11 +31,11 @@
 #define ADC_SCALE_REF_VOLT (3.0f / 4096.0f) // 3V 레퍼런스 기준 변환 상수
 
 typedef struct {
-    uint16_t isOffsetCalibrated;
-    uint16_t isPbitComplete;
-    uint16_t offsetCount;
-    float32_t sumMot;
-    float32_t sumBrk;
+    uint16_t isOffsetCalibrated; // 초기 오프셋 보정 완료 상태 플래그 (1: 완료)
+    uint16_t isPbitComplete;     // PBIT(초기 점검) 통과 상태 플래그 (1: 통과)
+    uint16_t offsetCount;        // 1초간 누적하는 오프셋 샘플 카운터
+    float32_t sumMot;            // 모터 전류 오프셋 누적 합계 변수
+    float32_t sumBrk;            // 브레이크 전류 오프셋 누적 합계 변수
 } stControlState;
 
 extern volatile stControlState xSysCtrl;

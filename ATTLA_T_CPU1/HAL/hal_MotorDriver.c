@@ -1,15 +1,16 @@
 /**********************************************************************
  Nexcom Co., Ltd.
  Filename         : hal_MotorDriver.c
- Version          : 00.01
+ Version          : 00.02
  Description      : DRV8343 모터 드라이버 하드웨어 초기화 및 SPI 통신
  Programmer       : Kim Jeonghwan
- Last Updated     : 2026. 06. 15. (SPI 초기화 로직 hal_Spi.c로 분리)
+ Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 15. - SPI 초기화 코드를 hal_Spi.c (InitSpib)로 분리 및 이관
  * 2026. 06. 11. - DRV_ENABLE GPIO 2 제어 로직 추가 (unresolved symbol 에러 해결)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
@@ -32,11 +33,11 @@ void MotorDriver_Init_Hardware(void)
     // 1. GPIO 핀 설정 (EN_GATE)
     //-----------------------------------------------------------------------
     // GPIO 2: DRV_ENABLE (Active High 출력)
-    GPIO_setDirectionMode(DRV8343_EN_GATE_PIN, GPIO_DIR_MODE_OUT);
-    GPIO_setPadConfig(DRV8343_EN_GATE_PIN, GPIO_PIN_TYPE_STD);
-    GPIO_setMasterCore(DRV8343_EN_GATE_PIN, GPIO_CORE_CPU1);
+    GPIO_setDirectionMode(DRV8343_EN_GATE_PIN, GPIO_DIR_MODE_OUT); // 모터 드라이버 활성화 핀 출력 모드
+    GPIO_setPadConfig(DRV8343_EN_GATE_PIN, GPIO_PIN_TYPE_STD); // 표준 푸시풀 출력 설정
+    GPIO_setMasterCore(DRV8343_EN_GATE_PIN, GPIO_CORE_CPU1); // 제어 주체를 CPU1으로 명시 할당
 
-    // DRV8343 wake up 대기
+    // DRV8343 wake up 대기 (데이터시트 권장 웨이크업 시간 확보)
     DEVICE_DELAY_US(2000U);
 
     //-----------------------------------------------------------------------
@@ -44,12 +45,12 @@ void MotorDriver_Init_Hardware(void)
     //-----------------------------------------------------------------------
     uint16_t ctrl2 = MotorDriver_ReadReg(DRV8343_REG_CONTROL_2);
     
-    // Bits 6:5 (PWM_MODE) 클리어 후 10b (1x PWM) 설정
+    // Bits 6:5 (PWM_MODE) 클리어 후 10b (1x PWM) 설정 - 하나의 PWM 신호로 3상 인버터 제어
     ctrl2 &= ~(0x03U << 5);
     ctrl2 |= DRV8343_CTRL2_PWM_MODE_1X;
     
-    MotorDriver_WriteReg(DRV8343_REG_CONTROL_2, ctrl2);
-    DEVICE_DELAY_US(10U);
+    MotorDriver_WriteReg(DRV8343_REG_CONTROL_2, ctrl2); // 설정값 드라이버 칩에 기록
+    DEVICE_DELAY_US(10U); // 레지스터 기록 후 반영 지연시간 대기
 }
 
 /*

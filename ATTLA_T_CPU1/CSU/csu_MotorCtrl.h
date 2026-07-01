@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.h
-    Version          : 00.10
+    Version          : 00.11
     Description      : 1x PWM 모드 기반 모터 제어 모듈 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 30. (엔코더 영점 설정 안전 인터락 타이머 추가)
+    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 30. - 엔코더 영점 설정 안전 인터락 타이머 변수 및 함수 추가
  * 2026. 06. 30. - 전자식 브레이크 시퀀스 상태 및 매크로 상수 추가
  * 2026. 06. 30. - 리미트 스위치 감지 시 전류 제한 비율(LIMIT_CURRENT_RATIO) 매크로 추가
@@ -36,18 +37,18 @@
 
 // 모터 제어 디버깅 튜닝 파라미터 구조체
 typedef struct {
-    float32_t posMin;                 // 기구부 최소 각도 (0도)
-    float32_t posMax;                 // 기구부 최대 각도 (44바퀴 * 360도)
-    float32_t speedMax;               // 최대 동작 속도 (RPM)
-    float32_t speedMin;               // 최소 동작 속도 (RPM)
-    float32_t currentMax;             // 최대 동작 전류 (A)
-    float32_t currentMin;             // 최소 동작 전류 (A)
-    float32_t currentRatio;           // 리미트 진입 시 구속 전류 제한 비율 (Max 대비 25%)
-    uint16_t brakeReleaseDelayMs;     // 브레이크 해제(Brake OFF) 후 모터 기동 대기 시간 (ms)
-    uint16_t brakeEngageDelayMs;      // 정지 판단 후 브레이크 체결(Brake ON) 대기 시간 (ms)
-    uint16_t brakeReleaseTick100us;   // 브레이크 해제 딜레이 100us 틱 수
-    uint16_t brakeEngageTick100us;    // 브레이크 체결 딜레이 100us 틱 수
-    uint16_t safeZeroSetTick100us;    // 영점 설정 안전 인터락 타이머 (500ms = 5000 * 100us)
+    float32_t posMin;                 // 기구부 최소 허용 동작 각도 (단위: Degree, 기본 0도)
+    float32_t posMax;                 // 기구부 최대 허용 동작 각도 (단위: Degree, 예: 44회전 * 360도 = 15840도)
+    float32_t speedMax;               // 정방향(Positive) 최대 허용 동작 속도 (단위: RPM)
+    float32_t speedMin;               // 역방향(Negative) 최대 허용 동작 속도 (단위: RPM, 음수값)
+    float32_t currentMax;             // 정방향(Positive) 최대 허용 동작 전류 (단위: A)
+    float32_t currentMin;             // 역방향(Negative) 최대 허용 동작 전류 (단위: A, 음수값)
+    float32_t currentRatio;           // 리미트 영역 진입 시 충돌 방지를 위해 제한할 구속 전류 비율 (예: Max 대비 25%)
+    uint16_t brakeReleaseDelayMs;     // 브레이크 물리적 해제(Brake OFF) 완료까지 대기할 지연 시간 (단위: ms)
+    uint16_t brakeEngageDelayMs;      // 모터 정지 상태 판단 후 물리적 브레이크 체결(Brake ON)까지 대기할 지연 시간 (단위: ms)
+    uint16_t brakeReleaseTick100us;   // 브레이크 해제 지연 시간을 100us 단위 루프 틱 수로 환산한 값 (예: 150ms = 1500틱)
+    uint16_t brakeEngageTick100us;    // 브레이크 체결 지연 시간을 100us 단위 루프 틱 수로 환산한 값 (예: 100ms = 1000틱)
+    uint16_t safeZeroSetTick100us;    // 엔코더 영점 설정 전, 완전 정지 상태가 500ms(5000틱) 유지되었는지 검증하기 위한 안전 인터락 타이머 한도
 } stMotorCtrlLimit;
 
 extern stMotorCtrlLimit xMotorCtrlLimit;
@@ -76,16 +77,16 @@ extern stMotorCtrlLimit xMotorCtrlLimit;
 
 // --- PID 파라미터 전역 변수 구조체 (디버거 실시간 튜닝용) ---
 typedef struct {
-    float32_t Kp;
-    float32_t Ki;
-    float32_t Kd;
-    float32_t Ks;
+    float32_t Kp;       // 비례(Proportional) 제어 이득(Gain) 계수
+    float32_t Ki;       // 적분(Integral) 제어 이득(Gain) 계수
+    float32_t Kd;       // 미분(Derivative) 제어 이득(Gain) 계수
+    float32_t Ks;       // PI-IP 제어 등 특수 혼합 제어용 비례-적분 분배 계수(Scale)
 } stPidParam;
 
 typedef struct {
-    stPidParam pos;     // 위치 제어 (PD)
-    stPidParam spd;     // 속도 제어 (PI-IP)
-    stPidParam curr;    // 전류 제어 (PI)
+    stPidParam pos;     // 위치 제어 루프용 PID 파라미터 (주로 PD 제어 적용)
+    stPidParam spd;     // 속도 제어 루프용 PID 파라미터 (주로 PI-IP 혼합 제어 적용)
+    stPidParam curr;    // 전류 제어 루프용 PID 파라미터 (주로 표준 PI 제어 적용)
 } stPidGain;
 
 extern stPidGain xPidGain;
@@ -109,18 +110,18 @@ typedef enum {
 
 // 상태 변수 구조체
 typedef struct {
-    MotorControlMode_t mode;
-    float32_t targetSpeedRpm;
-    float32_t targetPosition;
-    float32_t currentSpeedRpm;
-    float32_t currentPosition;
+    MotorControlMode_t mode;          // 현재 설정된 모터 제어 운용 모드 (정지, 속도, 위치, 고장정지 등)
+    float32_t targetSpeedRpm;         // 목표(Target) 구동 속도 지령 (단위: RPM)
+    float32_t targetPosition;         // 목표(Target) 구동 위치 지령 (단위: Degree)
+    float32_t currentSpeedRpm;        // 엔코더 피드백으로부터 계산된 현재 실제 모터 속도 (단위: RPM)
+    float32_t currentPosition;        // 엔코더 피드백으로부터 환산된 현재 실제 모터 기계각 위치 (단위: Degree)
     
     // 전자식 브레이크 타이머용 변수
-    BrakeState_t brakeState;
-    uint16_t brakeTimerTick;
+    BrakeState_t brakeState;          // 전자식 브레이크 현재 시퀀스 상태 (LOCKED, RELEASING, FREE, ENGAGING)
+    uint16_t brakeTimerTick;          // 브레이크 상태 천이(해제/체결) 시 딜레이 대기를 위한 100us 누적 틱 카운터
     
     // 영점 설정 안전 타이머 (500ms 유지)
-    uint16_t safeToZeroTimerTick;
+    uint16_t safeToZeroTimerTick;     // 모터 완전 정지 상태를 누적 카운트하여 영점 설정 안전 여부를 확인하는 타이머 (100us 틱)
 } stMotorCtrlState;
 
 extern stMotorCtrlState xMotorCtrl;

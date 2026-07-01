@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_SciPc.c
-    Version          : 00.02
+    Version          : 00.03
     Description      : PC 인터페이스 통신 (SCI_PC) 프로토콜 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (코딩 규칙 및 구조 불일치 사항 리팩토링 반영)
+    Last Updated     : 2026. 07. 01. (송신 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 송신 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
  * 2026. 06. 12. - 내부 온도 센서 미사용에 따른 관련 변수 및 로직 제거
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
@@ -76,19 +77,19 @@ void sendSciPcMessage1(void)
     uint16_t CheckSum = 0u;
 
     /* 1. 헤더 구성 */
-    Buf[pos++] = SCI_PC_SOF;           // Buf[0]: 0x7E (SOF)
-    Buf[pos++] = SCI_PC_MSG1;          // Buf[1]: 0x10 (Msg ID)
-    Buf[pos++] = 0u;                   // Buf[2]: Length (계산 전 임시 기입)
+    Buf[pos++] = SCI_PC_SOF;           // Buf[0]: 0x7E (SOF, Start Of Frame 패킷 시작을 알리는 특수 문자)
+    Buf[pos++] = SCI_PC_MSG1;          // Buf[1]: 0x10 (Msg ID, 해당 패킷이 MSG1 임을 식별하는 아이디)
+    Buf[pos++] = 0u;                   // Buf[2]: Length (계산 전 임시 기입, 데이터 페이로드의 길이를 나타냄)
     
     /* 2. Sequence Number */
-    Buf[pos++] = (uint16_t)(xXmtSciPcMsg1.IncNumber++ & 0xFFu); // Buf[3]
+    Buf[pos++] = (uint16_t)(xXmtSciPcMsg1.IncNumber++ & 0xFFu); // Buf[3]: 0~255 순환 카운터로 패킷 유실을 감지하는 시퀀스 번호
 
     /* 3. Status (1 byte) */
-    Buf[pos++] = (uint16_t)(xXmtSciPcMsg1.Status & 0xFFu); // Buf[4]
+    Buf[pos++] = (uint16_t)(xXmtSciPcMsg1.Status & 0xFFu); // Buf[4]: PC로 전송할 MCU 내부의 현재 상태(결함 등) 플래그 바이트
 
     /* 4. DspTemp (uint16_t - 2 bytes, Little Endian) */
     // 내부 온도 센서 제거에 따른 0 전송
-    xXmtSciPcMsg1.DspTemp = 0u;
+    xXmtSciPcMsg1.DspTemp = 0u;                // 현재 미사용 필드이므로 쓰레기값을 방지하기 위해 0으로 고정 초기화
     on16.u16 = xXmtSciPcMsg1.DspTemp;
     Buf[pos++] = on16.byte.B0; // Low Byte (Buf[5])
     Buf[pos++] = on16.byte.B1; // High Byte (Buf[6])

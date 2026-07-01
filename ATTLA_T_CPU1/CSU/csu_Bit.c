@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Bit.c
-    Version          : 00.09
+    Version          : 00.10
     Description      : 1x PWM 구조용 간소화된 BIT 로직 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 30. (xDio 전원 및 폴트 참조 변수명 리팩토링)
+    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 30. - xDio 참조 변수명 리팩토링 (Pmn24V, DrvnFault 표기 적용)
  * 2026. 06. 12. - 과속 판단 기준을 3240 RPM으로 하향 조정
  * 2026. 06. 12. - 매크로 상수명 추상화: BIT_CNT_FILTER_REF 반영
@@ -37,22 +38,22 @@ stBitLimit xBitLimit;
  * @return   void
  */
 void Bit_Init(void) {
-  // 구조체 명시적 초기화
+  // 구조체 명시적 초기화: 모든 결함 플래그 및 카운트를 0으로 초기화
   Bit_FaultReset(1U);
   
   // BIT 디버깅 튜닝 파라미터 초기화
-  xBitLimit.ovcMotMax = 10.0f;
-  xBitLimit.ovcBrkMax = 1.5f;
-  xBitLimit.ovtBdMax = 80.0f;
-  xBitLimit.ovv28VMax = 32.0f;
-  xBitLimit.stallCurrMin = 5.0f;
-  xBitLimit.stallRpmLimit = 10.0f;
-  xBitLimit.stallTimeCnt = 10000U;
-  xBitLimit.speedMotMax = 3240.0f;
-  xBitLimit.speedMotMin = -3240.0f;
-  xBitLimit.ovsTimeCnt = 1000U;
-  xBitLimit.ovvBrkTimeCnt = 1000U;
-  xBitLimit.cntFilterRef = 1000U;
+  xBitLimit.ovcMotMax = 10.0f;       // 모터 과전류 임계값 10A 할당
+  xBitLimit.ovcBrkMax = 1.5f;        // 브레이크 과전류 임계값 1.5A 할당
+  xBitLimit.ovtBdMax = 80.0f;        // 보드 과열 임계값 80도 할당
+  xBitLimit.ovv28VMax = 32.0f;       // 28V 과전압 임계값 32V 할당
+  xBitLimit.stallCurrMin = 5.0f;     // 스톨 판단 최저 전류 5A 할당
+  xBitLimit.stallRpmLimit = 10.0f;   // 스톨 판단 최고 속도 10RPM 할당
+  xBitLimit.stallTimeCnt = 10000U;   // 스톨 반응 대기 시간 1.0초(100us * 10000) 할당
+  xBitLimit.speedMotMax = 3240.0f;   // 모터 정방향 과속 기준 3240 RPM 할당
+  xBitLimit.speedMotMin = -3240.0f;  // 모터 역방향 과속 기준 -3240 RPM 할당
+  xBitLimit.ovsTimeCnt = 1000U;      // 과속 상태 유지 판별 시간 100ms(100us * 1000) 할당
+  xBitLimit.ovvBrkTimeCnt = 1000U;   // 브레이크 전압 이상 유지 판별 시간 100ms(100us * 1000) 할당
+  xBitLimit.cntFilterRef = 1000U;    // 과전압/과전류/과열 100ms 누적 판단 기준 시간 할당
 }
 
 /**
@@ -253,20 +254,20 @@ void Bit_Encoder_Check(void) {
  */
 void Bit_FaultReset(Uint16 Data) {
   if (Data == 1U) {
-    xBit.informAll = 0U;
-    xBit.startFlagSet = 0U;
-    xBit.faultFlagSet = 0U;
+    xBit.informAll = 0U;            // 통합 비트맵 상태 초기화
+    xBit.startFlagSet = 0U;         // 시작 상태 플래그 초기화
+    xBit.faultFlagSet = 0U;         // 결함 유무 플래그 초기화
 
-    xBit.faultOvCurrMot = 0U;
-    xBit.faultOvCurrBrk = 0U;
-    xBit.faultOvTempBd = 0U;
-    xBit.faultOvVolt28V = 0U;
-    xBit.faultOvVoltBrk = 0U;
-    xBit.faultDrv8343nFault = 0U;
-    xBit.faultStall = 0U;
-    xBit.faultOverSpeed = 0U;
-    xBit.faultEncError = 0U;
-    xBit.warnEncWarning = 0U;
-    xBit.stallCheckCnt = 0U;
+    xBit.faultOvCurrMot = 0U;       // 모터 과전류 플래그 초기화
+    xBit.faultOvCurrBrk = 0U;       // 브레이크 과전류 플래그 초기화
+    xBit.faultOvTempBd = 0U;        // 보드 과열 플래그 초기화
+    xBit.faultOvVolt28V = 0U;       // 28V 과전압 플래그 초기화
+    xBit.faultOvVoltBrk = 0U;       // 브레이크 과전압 플래그 초기화
+    xBit.faultDrv8343nFault = 0U;   // 게이트 드라이버 결함 플래그 초기화
+    xBit.faultStall = 0U;           // 모터 스톨 결함 플래그 초기화
+    xBit.faultOverSpeed = 0U;       // 모터 과속 결함 플래그 초기화
+    xBit.faultEncError = 0U;        // 엔코더 에러 플래그 초기화
+    xBit.warnEncWarning = 0U;       // 엔코더 워닝 플래그 초기화
+    xBit.stallCheckCnt = 0U;        // 스톨 감지 타이머 초기화
   }
 }
