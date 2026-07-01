@@ -26,23 +26,23 @@
 
 #include "main_cpu1.h"
 
-// 기존 임계값 및 신규 임계값 정의
-#define BIT_LIMIT_OVC_MOT_MAX       10.0f    // 모터 과전류 (10A)
-#define BIT_LIMIT_OVC_BRK_MAX       1.5f     // 브레이크 과전류 (1.5A)
-#define BIT_LIMIT_OVT_BD_MAX        80.0f    // 보드 과열 (80도)
-#define BIT_LIMIT_OVV_28V_MAX       32.0f    // 28V 과전압 (32V)
+// BIT 디버깅 튜닝 파라미터 구조체
+typedef struct {
+    float32_t ovcMotMax;         // 모터 과전류 (10A)
+    float32_t ovcBrkMax;         // 브레이크 과전류 (1.5A)
+    float32_t ovtBdMax;          // 보드 과열 (80도)
+    float32_t ovv28VMax;         // 28V 과전압 (32V)
+    float32_t stallCurrMin;      // 스톨 판단 전류 하한치 (5.0A)
+    float32_t stallRpmLimit;     // 스톨 판단 속도 상한치 (10.0 RPM)
+    Uint16 stallTimeCnt;         // 스톨 반응 시간 (TDU 기준 1.0초, 100us * 10000)
+    float32_t speedMotMax;       // 모터 과속 제한 (3240 RPM)
+    float32_t speedMotMin;       // 모터 과속 제한 (-3240 RPM)
+    Uint16 ovsTimeCnt;           // 과속 감지 지연시간 (100ms, 100us * 1000)
+    Uint16 ovvBrkTimeCnt;        // 브레이크 전압 감지 지연시간 (100ms, 100us * 1000)
+    Uint16 cntFilterRef;         // 100ms 누적 필터 카운트 기준 (100us * 1000)
+} stBitLimit;
 
-// 신규 스톨 및 과속, 전원 감시 임계값 (헤더 집중화)
-#define BIT_LIMIT_STALL_CURR_MIN    5.0f     // 스톨 판단 전류 하한치 (5.0A)
-#define BIT_LIMIT_STALL_RPM_LIMIT   10.0f    // 스톨 판단 속도 상한치 (10.0 RPM)
-#define BIT_LIMIT_STALL_TIME_CNT    10000U   // 스톨 반응 시간 (TDU 기준 1.0초, 100us * 10000)
-
-#define BIT_LIMIT_SPEED_MOT_MAX     3240.0f  // 모터 과속 제한 (3240 RPM)
-#define BIT_LIMIT_SPEED_MOT_MIN     -3240.0f
-
-#define BIT_LIMIT_OVS_TIME_CNT      1000U    // 과속 감지 지연시간 (100ms, 100us * 1000)
-#define BIT_LIMIT_OVV_BRK_TIME_CNT  1000U    // 브레이크 전압 감지 지연시간 (100ms, 100us * 1000)
-#define BIT_CNT_FILTER_REF          1000U    // 100ms 누적 필터 카운트 기준 (100us * 1000)
+extern stBitLimit xBitLimit;
 
 typedef struct {
     Uint32 informAll;

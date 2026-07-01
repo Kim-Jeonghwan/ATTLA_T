@@ -1,15 +1,18 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_LimitSwitch.c
-    Version          : 00.00
+    Version          : 00.03
     Description      : 리미트 스위치 상태 감지 및 고장 진단 모듈 구현
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 22. (최초 작성)
+    Last Updated     : 2026. 06. 30. (xDio 참조 변수명 리팩토링 - Active Low 표기 적용)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 30. - xDio 참조 변수명 리팩토링 (Active Low 표기 적용)
+ * 2026. 06. 30. - Active Low(0U) 감지 기준으로 로직 전면 수정
+ * 2026. 06. 30. - 리미트 데드존 및 오프셋 제한 로직 구현 (100us ISR 기준 딜레이)
  * 2026. 06. 22. - 파일 생성 및 기본 구조 작성
  */
 
@@ -18,105 +21,166 @@
 // 리미트 스위치 데이터 전역 인스턴스
 stLimitSwitchConfig xLimitSwitchConfig;
 stLimitSwitchState xLimitSwitch;
+stLimitSwitchLimit xLimitSwitchLimit;
 
 /**
- * @brief      리미트 스위치 관리 모듈 초기화 (임시 기본값 셋업)
+ * @brief      리미트 스위치 관리 모듈 초기화 (기본 매핑 및 오프셋 초기화)
  * @param      void
  * @return     void
  */
 void LimitSwitch_Init(void)
 {
-    /* 
-     * [사용자 리뷰 필요(권장 초기값 미정)]
-     * 타겟 위치 및 범위(Tolerance)는 임의의 기본값입니다.
-     * 나중에 올바른 파라미터가 결정되면 아래 값들을 수정해야 합니다. 
-     */
-    xLimitSwitchConfig.targetPos1 = 0.0f;           // 목표 1 임의 기본값
-    xLimitSwitchConfig.targetPos2 = 15840.0f;       // 목표 2 임의 기본값 (기구부 최대 각도)
-    xLimitSwitchConfig.nearTolerance1 = 100.0f;     // 목표 1 근접 판정 범위 임의 기본값
-    xLimitSwitchConfig.nearTolerance2 = 100.0f;     // 목표 2 근접 판정 범위 임의 기본값
+    // 양방향 매핑 스위치 기본 설정 (추후 TBD)
+    xLimitSwitchConfig.mappedSwitchForPosDir = 1U; // 1번 스위치를 Positive 방향 제한으로 사용
+    xLimitSwitchConfig.mappedSwitchForNegDir = 2U; // 2번 스위치를 Negative 방향 제한으로 사용
     
-    // 1번 스위치를 Target 1에, 2번 스위치를 Target 2에 기본 매핑
-    xLimitSwitchConfig.mappedSwitchForTarget1 = 1U;
-    xLimitSwitchConfig.mappedSwitchForTarget2 = 2U;
-    
-    // 상태 초기화
+    // 상태 및 오프셋 초기화
     xLimitSwitch.isFaultActive = false;
     xLimitSwitch.faultCode = LS_FAULT_NONE;
+    
+    xLimitSwitch.activeDirection = 0U;
+    xLimitSwitch.isLimitReached = false;
+    xLimitSwitch.limitBasePos = 0.0f;
+    
+    // 튜닝 파라미터 초기화
+    xLimitSwitchLimit.offsetCount = 1000.0f;
+    xLimitSwitchLimit.deadzoneCount = 100.0f;
+    xLimitSwitchLimit.sensorErrorTimeMs = 50U;
+    xLimitSwitchLimit.sensorErrorTick100us = (50U * 10U);
 }
 
 /**
- * @brief      리미트 스위치 상태 주기적 점검 및 고장 판단 로직
+ * @brief      리미트 스위치 상태 주기적 점검 및 고장/오프셋 판단 로직 (100us ISR 주기 호출)
  * @param      void
  * @return     void
  */
 void LimitSwitch_CheckFaults(void)
 {
-    // 1. 물리적 단선 또는 고장 판단 (NO와 NC가 같으면 고장)
-    if (xDio.limit1No == xDio.limit1Nc)
+    static uint16_t errorTickCount = 0U; // 100us 주기로 누적되는 에러 카운터
+    
+    // 1. 단선 및 동시 감지 상태 평가 (물리적 신호 결함 점검)
+    bool isFaultCondition = false;
+    LimitSwitchFaultCode_t currentFault = LS_FAULT_NONE;
+    
+    // 스위치 1 NO-NC 단선 여부 점검 (둘 다 1이거나 0일 경우 결함)
+    if (xDio.nLimit1No == xDio.nLimit1Nc)
     {
-        xLimitSwitch.isFaultActive = true;
-        xLimitSwitch.faultCode = LS_FAULT_SW1_BROKEN;
-        return; // 즉시 리턴하여 메인 제어 루프에서 고장 조치하도록 함
+        isFaultCondition = true;
+        currentFault = LS_FAULT_SW1_BROKEN;
+    }
+    // 스위치 2 NO-NC 단선 여부 점검
+    else if (xDio.nLimit2No == xDio.nLimit2Nc)
+    {
+        isFaultCondition = true;
+        currentFault = LS_FAULT_SW2_BROKEN;
+    }
+    // 양방향 리미트 동시 감지 여부 점검 (물리적으로 불가능한 상황)
+    else if ((xDio.nLimit1No == 0U) && (xDio.nLimit2No == 0U))
+    {
+        isFaultCondition = true;
+        currentFault = LS_FAULT_SIMULTANEOUS;
+    }
+
+    // 에러 상태 유지 시간(SENSOR_ERROR_TIME_MS) 확인 (100us 루프 기준 SENSOR_ERROR_TICK_100US 사용)
+    if (isFaultCondition == true)
+    {
+        errorTickCount++;
+        if (errorTickCount >= xLimitSwitchLimit.sensorErrorTick100us)
+        {
+            xLimitSwitch.isFaultActive = true;
+            xLimitSwitch.faultCode = currentFault;
+            // 고장 시에는 리미트 오프셋 판단 로직을 무시하고 즉각적인 정지 조치가 취해지도록 리턴
+            return; 
+        }
+    }
+    else
+    {
+        // 정상 상태일 경우 카운터 및 폴트 초기화
+        errorTickCount = 0U;
+        xLimitSwitch.isFaultActive = false;
+        xLimitSwitch.faultCode = LS_FAULT_NONE;
     }
     
-    if (xDio.limit2No == xDio.limit2Nc)
-    {
-        xLimitSwitch.isFaultActive = true;
-        xLimitSwitch.faultCode = LS_FAULT_SW2_BROKEN;
-        return;
-    }
-    
-    // 2. 현재 모터 위치를 기반으로 한 논리 연동 점검
+    // 2. 오프셋 기반 제한 거리 판단 및 데드존 방어 로직
     float32_t currentPos = xMotorCtrl.currentPosition;
     
-    // ==========================================
-    // Target 1 평가 로직
-    // ==========================================
-    float32_t diff1 = currentPos - xLimitSwitchConfig.targetPos1;
-    bool isNearTarget1 = ((diff1 >= -xLimitSwitchConfig.nearTolerance1) && (diff1 <= xLimitSwitchConfig.nearTolerance1));
-    uint16_t mappedSwNo1 = (xLimitSwitchConfig.mappedSwitchForTarget1 == 1U) ? xDio.limit1No : xDio.limit2No;
+    // 현재 각 방향별 설정된 스위치 번호에 맞춰 NO 상태 획득
+    uint16_t posSwNo = (xLimitSwitchConfig.mappedSwitchForPosDir == 1U) ? xDio.nLimit1No : xDio.nLimit2No;
+    uint16_t negSwNo = (xLimitSwitchConfig.mappedSwitchForNegDir == 2U) ? xDio.nLimit2No : xDio.nLimit1No;
     
-    if (isNearTarget1 && (mappedSwNo1 != 1U))
+    // [Positive 방향 감지 시]
+    if (posSwNo == 0U)
     {
-        // 에러 조건: 목표 근처인데 매핑된 스위치 NO가 1이 아님
-        xLimitSwitch.isFaultActive = true;
-        xLimitSwitch.faultCode = LS_FAULT_POS1_MISMATCH;
-        return;
+        if (xLimitSwitch.activeDirection != 1U)
+        {
+            // 신규 진입 시 베이스 위치 갱신
+            xLimitSwitch.activeDirection = 1U;
+            xLimitSwitch.limitBasePos = currentPos;
+            xLimitSwitch.isLimitReached = false;
+        }
+        else
+        {
+            // 이미 진입된 상태일 경우 설정된 LIMIT_OFFSET_COUNT 초과 진입 비교 (양수 방향)
+            if ((currentPos - xLimitSwitch.limitBasePos) >= xLimitSwitchLimit.offsetCount)
+            {
+                xLimitSwitch.isLimitReached = true;
+            }
+            else
+            {
+                xLimitSwitch.isLimitReached = false;
+            }
+        }
     }
-    if (!isNearTarget1 && (mappedSwNo1 == 1U))
+    // [Negative 방향 감지 시]
+    else if (negSwNo == 0U)
     {
-        // 에러 조건: 목표에서 충분히 벗어났는데 매핑된 스위치 NO가 1임
-        xLimitSwitch.isFaultActive = true;
-        xLimitSwitch.faultCode = LS_FAULT_POS1_MISMATCH;
-        return;
+        if (xLimitSwitch.activeDirection != 2U)
+        {
+            // 신규 진입 시 베이스 위치 갱신
+            xLimitSwitch.activeDirection = 2U;
+            xLimitSwitch.limitBasePos = currentPos;
+            xLimitSwitch.isLimitReached = false;
+        }
+        else
+        {
+            // 이미 진입된 상태일 경우 설정된 LIMIT_OFFSET_COUNT 초과 진입 비교 (음의 방향 이동이므로 기준위치 - 현재위치)
+            if ((xLimitSwitch.limitBasePos - currentPos) >= xLimitSwitchLimit.offsetCount)
+            {
+                xLimitSwitch.isLimitReached = true;
+            }
+            else
+            {
+                xLimitSwitch.isLimitReached = false;
+            }
+        }
     }
-    
-    // ==========================================
-    // Target 2 평가 로직
-    // ==========================================
-    float32_t diff2 = currentPos - xLimitSwitchConfig.targetPos2;
-    bool isNearTarget2 = ((diff2 >= -xLimitSwitchConfig.nearTolerance2) && (diff2 <= xLimitSwitchConfig.nearTolerance2));
-    uint16_t mappedSwNo2 = (xLimitSwitchConfig.mappedSwitchForTarget2 == 2U) ? xDio.limit2No : xDio.limit1No;
-    
-    if (isNearTarget2 && (mappedSwNo2 != 1U))
+    // [스위치 해제 상태]
+    else
     {
-        // 에러 조건: 목표 근처인데 매핑된 스위치 NO가 1이 아님
-        xLimitSwitch.isFaultActive = true;
-        xLimitSwitch.faultCode = LS_FAULT_POS2_MISMATCH;
-        return;
+        // 데드존 방지 로직 적용: 진동에 의한 스위치 찰나의 해제 현상을 무시
+        if (xLimitSwitch.activeDirection == 1U)
+        {
+            // Positive 방향에서 탈출하는 상황 (현재 위치가 감소해야 함)
+            if ((xLimitSwitch.limitBasePos - currentPos) >= xLimitSwitchLimit.deadzoneCount)
+            {
+                xLimitSwitch.activeDirection = 0U;
+                xLimitSwitch.isLimitReached = false;
+            }
+        }
+        else if (xLimitSwitch.activeDirection == 2U)
+        {
+            // Negative 방향에서 탈출하는 상황 (현재 위치가 증가해야 함)
+            if ((currentPos - xLimitSwitch.limitBasePos) >= xLimitSwitchLimit.deadzoneCount)
+            {
+                xLimitSwitch.activeDirection = 0U;
+                xLimitSwitch.isLimitReached = false;
+            }
+        }
+        else
+        {
+            // 완전히 벗어난 평시 상태
+            xLimitSwitch.activeDirection = 0U;
+            xLimitSwitch.isLimitReached = false;
+        }
     }
-    if (!isNearTarget2 && (mappedSwNo2 == 1U))
-    {
-        // 에러 조건: 목표에서 충분히 벗어났는데 매핑된 스위치 NO가 1임
-        xLimitSwitch.isFaultActive = true;
-        xLimitSwitch.faultCode = LS_FAULT_POS2_MISMATCH;
-        return;
-    }
-    
-    // ==========================================
-    // 정상 상태
-    // ==========================================
-    xLimitSwitch.isFaultActive = false;
-    xLimitSwitch.faultCode = LS_FAULT_NONE;
 }

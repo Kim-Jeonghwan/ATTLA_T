@@ -1,20 +1,21 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Bit.c
-    Version          : 00.08
+    Version          : 00.09
     Description      : 1x PWM 구조용 간소화된 BIT 로직 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (과속 판단 기준 3240 RPM으로 하향 조정)
+    Last Updated     : 2026. 06. 30. (xDio 전원 및 폴트 참조 변수명 리팩토링)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 30. - xDio 참조 변수명 리팩토링 (Pmn24V, DrvnFault 표기 적용)
  * 2026. 06. 12. - 과속 판단 기준을 3240 RPM으로 하향 조정
  * 2026. 06. 12. - 매크로 상수명 추상화: BIT_CNT_FILTER_REF 반영
  * 2026. 06. 12. - 매크로 상수들을 헤더 파일로 이동하여 중복 제거
- * 2026. 06. 12. - PM_n24V 및 GateFault 점검 로직을 디바운싱된 xDio 변수 참조로 변경
- * 2026. 06. 11. - 신규 결함 진단(Stall, OverSpeed, Encoder) 함수 구현
+ * 2026. 06. 12. - PM_n24V 및 GateFault 점검 로직을 디바운싱된 xDio 변수 참조로
+ * 변경 2026. 06. 11. - 신규 결함 진단(Stall, OverSpeed, Encoder) 함수 구현
  * 2026. 06. 11. - PM_n24V 및 GateFault 점검에 Driverlib(GPIO_readPin) 적용
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 상태 변수들을 stBitState 구조체(xBit)로 통합
@@ -23,11 +24,11 @@
  * 2026. 06. 11. - 함수명 접두어(csu_, hal_) 제거 리팩토링
  */
 
-
 #include "csu_Bit.h"
 
 // Global variables used in this project
 stBitState xBit;
+stBitLimit xBitLimit;
 
 /**
  * @function Bit_Init
@@ -35,10 +36,23 @@ stBitState xBit;
  * @param    void
  * @return   void
  */
-void Bit_Init(void)
-{
-    // 구조체 명시적 초기화
-    Bit_FaultReset(1U);
+void Bit_Init(void) {
+  // 구조체 명시적 초기화
+  Bit_FaultReset(1U);
+  
+  // BIT 디버깅 튜닝 파라미터 초기화
+  xBitLimit.ovcMotMax = 10.0f;
+  xBitLimit.ovcBrkMax = 1.5f;
+  xBitLimit.ovtBdMax = 80.0f;
+  xBitLimit.ovv28VMax = 32.0f;
+  xBitLimit.stallCurrMin = 5.0f;
+  xBitLimit.stallRpmLimit = 10.0f;
+  xBitLimit.stallTimeCnt = 10000U;
+  xBitLimit.speedMotMax = 3240.0f;
+  xBitLimit.speedMotMin = -3240.0f;
+  xBitLimit.ovsTimeCnt = 1000U;
+  xBitLimit.ovvBrkTimeCnt = 1000U;
+  xBitLimit.cntFilterRef = 1000U;
 }
 
 /**
@@ -47,44 +61,37 @@ void Bit_Init(void)
  * @param    void
  * @return   void
  */
-void Bit_OvCurrent_Check(void)
-{
-    static Uint16 BitCnt_Mot = 0U;
-    static Uint16 BitCnt_Brk = 0U;
+void Bit_OvCurrent_Check(void) {
+  static Uint16 BitCnt_Mot = 0U;
+  static Uint16 BitCnt_Brk = 0U;
 
-    // 모터 과전류 체크
-    if (xAdc.isenMotLpf > BIT_LIMIT_OVC_MOT_MAX)
-    {
-        if (BitCnt_Mot > BIT_CNT_FILTER_REF)
-        {
-            xBit.faultOvCurrMot = 1U;
-            xBit.faultFlagSet = 1U;
-            xBit.informAll |= 0x00000100U;
-            BitCnt_Mot = 0U;
-        }
-        else BitCnt_Mot++;
-    }
-    else
-    {
-        if (BitCnt_Mot > 0U) BitCnt_Mot--;
-    }
+  // 모터 과전류 체크
+  if (xAdc.isenMotLpf > xBitLimit.ovcMotMax) {
+    if (BitCnt_Mot > xBitLimit.cntFilterRef) {
+      xBit.faultOvCurrMot = 1U;
+      xBit.faultFlagSet = 1U;
+      xBit.informAll |= 0x00000100U;
+      BitCnt_Mot = 0U;
+    } else
+      BitCnt_Mot++;
+  } else {
+    if (BitCnt_Mot > 0U)
+      BitCnt_Mot--;
+  }
 
-    // 브레이크 과전류 체크
-    if (xAdc.isenBrkLpf > BIT_LIMIT_OVC_BRK_MAX)
-    {
-        if (BitCnt_Brk > BIT_CNT_FILTER_REF)
-        {
-            xBit.faultOvCurrBrk = 1U;
-            xBit.faultFlagSet = 1U;
-            xBit.informAll |= 0x00000200U;
-            BitCnt_Brk = 0U;
-        }
-        else BitCnt_Brk++;
-    }
-    else
-    {
-        if (BitCnt_Brk > 0U) BitCnt_Brk--;
-    }
+  // 브레이크 과전류 체크
+  if (xAdc.isenBrkLpf > xBitLimit.ovcBrkMax) {
+    if (BitCnt_Brk > xBitLimit.cntFilterRef) {
+      xBit.faultOvCurrBrk = 1U;
+      xBit.faultFlagSet = 1U;
+      xBit.informAll |= 0x00000200U;
+      BitCnt_Brk = 0U;
+    } else
+      BitCnt_Brk++;
+  } else {
+    if (BitCnt_Brk > 0U)
+      BitCnt_Brk--;
+  }
 }
 
 /**
@@ -93,25 +100,21 @@ void Bit_OvCurrent_Check(void)
  * @param    void
  * @return   void
  */
-void Bit_OvTemperature_Check(void)
-{
-    static Uint16 BitCnt_Bd = 0U;
+void Bit_OvTemperature_Check(void) {
+  static Uint16 BitCnt_Bd = 0U;
 
-    if (xAdc.tsenBdLpf > BIT_LIMIT_OVT_BD_MAX)
-    {
-        if (BitCnt_Bd > BIT_CNT_FILTER_REF)
-        {
-            xBit.faultOvTempBd = 1U;
-            xBit.faultFlagSet = 1U;
-            xBit.informAll |= 0x00000800U;
-            BitCnt_Bd = 0U;
-        }
-        else BitCnt_Bd++;
-    }
-    else
-    {
-        if (BitCnt_Bd > 0U) BitCnt_Bd--;
-    }
+  if (xAdc.tsenBdLpf > xBitLimit.ovtBdMax) {
+    if (BitCnt_Bd > xBitLimit.cntFilterRef) {
+      xBit.faultOvTempBd = 1U;
+      xBit.faultFlagSet = 1U;
+      xBit.informAll |= 0x00000800U;
+      BitCnt_Bd = 0U;
+    } else
+      BitCnt_Bd++;
+  } else {
+    if (BitCnt_Bd > 0U)
+      BitCnt_Bd--;
+  }
 }
 
 /**
@@ -120,44 +123,37 @@ void Bit_OvTemperature_Check(void)
  * @param    void
  * @return   void
  */
-void Bit_OvVoltage_Check(void)
-{
-    static Uint16 BitCnt_28V = 0U;
-    static Uint16 BitCnt_Brk24V = 0U;
+void Bit_OvVoltage_Check(void) {
+  static Uint16 BitCnt_28V = 0U;
+  static Uint16 BitCnt_Brk24V = 0U;
 
-    // 28V 과전압 감시
-    if (xAdc.vsen28VLpf > BIT_LIMIT_OVV_28V_MAX)
-    {
-        if (BitCnt_28V > BIT_CNT_FILTER_REF)
-        {
-            xBit.faultOvVolt28V = 1U;
-            xBit.faultFlagSet = 1U;
-            xBit.informAll |= 0x00001000U;
-            BitCnt_28V = 0U;
-        }
-        else BitCnt_28V++;
-    }
-    else
-    {
-        if (BitCnt_28V > 0U) BitCnt_28V--;
-    }
+  // 28V 과전압 감시
+  if (xAdc.vsen28VLpf > xBitLimit.ovv28VMax) {
+    if (BitCnt_28V > xBitLimit.cntFilterRef) {
+      xBit.faultOvVolt28V = 1U;
+      xBit.faultFlagSet = 1U;
+      xBit.informAll |= 0x00001000U;
+      BitCnt_28V = 0U;
+    } else
+      BitCnt_28V++;
+  } else {
+    if (BitCnt_28V > 0U)
+      BitCnt_28V--;
+  }
 
-    // 신규 PM_n24V 브레이크 전압 감시 (Active Low, 디바운싱 필터 적용)
-    if (xDio.pm24V == 0U)
-    {
-        if (BitCnt_Brk24V > BIT_LIMIT_OVV_BRK_TIME_CNT)
-        {
-            xBit.faultOvVoltBrk = 1U;
-            xBit.faultFlagSet = 1U;
-            xBit.informAll |= 0x00002000U;
-            BitCnt_Brk24V = 0U;
-        }
-        else BitCnt_Brk24V++;
-    }
-    else
-    {
-        if (BitCnt_Brk24V > 0U) BitCnt_Brk24V--;
-    }
+  // 신규 PM_n24V 브레이크 전압 감시 (Active Low, 디바운싱 필터 적용)
+  if (xDio.Pmn24V == 0U) {
+    if (BitCnt_Brk24V > xBitLimit.ovvBrkTimeCnt) {
+      xBit.faultOvVoltBrk = 1U;
+      xBit.faultFlagSet = 1U;
+      xBit.informAll |= 0x00002000U;
+      BitCnt_Brk24V = 0U;
+    } else
+      BitCnt_Brk24V++;
+  } else {
+    if (BitCnt_Brk24V > 0U)
+      BitCnt_Brk24V--;
+  }
 }
 
 /**
@@ -166,45 +162,44 @@ void Bit_OvVoltage_Check(void)
  * @param    void
  * @return   void
  */
-void Bit_GateFault_Check(void)
-{
-    // DRV8343 nFAULT 확인 로직
-    // nFAULT 핀은 Active Low 이므로 '0'일 때 에러 상태입니다.
-    // 디바운싱 처리된 xDio.drvFault 변수를 참조합니다.
-    if (xDio.drvFault == 0U)
-    {
-        xBit.faultDrv8343nFault = 1U;
-        xBit.faultFlagSet = 1U;
-        xBit.informAll |= 0x00010000U;
-    }
+void Bit_GateFault_Check(void) {
+  // DRV8343 nFAULT 확인 로직
+  // nFAULT 핀은 Active Low 이므로 '0'일 때 에러 상태입니다.
+  // 디바운싱 처리된 xDio.DrvnFault 변수를 참조합니다.
+  if (xDio.DrvnFault == 0U) {
+    xBit.faultDrv8343nFault = 1U;
+    xBit.faultFlagSet = 1U;
+    xBit.informAll |= 0x00010000U;
+  }
 }
 
 /**
  * @function Bit_MotorStall_Check
- * @brief    모터의 스톨 상태 감지 (전류 5A 초과 및 속도 10 RPM 미만이 1.0초 지속)
+ * @brief    모터의 스톨 상태 감지 (전류 5A 초과 및 속도 10 RPM 미만이 1.0초
+ * 지속)
  * @param    void
  * @return   void
  */
-void Bit_MotorStall_Check(void)
-{
-    float32_t currentAbs = (xAdc.isenMotLpf < 0.0f) ? -xAdc.isenMotLpf : xAdc.isenMotLpf;
-    float32_t speedAbs = (xMotorCtrl.currentSpeedRpm < 0.0f) ? -xMotorCtrl.currentSpeedRpm : xMotorCtrl.currentSpeedRpm;
+void Bit_MotorStall_Check(void) {
+  float32_t currentAbs =
+      (xAdc.isenMotLpf < 0.0f) ? -xAdc.isenMotLpf : xAdc.isenMotLpf;
+  float32_t speedAbs = (xMotorCtrl.currentSpeedRpm < 0.0f)
+                           ? -xMotorCtrl.currentSpeedRpm
+                           : xMotorCtrl.currentSpeedRpm;
 
-    if (currentAbs > BIT_LIMIT_STALL_CURR_MIN && speedAbs < BIT_LIMIT_STALL_RPM_LIMIT)
-    {
-        if (xBit.stallCheckCnt > BIT_LIMIT_STALL_TIME_CNT)
-        {
-            xBit.faultStall = 1U;
-            xBit.faultFlagSet = 1U;
-            xBit.informAll |= 0x00020000U;
-            xBit.stallCheckCnt = 0U;
-        }
-        else xBit.stallCheckCnt++;
-    }
-    else
-    {
-        if (xBit.stallCheckCnt > 0U) xBit.stallCheckCnt--;
-    }
+  if (currentAbs > xBitLimit.stallCurrMin &&
+      speedAbs < xBitLimit.stallRpmLimit) {
+    if (xBit.stallCheckCnt > xBitLimit.stallTimeCnt) {
+      xBit.faultStall = 1U;
+      xBit.faultFlagSet = 1U;
+      xBit.informAll |= 0x00020000U;
+      xBit.stallCheckCnt = 0U;
+    } else
+      xBit.stallCheckCnt++;
+  } else {
+    if (xBit.stallCheckCnt > 0U)
+      xBit.stallCheckCnt--;
+  }
 }
 
 /**
@@ -213,25 +208,22 @@ void Bit_MotorStall_Check(void)
  * @param    void
  * @return   void
  */
-void Bit_MotorOverSpeed_Check(void)
-{
-    static Uint16 BitCnt_OvSpeed = 0U;
-    
-    if (xMotorCtrl.currentSpeedRpm > BIT_LIMIT_SPEED_MOT_MAX || xMotorCtrl.currentSpeedRpm < BIT_LIMIT_SPEED_MOT_MIN)
-    {
-        if (BitCnt_OvSpeed > BIT_LIMIT_OVS_TIME_CNT)
-        {
-            xBit.faultOverSpeed = 1U;
-            xBit.faultFlagSet = 1U;
-            xBit.informAll |= 0x00040000U;
-            BitCnt_OvSpeed = 0U;
-        }
-        else BitCnt_OvSpeed++;
-    }
-    else
-    {
-        if (BitCnt_OvSpeed > 0U) BitCnt_OvSpeed--;
-    }
+void Bit_MotorOverSpeed_Check(void) {
+  static Uint16 BitCnt_OvSpeed = 0U;
+
+  if (xMotorCtrl.currentSpeedRpm > xBitLimit.speedMotMax ||
+      xMotorCtrl.currentSpeedRpm < xBitLimit.speedMotMin) {
+    if (BitCnt_OvSpeed > xBitLimit.ovsTimeCnt) {
+      xBit.faultOverSpeed = 1U;
+      xBit.faultFlagSet = 1U;
+      xBit.informAll |= 0x00040000U;
+      BitCnt_OvSpeed = 0U;
+    } else
+      BitCnt_OvSpeed++;
+  } else {
+    if (BitCnt_OvSpeed > 0U)
+      BitCnt_OvSpeed--;
+  }
 }
 
 /**
@@ -240,20 +232,17 @@ void Bit_MotorOverSpeed_Check(void)
  * @param    void
  * @return   void
  */
-void Bit_Encoder_Check(void)
-{
-    if (xEncoder.errBit == 0U)
-    {
-        xBit.faultEncError = 1U;
-        xBit.faultFlagSet = 1U;
-        xBit.informAll |= 0x00080000U;
-    }
-    
-    if (xEncoder.warnBit == 0U)
-    {
-        xBit.warnEncWarning = 1U;
-        xBit.informAll |= 0x00100000U;
-    }
+void Bit_Encoder_Check(void) {
+  if (xEncoder.errBit == 0U) {
+    xBit.faultEncError = 1U;
+    xBit.faultFlagSet = 1U;
+    xBit.informAll |= 0x00080000U;
+  }
+
+  if (xEncoder.warnBit == 0U) {
+    xBit.warnEncWarning = 1U;
+    xBit.informAll |= 0x00100000U;
+  }
 }
 
 /**
@@ -262,24 +251,22 @@ void Bit_Encoder_Check(void)
  * @param    Data : 1U 인 경우 리셋 실행
  * @return   void
  */
-void Bit_FaultReset(Uint16 Data)
-{
-    if (Data == 1U)
-    {
-        xBit.informAll = 0U;
-        xBit.startFlagSet = 0U;
-        xBit.faultFlagSet = 0U;
+void Bit_FaultReset(Uint16 Data) {
+  if (Data == 1U) {
+    xBit.informAll = 0U;
+    xBit.startFlagSet = 0U;
+    xBit.faultFlagSet = 0U;
 
-        xBit.faultOvCurrMot = 0U;
-        xBit.faultOvCurrBrk = 0U;
-        xBit.faultOvTempBd = 0U;
-        xBit.faultOvVolt28V = 0U;
-        xBit.faultOvVoltBrk = 0U;
-        xBit.faultDrv8343nFault = 0U;
-        xBit.faultStall = 0U;
-        xBit.faultOverSpeed = 0U;
-        xBit.faultEncError = 0U;
-        xBit.warnEncWarning = 0U;
-        xBit.stallCheckCnt = 0U;
-    }
+    xBit.faultOvCurrMot = 0U;
+    xBit.faultOvCurrBrk = 0U;
+    xBit.faultOvTempBd = 0U;
+    xBit.faultOvVolt28V = 0U;
+    xBit.faultOvVoltBrk = 0U;
+    xBit.faultDrv8343nFault = 0U;
+    xBit.faultStall = 0U;
+    xBit.faultOverSpeed = 0U;
+    xBit.faultEncError = 0U;
+    xBit.warnEncWarning = 0U;
+    xBit.stallCheckCnt = 0U;
+  }
 }

@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_DspInit.c
-    Version          : 00.13
+    Version          : 00.14
     Description      : DSP 초기화 및 GPIO/인터럽트 기본 설정
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 26. (시스템 제어 및 스위치 GPIO 핀 매직넘버 상수화)
+    Last Updated     : 2026. 06. 30. (GPIO 145 제어권 CPU1으로 회수 및 명칭 변경)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 30. - GPIO 145 제어권을 CPU1으로 회수 및 LED_nG 용도로 변경
  * 2026. 06. 26. - 시스템 제어 및 스위치 입력/출력 핀 할당 매직넘버 상수화 적용
  * 2026. 06. 26. - 하드웨어 스위치 및 브레이크 제어 핀맵 재할당 (GPIO 73, 74, 76~80)
  * 2026. 06. 24. - EMAC 관련 17개 핀에 대해 CM 코어로 제어권 이양 추가
@@ -423,12 +424,11 @@ static void initEmacGpioPins(void)
     GPIO_writePin(GPIO_PIN_ENET_PHY_RESET, 1U);    /* 리셋 해제 (3.3V) */
     // GPIO_setMasterCore(GPIO_PIN_ENET_PHY_RESET, GPIO_CORE_CM); // 삭제: CPU1이 소유해야 리셋이 High로 유지됨
 
-    /* --- CM 코어 상태 표시용 LED 핀 방향 설정 및 권한 부여 --- */
-    // CM 코어는 GPIO MUX나 DIR 레지스터를 변경할 권한이 없으므로, 반드시 CPU1에서 OUTPUT으로 설정해 주어야 합니다.
+    /* --- nG 상태 표시용 LED 핀 방향 설정 (CPU1 제어) --- */
     GPIO_setPinConfig(GPIO_145_GPIO145);
-    GPIO_setDirectionMode(GPIO_PIN_CM_ALIVE_LED, GPIO_DIR_MODE_OUT);
-    GPIO_setPadConfig(GPIO_PIN_CM_ALIVE_LED, GPIO_PIN_TYPE_STD);
-    GPIO_setMasterCore(GPIO_PIN_CM_ALIVE_LED, GPIO_CORE_CM);
+    GPIO_setDirectionMode(GPIO_PIN_LED_nG, GPIO_DIR_MODE_OUT);
+    GPIO_setPadConfig(GPIO_PIN_LED_nG, GPIO_PIN_TYPE_STD);
+    GPIO_setMasterCore(GPIO_PIN_LED_nG, GPIO_CORE_CPU1);
 
     GPIO_setPinConfig(GPIO_146_GPIO146);
     GPIO_setDirectionMode(GPIO_PIN_CM_ETH_LED, GPIO_DIR_MODE_OUT);

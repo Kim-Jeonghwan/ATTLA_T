@@ -1,15 +1,16 @@
 /**********************************************************************
    Nexcom Co., Ltd.
    Filename         : hal_DspInit.h
-   Version          : 00.05
+   Version          : 00.06
    Description      : CPU1 마스터 초기화 헤더
    Programmer       : Kim Jeonghwan
-   Last Updated     : 2026. 06. 26. (시스템 제어 및 스위치 GPIO 핀 매직넘버 상수화)
+   Last Updated     : 2026. 06. 30. (GPIO 145 매크로 명칭 변경 - nG 핀)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 30. - GPIO 145 핀을 CM_ALIVE_LED에서 LED_nG로 명칭 변경 및 제어권 수정
  * 2026. 06. 26. - 시스템 제어 및 스위치 GPIO 핀 매직넘버 상수화 추가
  * 2026. 06. 26. - 이더넷 PHY 핀 할당 변경 예정 주석 추가
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
@@ -53,8 +54,8 @@
 #define GPIO_PIN_MII_CRS                109U  /* TBD (※변경 예정: 34) */
 #define GPIO_PIN_MII_COL                110U  /* TBD (※변경 예정: 35) */
 
-/* 평가보드 CM LED 상태 확인용 GPIO 핀 매핑 */
-#define GPIO_PIN_CM_ALIVE_LED           145U  /* TBD: CM 코어 Alive 상태 표시용 LED */
+/* 평가보드 nG LED 상태 확인용 GPIO 핀 매핑 */
+#define GPIO_PIN_LED_nG                 145U  /* nG 상태 표시용 LED (CPU1 제어) */
 #define GPIO_PIN_CM_ETH_LED             146U  /* TBD: CM 이더넷 활동(Rx/Tx) 상태 표시용 LED */
 
 /* ==========================================================================

@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_LimitSwitch.h
-    Version          : 00.01
+    Version          : 00.02
     Description      : 리미트 스위치 상태 감지 및 고장 진단 모듈 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+    Last Updated     : 2026. 06. 30. (리미트 스위치 데드존 및 오프셋 거리 제어 로직 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 30. - 리미트 스위치 데드존 및 오프셋 거리 제어 로직 추가
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 22. - 파일 생성 및 기본 구조 작성
  */
@@ -19,29 +20,39 @@
 
 #include "main_cpu1.h"
 
+// 리미트 스위치 디버깅 튜닝 파라미터 구조체
+typedef struct {
+    float32_t offsetCount;           // 리미트 감지 후 진입 허용 제한 거리
+    float32_t deadzoneCount;         // 오프셋 재설정을 방지하기 위한 데드존 최소 이동 거리
+    uint16_t sensorErrorTimeMs;      // 센서 이상 상태 판단 유지 시간 (ms)
+    uint16_t sensorErrorTick100us;   // 센서 이상 상태 판단 100us 기준 틱 수 (500틱)
+} stLimitSwitchLimit;
+
+extern stLimitSwitchLimit xLimitSwitchLimit;
+
 // 리미트 스위치 고장 코드 열거형
 typedef enum {
     LS_FAULT_NONE = 0,
     LS_FAULT_SW1_BROKEN,        // 스위치1 단선 또는 하드웨어 고장 (NO == NC)
     LS_FAULT_SW2_BROKEN,        // 스위치2 단선 또는 하드웨어 고장 (NO == NC)
-    LS_FAULT_POS1_MISMATCH,     // 목표 1 위치 조건과 스위치 상태 불일치
-    LS_FAULT_POS2_MISMATCH      // 목표 2 위치 조건과 스위치 상태 불일치
+    LS_FAULT_SIMULTANEOUS       // 양방향 스위치 동시 감지 고장
 } LimitSwitchFaultCode_t;
 
 // 리미트 스위치 설정 데이터 구조체
 typedef struct {
-    float32_t targetPos1;             // 목표 1 위치 (단위: 디그리 또는 mm 등 시스템 기준, 나중에 사용자가 수정할 값)
-    float32_t targetPos2;             // 목표 2 위치 (단위 동일)
-    float32_t nearTolerance1;         // 목표 1 근접 판정 오차 허용치
-    float32_t nearTolerance2;         // 목표 2 근접 판정 오차 허용치
-    uint16_t mappedSwitchForTarget1;  // 목표 1에 매핑될 스위치 번호 (1 또는 2)
-    uint16_t mappedSwitchForTarget2;  // 목표 2에 매핑될 스위치 번호 (1 또는 2)
+    uint16_t mappedSwitchForPosDir;  // 양의 방향(Positive) 매핑 스위치 (기본 1)
+    uint16_t mappedSwitchForNegDir;  // 음의 방향(Negative) 매핑 스위치 (기본 2)
 } stLimitSwitchConfig;
 
 // 리미트 스위치 상태 진단 구조체
 typedef struct {
-    bool isFaultActive;                   // 현재 리미트 스위치 고장 발생 여부 (true: 에러 발생, 제어 반영 필요)
+    bool isFaultActive;                   // 현재 리미트 스위치 고장 발생 여부
     LimitSwitchFaultCode_t faultCode;     // 구체적인 에러 원인 코드
+    
+    // 오프셋 및 데드존 차단 로직용 상태
+    uint16_t activeDirection;             // 감지된 방향 (0: 없음, 1: Positive, 2: Negative)
+    bool isLimitReached;                  // 제한 거리(LIMIT_OFFSET_COUNT) 초과 도달 여부
+    float32_t limitBasePos;               // 스위치가 최초 감지된 시점의 기준 위치
 } stLimitSwitchState;
 
 extern stLimitSwitchConfig xLimitSwitchConfig;

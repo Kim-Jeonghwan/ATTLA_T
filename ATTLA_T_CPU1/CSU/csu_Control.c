@@ -1,16 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Control.c
-    Version          : 00.11
-    Description      : 시스템 제어 모듈 (동적 인터럽트 스위칭 및 ADC 폴링) 구현
+    Version          : 00.12
+    Description      : 시스템 제어 흐름 및 상태 관리 로직 구현부
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (코딩 규칙 및 구조 불일치 사항 리팩토링 반영)
+    Last Updated     : 2026. 06. 30. (Dio_UpdateOutput 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
- * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
+ * 2026. 06. 30. - 제어 메인 루프 끝단에 이산신호 출력 제어(Dio_UpdateOutput) 추가
+ * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링 반영
  * 2026. 06. 22. - 리미트 스위치 모듈 초기화(LimitSwitch_Init) 호출 추가
  * 2026. 06. 17. - 명명 규칙 위반 리팩토링 및 헤더 인클루드 수정
  * 2026. 06. 16. - 100us 핵심 제어 루프(ISR) 실행 순서 가이드에 맞게 재배치 (CBIT/FRAM 유지)
@@ -142,6 +143,9 @@ void Control_SystemOperation(void)
 
     // 7. 데이터 저장 CSU
     Control_SaveDataToFram();
+
+    // 8. 이산신호 출력 제어 CSU
+    Dio_UpdateOutput();
 }
 
 

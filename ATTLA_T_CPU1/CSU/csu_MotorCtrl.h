@@ -1,15 +1,18 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_MotorCtrl.h
-    Version          : 00.08
+    Version          : 00.10
     Description      : 1x PWM 모드 기반 모터 제어 모듈 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+    Last Updated     : 2026. 06. 30. (엔코더 영점 설정 안전 인터락 타이머 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 30. - 엔코더 영점 설정 안전 인터락 타이머 변수 및 함수 추가
+ * 2026. 06. 30. - 전자식 브레이크 시퀀스 상태 및 매크로 상수 추가
+ * 2026. 06. 30. - 리미트 스위치 감지 시 전류 제한 비율(LIMIT_CURRENT_RATIO) 매크로 추가
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 22. - 리미트 스위치 감지를 위한 MOTOR_MODE_FAULT_STOP 열거형 추가
  * 2026. 06. 22. - PID 계수를 xPidGain 구조체로 묶어 관리하도록 변경
@@ -31,15 +34,23 @@
 
 #include "main_cpu1.h"
 
-// --- 모터 제어 소프트 리미트 (Soft Limits) ---
-#define LIMIT_POS_MIN       0.0f        // 기구부 최소 각도 (0도)
-#define LIMIT_POS_MAX       15840.0f    // 기구부 최대 각도 (44바퀴 * 360도)
+// 모터 제어 디버깅 튜닝 파라미터 구조체
+typedef struct {
+    float32_t posMin;                 // 기구부 최소 각도 (0도)
+    float32_t posMax;                 // 기구부 최대 각도 (44바퀴 * 360도)
+    float32_t speedMax;               // 최대 동작 속도 (RPM)
+    float32_t speedMin;               // 최소 동작 속도 (RPM)
+    float32_t currentMax;             // 최대 동작 전류 (A)
+    float32_t currentMin;             // 최소 동작 전류 (A)
+    float32_t currentRatio;           // 리미트 진입 시 구속 전류 제한 비율 (Max 대비 25%)
+    uint16_t brakeReleaseDelayMs;     // 브레이크 해제(Brake OFF) 후 모터 기동 대기 시간 (ms)
+    uint16_t brakeEngageDelayMs;      // 정지 판단 후 브레이크 체결(Brake ON) 대기 시간 (ms)
+    uint16_t brakeReleaseTick100us;   // 브레이크 해제 딜레이 100us 틱 수
+    uint16_t brakeEngageTick100us;    // 브레이크 체결 딜레이 100us 틱 수
+    uint16_t safeZeroSetTick100us;    // 영점 설정 안전 인터락 타이머 (500ms = 5000 * 100us)
+} stMotorCtrlLimit;
 
-#define LIMIT_SPEED_MAX     3240.0f     // 최대 동작 속도 (RPM)
-#define LIMIT_SPEED_MIN     -3240.0f    // 최소 동작 속도 (RPM)
-
-#define LIMIT_CURRENT_MAX   9.34f       // 최대 동작 전류 (A)
-#define LIMIT_CURRENT_MIN   -9.34f      // 최소 동작 전류 (A)
+extern stMotorCtrlLimit xMotorCtrlLimit;
 
 // 클램핑 매크로 유틸리티
 #define CLAMP_F32(x, min, max)  (((x) < (min)) ? (min) : (((x) > (max)) ? (max) : (x)))
@@ -88,6 +99,14 @@ typedef enum {
     MOTOR_MODE_FAULT_STOP
 } MotorControlMode_t;
 
+// 브레이크 시퀀스 상태 열거형
+typedef enum {
+    BRAKE_STATE_LOCKED = 0,    // 완전히 잠김 상태 (Servo Off, 브레이크 ON)
+    BRAKE_STATE_RELEASING,     // 해제 중 (토크 인가, 딜레이 대기 중)
+    BRAKE_STATE_FREE,          // 해제 완료 (정상 제어 가능)
+    BRAKE_STATE_ENGAGING       // 체결 중 (토크 유지, 딜레이 대기 중)
+} BrakeState_t;
+
 // 상태 변수 구조체
 typedef struct {
     MotorControlMode_t mode;
@@ -95,6 +114,13 @@ typedef struct {
     float32_t targetPosition;
     float32_t currentSpeedRpm;
     float32_t currentPosition;
+    
+    // 전자식 브레이크 타이머용 변수
+    BrakeState_t brakeState;
+    uint16_t brakeTimerTick;
+    
+    // 영점 설정 안전 타이머 (500ms 유지)
+    uint16_t safeToZeroTimerTick;
 } stMotorCtrlState;
 
 extern stMotorCtrlState xMotorCtrl;
@@ -126,5 +152,12 @@ void MotorCtrl_Run(void);
  * @return     void
  */
 void MotorCtrl_SetOutput(float32_t outputDuty);
+
+/**
+ * @brief      엔코더 영점(Zero) 설정 안전 조건 충족 여부 확인
+ * @param      void
+ * @return     bool : 안전 조건 충족 시 true, 아니면 false
+ */
+bool MotorCtrl_IsSafeToZeroSet(void);
 
 #endif // CSU_MOTORCTRL_H

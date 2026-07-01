@@ -1,21 +1,25 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Dio.c
-    Version          : 00.01
+    Version          : 00.05
     Description      : 이산신호(DIO) 입력 처리 및 디바운싱 필터 모듈 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (매크로 상수명 DIO_CNT_DEBOUNCE_REF 반영)
+    Last Updated     : 2026. 06. 30. (Dio_UpdateOutput 구현 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 30. - 시스템 상태 연동 DIO 출력 제어 (Dio_UpdateOutput) 함수 추가
+ * 2026. 06. 30. - 디바운싱 내부 카운터(cnt_) 변수명 리팩토링 적용
+ * 2026. 06. 30. - stDioState 멤버 변수명 리팩토링 (Active Low 표기 적용)
  * 2026. 06. 12. - 매크로 상수명 추상화 (DIO_CNT_DEBOUNCE_REF) 적용
  * 2026. 06. 12. - 파일 생성 및 디바운싱 로직 구현
  * 2026. 06. 12. - 홀센서(Hall A, B, C) 핀 입력 스캔 및 디바운싱 추가
  */
 
 #include "csu_Dio.h"
+#include "csu_Bit.h" // 상태(xBit.informAll) 조회를 위한 포함
 
 volatile stDioState xDio;
 
@@ -29,16 +33,16 @@ volatile stDioState xDio;
 void Dio_Init(void)
 {
     // 구조체 변수 명시적 초기화 (기본 High 상태로 초기화)
-    xDio.limit1No = 1U;
-    xDio.limit1Nc = 1U;
-    xDio.limit2No = 1U;
-    xDio.limit2Nc = 1U;
-    xDio.pm24V = 1U;
-    xDio.cableLoop = 1U;
-    xDio.drvFault = 1U;
-    xDio.hallA = 1U;
-    xDio.hallB = 1U;
-    xDio.hallC = 1U;
+    xDio.nLimit1No = 1U;
+    xDio.nLimit1Nc = 1U;
+    xDio.nLimit2No = 1U;
+    xDio.nLimit2Nc = 1U;
+    xDio.Pmn24V = 1U;
+    xDio.nCableLoop = 1U;
+    xDio.DrvnFault = 1U;
+    xDio.nHallA = 1U;
+    xDio.nHallB = 1U;
+    xDio.nHallC = 1U;
 }
 
 /**
@@ -73,32 +77,57 @@ static uint16_t Dio_Debounce(uint16_t rawValue, volatile uint16_t* pFilteredValu
  */
 void Dio_UpdateInput(void)
 {
-    static uint16_t cnt_limit1No = 0U;
-    static uint16_t cnt_limit1Nc = 0U;
-    static uint16_t cnt_limit2No = 0U;
-    static uint16_t cnt_limit2Nc = 0U;
-    static uint16_t cnt_pm24V = 0U;
-    static uint16_t cnt_cableLoop = 0U;
-    static uint16_t cnt_drvFault = 0U;
-    static uint16_t cnt_hallA = 0U;
-    static uint16_t cnt_hallB = 0U;
-    static uint16_t cnt_hallC = 0U;
+    // 각 핀의 이전 상태 유지를 위한 정적 카운터 변수들
+    static uint16_t cnt_nLimit1No = 0U;
+    static uint16_t cnt_nLimit1Nc = 0U;
+    static uint16_t cnt_nLimit2No = 0U;
+    static uint16_t cnt_nLimit2Nc = 0U;
+    static uint16_t cnt_Pmn24V = 0U;
+    static uint16_t cnt_nCableLoop = 0U;
+    static uint16_t cnt_DrvnFault = 0U;
+    static uint16_t cnt_nHallA = 0U;
+    static uint16_t cnt_nHallB = 0U;
+    static uint16_t cnt_nHallC = 0U;
 
-    // 리미트 스위치 1
-    Dio_Debounce(GPIO_readPin(36U), &xDio.limit1No, &cnt_limit1No);
-    Dio_Debounce(GPIO_readPin(37U), &xDio.limit1Nc, &cnt_limit1Nc);
-
-    // 리미트 스위치 2
-    Dio_Debounce(GPIO_readPin(38U), &xDio.limit2No, &cnt_limit2No);
-    Dio_Debounce(GPIO_readPin(39U), &xDio.limit2Nc, &cnt_limit2Nc);
-
-    // 시스템 및 전원 감시
-    Dio_Debounce(GPIO_readPin(40U), &xDio.pm24V, &cnt_pm24V);
-    Dio_Debounce(GPIO_readPin(46U), &xDio.cableLoop, &cnt_cableLoop);
-    Dio_Debounce(GPIO_readPin(10U), &xDio.drvFault, &cnt_drvFault);
-
-    // 홀센서 (모니터링용 병렬 입력)
-    Dio_Debounce(GPIO_readPin(11U), &xDio.hallA, &cnt_hallA);
-    Dio_Debounce(GPIO_readPin(12U), &xDio.hallB, &cnt_hallB);
-    Dio_Debounce(GPIO_readPin(13U), &xDio.hallC, &cnt_hallC);
+    // GPIO 포트에서 실제 값을 읽어 디바운싱 처리 후 상태 구조체에 반영
+    
+    // 리미트 스위치
+    Dio_Debounce(GPIO_readPin(36U), &xDio.nLimit1No, &cnt_nLimit1No);
+    Dio_Debounce(GPIO_readPin(37U), &xDio.nLimit1Nc, &cnt_nLimit1Nc);
+    
+    Dio_Debounce(GPIO_readPin(38U), &xDio.nLimit2No, &cnt_nLimit2No);
+    Dio_Debounce(GPIO_readPin(39U), &xDio.nLimit2Nc, &cnt_nLimit2Nc);
+    
+    // 시스템 감시
+    Dio_Debounce(GPIO_readPin(40U), &xDio.Pmn24V, &cnt_Pmn24V);
+    Dio_Debounce(GPIO_readPin(46U), &xDio.nCableLoop, &cnt_nCableLoop);
+    Dio_Debounce(GPIO_readPin(10U), &xDio.DrvnFault, &cnt_DrvnFault);
+    
+    // 모터 홀센서
+    Dio_Debounce(GPIO_readPin(11U), &xDio.nHallA, &cnt_nHallA);
+    Dio_Debounce(GPIO_readPin(12U), &xDio.nHallB, &cnt_nHallB);
+    Dio_Debounce(GPIO_readPin(13U), &xDio.nHallC, &cnt_nHallC);
 }
+
+/**
+ * @brief      이산신호 출력 처리 (시스템 상태에 따른 외부 LED 등 제어)
+ * @param      void
+ * @return     void
+ */
+void Dio_UpdateOutput(void)
+{
+    // PBIT, CBIT, IBIT 결과가 반영된 xBit.informAll 확인
+    if (xBit.informAll == 0U)
+    {
+        // 정상 상태: LednNormal(GPIO31) 출력 0(켜짐), LednFault(GPIO32) 출력 1(꺼짐)
+        GPIO_writePin(31U, 0U);
+        GPIO_writePin(32U, 1U);
+    }
+    else
+    {
+        // 비정상 상태: LednNormal(GPIO31) 출력 1(꺼짐), LednFault(GPIO32) 출력 0(켜짐)
+        GPIO_writePin(31U, 1U);
+        GPIO_writePin(32U, 0U);
+    }
+}
+

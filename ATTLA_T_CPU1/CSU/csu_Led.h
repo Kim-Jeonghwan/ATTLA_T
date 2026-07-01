@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Led.h
-    Version          : 00.05
+    Version          : 00.06
     Description      : 시스템 상태 표시 LED 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 23. (main.h -> main_cpu1.h 인클루드 명칭 리팩토링)
+    Last Updated     : 2026. 06. 30. (eLED_nG 할당 핀 번호 변경: 31 -> 145)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 30. - eLED_nG 매핑 핀 번호를 145로 변경 (기존 31)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 15. - stLed 구조체의 비트필드(총 24비트로 C2000 16비트 경계 초과 버그 유발) 제거 및 일반 자료형 변경
  * 2026. 06. 15. - PinMux 설정(GPIO_30_GPIO30)도 GPIO_LED_nG_PIN_CONFIG 매크로로 래핑하여 하드웨어 의존성 분리
@@ -34,8 +35,6 @@
 #define LED_NONE    0u
 #define LED_TOGGLE  1u
 
-/* nG 상태 표시용 LED(GPIO 30)*/
-
 
 /* ************************** [[   enum or struct   ]]  **************************************************** */
 
@@ -44,7 +43,7 @@
  */
 typedef enum
 {
-	eLED_nG			            = 31u,
+	eLED_nG			            = 145u, // 추후 30u 로 변경 예정
 
 } eLed;
 

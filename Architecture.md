@@ -59,9 +59,19 @@
 ### 2.3 브레이크 (Brake) 제어 회로
 - **동작 전류**: 최대 1.0 A
 - **제어 핀**: `DSP_BRAKE` (GPIO 35, Active High - High 출력 시 브레이크 잠금 해제, Low 출력 시 기계적 잠금 유지)
-- **로직 구현**: `csu_MotorCtrl.c` 내 `MotorCtrl_Run()`에서 모터가 정지 상태(`MOTOR_MODE_STOP`)일 경우 Low(잠금)를 출력하고, 구동 모드 진입 시 High(해제)를 출력하여 모터 기동 전 브레이크를 개방합니다.
+- **로직 구현 (전자식 브레이크 시퀀스)**: `csu_MotorCtrl.c`의 `MotorCtrl_Run()`(100us ISR) 내 상태 머신으로 구현됨.
+  - **기동 시퀀스 (`RELEASING`)**: 구동 명령 시 브레이크 해제(High) 출력과 동시에 모터 제자리를 유지하기 위한 토크(PID)를 인가하며 150ms(`BRAKE_RELEASE_DELAY_MS`) 대기 후 `FREE` 상태로 전환.
+  - **정지 시퀀스 (`ENGAGING`)**: 정지 명령 수신 후 속도가 0에 근접(1.0 RPM 미만)하면 브레이크 체결(Low) 출력 후 100ms(`BRAKE_ENGAGE_DELAY_MS`) 대기. 대기 완료 시 토크(전류 PID) 출력을 차단(Servo Off)하여 `LOCKED` 상태로 전이.
 - **회로 구성**: DSP(3.3V) ➡️ NPN TR(MMBT489LT1G) ➡️ TLP293(광절연) ➡️ P-Ch MOSFET(SPD15P10PLGBTMA1) ➡️ 24V 브레이크 구동. 역기전력 방어용 쇼트키 다이오드(V8PAM10HM3/I) 탑재.
 - **모니터링**: 브레이크용 TMCS1126 개별 전류 센서를 통해 동작 및 고장 상태 진단.
+
+### 2.4 리미트 스위치 오프셋 차단 및 전류 억제 로직
+- **에러 판단 지연**: 스위치 동시 감지 또는 단선 오류 발생 시 즉각 정지하지 않고, 노이즈 필터링을 위해 100us 주기로 50ms(`SENSOR_ERROR_TIME_MS`) 이상 결함 상태가 지속될 때만 Fault로 처리(`MOTOR_MODE_FAULT_STOP` 강제 전환).
+- **오프셋 제한 거리 (LIMIT_OFFSET_COUNT)**: 
+  - 스위치 감지 시점의 엔코더 위치를 `limitBasePos`로 래치하고, 해당 시점부터 진입 방향으로 설정된 제한 거리(1000.0f) 초과 진입 시 지령을 원천 차단(해당 방향의 허용 전류 한도를 0.0f로 클램핑).
+  - 반대(탈출) 방향 이동 시 전류 한도는 정상 100% 한도(`LIMIT_CURRENT_MAX/MIN`)로 자동 복구됨.
+- **안전 전류 억제 (LIMIT_CURRENT_RATIO)**: 리미트 스위치가 눌려 오프셋 거리 이내에서 진입 중인 경우, 기구적 충돌 및 부하 최소화를 위해 진입 방향의 구속 전류 한도를 정상 최대치의 25%(`LIMIT_CURRENT_RATIO`) 수준으로 즉시 제한.
+- **진동 방지 (Dead-zone)**: 스위치가 해제('0')될 때, 감지된 기준 위치로부터 `LIMIT_DEADZONE_COUNT`(100.0f) 이상 반대 방향으로 충분히 빠져나오지 못했다면 기계적 진동으로 간주하여 오프셋 래치 상태를 초기화하지 않음.
 
 - **모터 구동 및 제어 연산 방식 (`csu_MotorCtrl`)**:
   - **제어 주기**: 100us (EPWM1 인터럽트 기반 동적 주기 제어)
@@ -92,7 +102,7 @@
 
 ### 3.1 모터 위치 검출 (Encoder & Hall)
 - **홀 센서 (하드웨어 정류 연동)**: 
-  - `HALL_A` (`INLA`, GPIO 11), `HALL_B` (`INHB`, GPIO 12), `HALL_C` (`INLB`, GPIO 13)
+  - `nHALL_A` (`INLA`, GPIO 11), `nHALL_B` (`INHB`, GPIO 12), `nHALL_C` (`INLB`, GPIO 13) (Active Low)
   - 홀 센서 신호가 DSP로 입력됨과 동시에 DRV8343의 INLx/INHx 핀으로 직결되어 **1x PWM 모드의 하드웨어 기반 6-Step Commutation**을 수행하도록 설계됨. (SN74HCS126PWR 버퍼 경유)
 - **디지털 앱솔루트 엔코더 (RLS AksIM-2)**:
   - **분해능**: 18-bit (싱글턴) + 16-bit (멀티턴 카운터) / 오차: ±0.004° ~ ±0.020°
@@ -105,6 +115,7 @@
     - **Dynamic Parsing**: 데이터 프레임 중 첫 '1' 비트를 능동적으로 Start 비트로 감지.
     - **CRC 규칙**: 다항식 0x43 (36비트 대상) 적용 검증.
     - **정밀 변환**: 제로셋 FRAM 저장 값 및 롤오버 상수(`ENC_ROLLOVER_34BIT`: 0x400000000ULL, 2^34) 뺄셈 및 오프셋 적용. 변환 계수 `ENC_SCALE_18BIT_DEG` (0.001373291f, 360 / 2^18).
+    - **안전 영점 설정 (Safety Interlock)**: 오작동 방지를 위해 모터 정지(1.0 RPM 이하) 및 브레이크 체결(LOCKED) 상태가 연속 500ms(5000 틱) 이상 유지될 때만 영점 설정(Zero Set)을 허용하는 타이머 인터락 적용.
 
 ### 3.2 아날로그 센서 (ADC) 
 - **ADC 아키텍처 및 폴링 동기화**:
@@ -183,18 +194,19 @@
 
 | 구분 | 신호명 (핀) | 핀 방향 및 특징 |
 | :--- | :--- | :--- |
-| **입력 (센서)** | `nLIMIT1_NO` (36), `nLIMIT1_NC` (37) | 리미트 스위치 1번 (Active Low) |
-| **입력 (센서)** | `nLIMIT2_NO` (38), `nLIMIT2_NC` (39) | 리미트 스위치 2번 (Active Low) |
-| **입력 (감시)** | `PM_n24V` (40) | 24V 주 전원 감시 (Active Low) |
-| **입력 (감시)** | `CABLE_LOOP` (46) | 외부 케이블 연결 체결 감시 (Active Low) |
-| **출력 (상태)** | `DSP_LED_nNORMAL` (31) | 외부 시스템 Normal 상태 표시 (Low ➡️ ON) |
-| **출력 (상태)** | `DSP_LED_nFAULT` (32) | 외부 시스템 Fault 상태 표시 (Low ➡️ ON) |
-| **출력 (LED)** | `LED_G` (30) | 보드 내부 DSP 동작 상태 점멸용 |
+| **입력 (센서)** | `nLIMIT1_NO` (73), `nLIMIT1_NC` (76) | 리미트 스위치 1번 (Active Low) * 73번은 추후 GPIO 75로 변경 예정 |
+| **입력 (센서)** | `nLIMIT2_NO` (77), `nLIMIT2_NC` (78) | 리미트 스위치 2번 (Active Low) |
+| **입력 (감시)** | `PM_n24V` (79) | 24V 주 전원 감시 (Active Low) |
+| **입력 (감시)** | `nCABLE_LOOP` (80) | 외부 케이블 연결 체결 감시 (Active Low) |
+| **출력 (상태)** | `DSP_LED_nNORMAL` (31) | 시스템 Normal 상태 표시 (`Dio_UpdateOutput`에서 정상 시 0(ON) 출력) |
+| **출력 (상태)** | `DSP_LED_nFAULT` (32) | 시스템 Fault 상태 표시 (`Dio_UpdateOutput`에서 비정상 시 0(ON) 출력) |
+| **출력 (LED)** | `LED_nG` (145) | nG 상태 표시용 LED (CPU1 제어, 500ms 주기 점멸용) * 추후 GPIO 30으로 변경 예정 |
 
 ### 4.4 비휘발성 메모리 (FRAM)
 - **적용 칩셋**: CY15B256Q-SXE
 - **인터페이스 (SPI-D)**: `SIMO`(91), `SOMI`(92), `CLK`(93), `CS`(94) / 1MHz 속도.
 - **특징**: 데이터 로깅 및 오프셋 저장용. Instant Write 특성 활용 무지연 엑세스.
+- **엔코더 오프셋 무결성 검증 (CRC-16)**: 엔코더 영점 오프셋(8 Bytes) 저장 시 CRC-16-CCITT(0x1021)를 계산하여 2 Bytes를 추가로 기록(총 10 Bytes)하며, 부팅 시 로드할 때 무결성 검증 실패 시 안전을 위해 오프셋을 0으로 초기화함.
 - **데이터 로깅 연동 (`csu_Control`)**: 초기 1초 오프셋 보정이 완료된 직후(`csu_Offset_Isr`), 산출된 모터 및 브레이크 전류 오프셋을 FRAM 주소(0x0000 ~ 0x0003)에 자동 백업합니다.
 
 ### 4.5 내부 SPI 통신 규격 (Internal SPI Protocols)
@@ -297,7 +309,7 @@
 
 | 구분 | 상세 내용 |
 | :--- | :--- |
-| **LED 표시 로직** | 어떠한 시스템 상태(정상/오류/구동 등)에서 **LED 점등 및 점멸**을 수행할지에 대한 명확한 조건 미구현 |
+| **LED 표시 로직** | PBIT/CBIT/IBIT 결과에 따른 `LednNormal`(GPIO31), `LednFault`(GPIO32) 제어 및 `LED_nG`(GPIO145) 재할당 구현 완료 |
 | **홀센서 안전 제어** | 모터 상태 모니터링을 위한 홀센서 3상(A/B/C) 입력이 `xDio`로 수집되고 있으나, 이를 통한 구속(Stall) 감지 및 회전 방향 교차 검증 로직은 미구현 |
 
 ---

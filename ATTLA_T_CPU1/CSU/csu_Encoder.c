@@ -1,21 +1,23 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Encoder.c
-    Version          : 00.06
+    Version          : 00.07
     Description      : AksIM-2 엔코더 어플리케이션 기능 처리 모듈
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 12. (매크로 상수 헤더로 이동)
+    Last Updated     : 2026. 06. 30. (FRAM CRC-16 도입 및 안전 인터락 반영)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 30. - FRAM CRC-16 계산(CCITT) 및 저장/로드 로직 추가
+ * 2026. 06. 30. - Encoder_SetZero 시 안전 인터락(MotorCtrl_IsSafeToZeroSet) 검증 로직 반영
  * 2026. 06. 12. - 롤오버 및 스케일 매직넘버 상수화하여 헤더(.h)로 분리 (글로벌 룰 적용)
  * 2026. 06. 11. - 주석 표준화 및 레거시 코드 정리
  * 2026. 06. 11. - 전역 변수를 stEncoderState 구조체(xEncoder)로 통합하여 네임스페이스 및 상태 관리 개선
  * 2026. 06. 11. - 컴파일러 표준(C89/C90)에 맞게 for 문 변수 선언 위치 변경 및 미사용 변수 경고 해결
  * 2026. 06. 11. - Encoder_LoadOffset 신규 작성 및 Encoder_Init 연동
- * 2026. 06. 11. - Encoder_SetZero 호출 시 FRAM 8바이트 기록(Store) 연동
+ * 2026. 06. 11. - Encoder_SetZero 호출 시 FRAM 기록 연동
  * 2026. 06. 11. - Dynamic Parsing, 0x43 다항식 CRC 검증 로직 구현
  * 2026. 06. 11. - 34비트 오프셋 연산, 롤오버 처리 및 기계각 스케일링 함수 구현
  * 2026. 06. 11. - 파일 생성 및 기본 구조 작성
@@ -33,6 +35,7 @@ stEncoderState xEncoder;
 // 내부 함수 프로토타입
 //---------------------------------------------------------------------------
 static uint8_t Encoder_CalcCrc6(uint64_t data36);
+static uint16_t Encoder_CalcCrc16(const uint8_t* data, uint16_t length);
 
 /**
  * @function Encoder_Init
@@ -71,14 +74,31 @@ void Encoder_LoadOffset(void)
 {
     uint64_t loadedOffset = 0;
     uint16_t i;
+    uint8_t buffer[10];
     
-    for (i = 0; i < 8; i++)
+    // 10바이트 읽기 (8바이트 오프셋 + 2바이트 CRC)
+    for (i = 0; i < 10; i++)
     {
-        uint16_t b = Fram_ReadByte(ENC_OFFSET_FRAM_ADDR + i);
-        loadedOffset |= ((uint64_t)(b & 0xFF) << (i * 8));
+        buffer[i] = (uint8_t)(Fram_ReadByte(ENC_OFFSET_FRAM_ADDR + i) & 0xFF);
     }
     
-    xEncoder.offset = loadedOffset;
+    // 수신된 8바이트에 대해 CRC 계산
+    uint16_t calcCrc = Encoder_CalcCrc16(buffer, 8);
+    uint16_t rcvCrc = ((uint16_t)buffer[8] << 8) | buffer[9];
+    
+    if (calcCrc == rcvCrc)
+    {
+        for (i = 0; i < 8; i++)
+        {
+            loadedOffset |= ((uint64_t)buffer[i] << (i * 8));
+        }
+        xEncoder.offset = loadedOffset;
+    }
+    else
+    {
+        // CRC 오류 시 안전을 위해 0으로 초기화
+        xEncoder.offset = 0;
+    }
 }
 
 /**
@@ -203,12 +223,62 @@ static uint8_t Encoder_CalcCrc6(uint64_t data36)
 void Encoder_SetZero(void)
 {
     uint16_t i;
+    uint8_t buffer[10];
+    uint16_t crc;
+    
+    // 안전 인터락 확인: 안전 조건이 아니면 무시
+    if (MotorCtrl_IsSafeToZeroSet() == false)
+    {
+        return;
+    }
+    
     xEncoder.offset = xEncoder.rawPos;
     
-    // FRAM에 8바이트로 쪼개어 저장
+    // 8바이트 버퍼에 담기 (Little Endian 방식)
     for (i = 0; i < 8; i++)
     {
-        uint16_t b = (xEncoder.offset >> (i * 8)) & 0xFF;
-        Fram_WriteByte(ENC_OFFSET_FRAM_ADDR + i, b);
+        buffer[i] = (uint8_t)((xEncoder.offset >> (i * 8)) & 0xFF);
     }
+    
+    // CRC-16 계산
+    crc = Encoder_CalcCrc16(buffer, 8);
+    buffer[8] = (uint8_t)((crc >> 8) & 0xFF); // CRC MSB
+    buffer[9] = (uint8_t)(crc & 0xFF);        // CRC LSB
+    
+    // FRAM에 10바이트 기록
+    for (i = 0; i < 10; i++)
+    {
+        Fram_WriteByte(ENC_OFFSET_FRAM_ADDR + i, (uint16_t)buffer[i]);
+    }
+}
+
+/**
+ * @function Encoder_CalcCrc16
+ * @brief    CRC-16-CCITT (다항식 0x1021) 계산
+ * @param    data : 데이터 배열 포인터
+ * @param    length : 데이터 길이
+ * @return   계산된 16비트 CRC 값
+ */
+static uint16_t Encoder_CalcCrc16(const uint8_t* data, uint16_t length)
+{
+    uint16_t crc = 0xFFFF;
+    uint16_t i;
+    int8_t j;
+    
+    for (i = 0; i < length; i++)
+    {
+        crc ^= ((uint16_t)data[i] << 8);
+        for (j = 0; j < 8; j++)
+        {
+            if (crc & 0x8000)
+            {
+                crc = (crc << 1) ^ 0x1021;
+            }
+            else
+            {
+                crc <<= 1;
+            }
+        }
+    }
+    return crc;
 }

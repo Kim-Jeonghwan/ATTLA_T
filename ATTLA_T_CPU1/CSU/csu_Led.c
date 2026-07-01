@@ -1,15 +1,17 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Led.c
-    Version          : 00.06
+    Version          : 00.08
     Description      : 시스템 상태 표시 LED 제어 로직
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 06. 15. (불필요한 HAL 래퍼 함수 제거 및 최적화)
+    Last Updated     : 2026. 06. 30. (nG LED 점멸 토글 복구)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 06. 30. - 사용자 지시에 따라 nG LED(GPIO 145)의 500ms 주기 점멸 토글 기능 복구
+ * 2026. 06. 30. - nG LED(GPIO 145)의 토글 점멸 기능을 삭제하고 기본 상태(OFF)로 초기화
  * 2026. 06. 15. - 성능 및 가독성을 위해 불필요한 Led_TogglePin, Led_WritePin 래퍼 제거 후 SDK의 GPIO_ API 직접 호출
  * 2026. 06. 15. - 34번 핀과 점멸 주기 일치화 (100ms 상태 머신 기준 1.1초 -> 0.5초 토글)
  * 2026. 06. 15. - stLed 구조체 변경에 따른 파라미터 자료형(bool -> uint16_t) 수정
@@ -46,11 +48,11 @@ stLedStatus xLed;
 @param      void
 @return     void
 @remark
-    - G LED는 1초 토글, 기타 LED는 기본 OFF 상태로 초기화합니다.
+    - nG LED는 500ms(0.5초) 주기로 점멸(토글) 되도록 초기화합니다.
 */
 void Initial_Led(void)
 {
-    // nG LED (GPIO30) 설정
+    // nG LED (GPIO 145) 설정
     xLed.lednG.Index  = eLED_nG;
     setLedModeToggle(&xLed.lednG, LED_TOGGLE, 4u); // 500ms 주기 토글 (0.5s On / 0.5s Off)
 }
