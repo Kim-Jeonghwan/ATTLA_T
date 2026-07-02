@@ -230,23 +230,17 @@ static void Init_GpioDout(void)
     GPIO_setDirectionMode(GPIO_PIN_LED_nNORMAL, GPIO_DIR_MODE_OUT);
     GPIO_writePin(GPIO_PIN_LED_nNORMAL, 1U); // Active Low 이므로 기본 High (OFF)
 
-    // **메인 컨트롤 ISR 동작 확인용 임시 LED (GPIO 34 할당)**
-    GPIO_setPinConfig(GPIO_34_GPIO34);
-    GPIO_setPadConfig(GPIO_PIN_LED_ISR_TEST, GPIO_PIN_TYPE_STD);
-    GPIO_setDirectionMode(GPIO_PIN_LED_ISR_TEST, GPIO_DIR_MODE_OUT);
-    GPIO_writePin(GPIO_PIN_LED_ISR_TEST, 1U);
-
     // LED_nFAULT (GPIO 32 할당)
     GPIO_setPinConfig(GPIO_32_GPIO32);
     GPIO_setPadConfig(GPIO_PIN_LED_nFAULT, GPIO_PIN_TYPE_STD);
     GPIO_setDirectionMode(GPIO_PIN_LED_nFAULT, GPIO_DIR_MODE_OUT);
     GPIO_writePin(GPIO_PIN_LED_nFAULT, 1U); // Active Low 이므로 기본 High (OFF)
 
-    // DSP_BRAKE (GPIO 74 할당)
+    // BRAKE (GPIO 74 할당)
     GPIO_setPinConfig(GPIO_74_GPIO74);
-    GPIO_setPadConfig(GPIO_PIN_DSP_BRAKE, GPIO_PIN_TYPE_STD);
-    GPIO_setDirectionMode(GPIO_PIN_DSP_BRAKE, GPIO_DIR_MODE_OUT);
-    GPIO_writePin(GPIO_PIN_DSP_BRAKE, 0U); // Active High(전원 인가 시 잠금 해제). 따라서 기본 Low 출력으로 전원을 차단하여 기계적 잠금 상태(Fail-Safe) 유지
+    GPIO_setPadConfig(GPIO_PIN_BRAKE, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(GPIO_PIN_BRAKE, GPIO_DIR_MODE_OUT);
+    GPIO_writePin(GPIO_PIN_BRAKE, 0U); // Active High(전원 인가 시 잠금 해제). 따라서 기본 Low 출력으로 전원을 차단하여 기계적 잠금 상태(Fail-Safe) 유지
 }
 
 /*
@@ -318,7 +312,6 @@ static void initSystemUserInterface(void)
 static void initSystemCommunications(void)
 {
     Initial_SPI();
-    // Initial_SCI(); // SCI 미사용으로 인한 주석 처리
     Initial_TIMER();
     Initial_EpwmTimer();  /* EPWM1 기반 타이머 활성화 */
 }
@@ -431,10 +424,8 @@ static void initEmacGpioPins(void)
     GPIO_setPadConfig(GPIO_PIN_LED_nG, GPIO_PIN_TYPE_STD);
     GPIO_setMasterCore(GPIO_PIN_LED_nG, GPIO_CORE_CPU1);
 
-    GPIO_setPinConfig(GPIO_146_GPIO146);
-    GPIO_setDirectionMode(GPIO_PIN_CM_ETH_LED, GPIO_DIR_MODE_OUT);
-    GPIO_setPadConfig(GPIO_PIN_CM_ETH_LED, GPIO_PIN_TYPE_STD);
-    GPIO_setMasterCore(GPIO_PIN_CM_ETH_LED, GPIO_CORE_CM);
+    // 공통/임시용 GPIO 초기화 함수 호출
+    hal_Common_InitTempGpio();
 }
 
 /*

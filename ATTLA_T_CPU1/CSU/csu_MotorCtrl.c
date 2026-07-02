@@ -247,7 +247,7 @@ void MotorCtrl_Run(void)
     if (xMotorCtrl.brakeState == BRAKE_STATE_LOCKED)
     {
         // 브레이크 잠금 및 PID 완전 정지 (Servo Off)
-        GPIO_writePin(GPIO_PIN_MOTOR_BRAKE, 0U); 
+        GPIO_writePin(GPIO_PIN_BRAKE, 0U); 
         MotorCtrl_SetOutput(0.0f);
         currPid.integral = 0.0f;
         speedPid.integral = 0.0f;
@@ -256,7 +256,7 @@ void MotorCtrl_Run(void)
     }
     else if (xMotorCtrl.brakeState == BRAKE_STATE_RELEASING)
     {
-        GPIO_writePin(GPIO_PIN_MOTOR_BRAKE, 1U); // 브레이크 해제 신호 출력
+        GPIO_writePin(GPIO_PIN_BRAKE, 1U); // 브레이크 해제 신호 출력
         xMotorCtrl.brakeTimerTick++;
         
         if (xMotorCtrl.brakeTimerTick >= xMotorCtrlLimit.brakeReleaseTick100us)
@@ -274,7 +274,7 @@ void MotorCtrl_Run(void)
     else if (xMotorCtrl.brakeState == BRAKE_STATE_ENGAGING)
     {
         // 정지 완료 시 체결 신호 출력 후 대기
-        GPIO_writePin(GPIO_PIN_MOTOR_BRAKE, 0U); 
+        GPIO_writePin(GPIO_PIN_BRAKE, 0U); 
         xMotorCtrl.targetSpeedRpm = 0.0f;
         xMotorCtrl.targetPosition = xMotorCtrl.currentPosition;
         
@@ -289,7 +289,7 @@ void MotorCtrl_Run(void)
     else // BRAKE_STATE_FREE
     {
         // 정상 제어 중 브레이크 해제 유지
-        GPIO_writePin(GPIO_PIN_MOTOR_BRAKE, 1U); 
+        GPIO_writePin(GPIO_PIN_BRAKE, 1U); 
     }
     
     // ==============================================================

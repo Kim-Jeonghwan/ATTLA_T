@@ -9,7 +9,7 @@ C_SRCS += \
 ../CSU/csu_Adc.c \
 ../CSU/csu_Bit.c \
 ../CSU/csu_Control.c \
-../CSU/csu_Debug_cpu1.c \
+../CSU/csu_Debug.c \
 ../CSU/csu_Dio.c \
 ../CSU/csu_Encoder.c \
 ../CSU/csu_Ipc_cpu1.c \
@@ -17,14 +17,13 @@ C_SRCS += \
 ../CSU/csu_LimitSwitch.c \
 ../CSU/csu_MotorCtrl.c \
 ../CSU/csu_MotorDriver.c \
-../CSU/csu_Pid.c \
-../CSU/csu_SciPc.c 
+../CSU/csu_Pid.c 
 
 C_DEPS += \
 ./CSU/csu_Adc.d \
 ./CSU/csu_Bit.d \
 ./CSU/csu_Control.d \
-./CSU/csu_Debug_cpu1.d \
+./CSU/csu_Debug.d \
 ./CSU/csu_Dio.d \
 ./CSU/csu_Encoder.d \
 ./CSU/csu_Ipc_cpu1.d \
@@ -32,14 +31,13 @@ C_DEPS += \
 ./CSU/csu_LimitSwitch.d \
 ./CSU/csu_MotorCtrl.d \
 ./CSU/csu_MotorDriver.d \
-./CSU/csu_Pid.d \
-./CSU/csu_SciPc.d 
+./CSU/csu_Pid.d 
 
 OBJS += \
 ./CSU/csu_Adc.obj \
 ./CSU/csu_Bit.obj \
 ./CSU/csu_Control.obj \
-./CSU/csu_Debug_cpu1.obj \
+./CSU/csu_Debug.obj \
 ./CSU/csu_Dio.obj \
 ./CSU/csu_Encoder.obj \
 ./CSU/csu_Ipc_cpu1.obj \
@@ -47,14 +45,13 @@ OBJS += \
 ./CSU/csu_LimitSwitch.obj \
 ./CSU/csu_MotorCtrl.obj \
 ./CSU/csu_MotorDriver.obj \
-./CSU/csu_Pid.obj \
-./CSU/csu_SciPc.obj 
+./CSU/csu_Pid.obj 
 
 OBJS__QUOTED += \
 "CSU\csu_Adc.obj" \
 "CSU\csu_Bit.obj" \
 "CSU\csu_Control.obj" \
-"CSU\csu_Debug_cpu1.obj" \
+"CSU\csu_Debug.obj" \
 "CSU\csu_Dio.obj" \
 "CSU\csu_Encoder.obj" \
 "CSU\csu_Ipc_cpu1.obj" \
@@ -62,14 +59,13 @@ OBJS__QUOTED += \
 "CSU\csu_LimitSwitch.obj" \
 "CSU\csu_MotorCtrl.obj" \
 "CSU\csu_MotorDriver.obj" \
-"CSU\csu_Pid.obj" \
-"CSU\csu_SciPc.obj" 
+"CSU\csu_Pid.obj" 
 
 C_DEPS__QUOTED += \
 "CSU\csu_Adc.d" \
 "CSU\csu_Bit.d" \
 "CSU\csu_Control.d" \
-"CSU\csu_Debug_cpu1.d" \
+"CSU\csu_Debug.d" \
 "CSU\csu_Dio.d" \
 "CSU\csu_Encoder.d" \
 "CSU\csu_Ipc_cpu1.d" \
@@ -77,14 +73,13 @@ C_DEPS__QUOTED += \
 "CSU\csu_LimitSwitch.d" \
 "CSU\csu_MotorCtrl.d" \
 "CSU\csu_MotorDriver.d" \
-"CSU\csu_Pid.d" \
-"CSU\csu_SciPc.d" 
+"CSU\csu_Pid.d" 
 
 C_SRCS__QUOTED += \
 "../CSU/csu_Adc.c" \
 "../CSU/csu_Bit.c" \
 "../CSU/csu_Control.c" \
-"../CSU/csu_Debug_cpu1.c" \
+"../CSU/csu_Debug.c" \
 "../CSU/csu_Dio.c" \
 "../CSU/csu_Encoder.c" \
 "../CSU/csu_Ipc_cpu1.c" \
@@ -92,7 +87,6 @@ C_SRCS__QUOTED += \
 "../CSU/csu_LimitSwitch.c" \
 "../CSU/csu_MotorCtrl.c" \
 "../CSU/csu_MotorDriver.c" \
-"../CSU/csu_Pid.c" \
-"../CSU/csu_SciPc.c" 
+"../CSU/csu_Pid.c" 
 
 

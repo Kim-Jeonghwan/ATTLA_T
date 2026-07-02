@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Bit.c
-    Version          : 00.10
+    Version          : 00.11
     Description      : 1x PWM 구조용 간소화된 BIT 로직 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 07. 01. (초기화 구문 상세 한글 주석 추가)
+    Last Updated     : 2026. 07. 02. (Pmn24V 결함 판정 로직 정/역방향 수정)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 02. - Pmn24V 결함 판정 로직 수정 (Active Low 정상 반영)
  * 2026. 07. 01. - 초기화 구문 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 30. - xDio 참조 변수명 리팩토링 (Pmn24V, DrvnFault 표기 적용)
  * 2026. 06. 12. - 과속 판단 기준을 3240 RPM으로 하향 조정
@@ -143,7 +144,7 @@ void Bit_OvVoltage_Check(void) {
   }
 
   // 신규 PM_n24V 브레이크 전압 감시 (Active Low, 디바운싱 필터 적용)
-  if (xDio.Pmn24V == 0U) {
+  if (xDio.Pmn24V == 1U) {
     if (BitCnt_Brk24V > xBitLimit.ovvBrkTimeCnt) {
       xBit.faultOvVoltBrk = 1U;
       xBit.faultFlagSet = 1U;

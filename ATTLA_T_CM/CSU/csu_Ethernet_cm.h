@@ -133,6 +133,7 @@
 
 #define ETH_LED_PIN             (146U)    /* EMAC Tx/Rx 동작확인 LED */
 #define ETH_LED_ON()            GPIO_writePin(ETH_LED_PIN, 1U)
+#define ETH_LED_OFF()           GPIO_writePin(ETH_LED_PIN, 0U)
 
 /* ---------------------------------------------------------------
  * 연동통제안 상태 머신 구조체 정의

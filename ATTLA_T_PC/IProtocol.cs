@@ -2,6 +2,19 @@ using System;
 
 namespace ATTLA_T_PC
 {
+    public class StatusMessageData
+    {
+        public byte IncNumber { get; set; }
+        public byte Status { get; set; }
+        public double DspTemp { get; set; }
+        public bool IsCommError { get; set; }
+    }
+
+    public class ControlMessageData
+    {
+        public byte ManualSeqNum { get; set; }
+    }
+
     public interface IProtocol
     {
         bool IsConnected { get; }

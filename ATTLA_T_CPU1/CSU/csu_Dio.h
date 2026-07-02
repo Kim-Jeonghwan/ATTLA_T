@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : csu_Dio.h
-    Version          : 00.05
+    Version          : 00.06
     Description      : 이산신호(DIO) 입력 처리 및 디바운싱 필터 모듈 (CSU)
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
+    Last Updated     : 2026. 07. 01. (모터 브레이크 제어핀 매크로 추가)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 모터 브레이크 제어핀(GPIO 35) 매크로 추가 (hal_Common.h에서 이동)
  * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 30. - 시스템 상태(LednNormal, LednFault) 반영을 위한 Dio_UpdateOutput 함수 원형 추가
  * 2026. 06. 30. - stDioState 멤버 변수명 리팩토링 (Active Low 표기 적용)
@@ -25,6 +26,7 @@
 #include "main_cpu1.h"
 
 #define DIO_CNT_DEBOUNCE_REF   10U    // 1ms 신호 입력 식별 디바운싱 카운트 (10kHz 100us 기준)
+
 
 typedef struct {
     uint16_t nLimit1No;      // 리미트 스위치 1번 NO (Normally Open) 접점 입력 상태 (Active Low)

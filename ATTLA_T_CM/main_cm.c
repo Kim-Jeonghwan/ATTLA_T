@@ -127,7 +127,7 @@ static void Cycle_1ms(void)
         ethActivityTimer--;
         if (ethActivityTimer == 0U)
         {
-            GPIO_writePin(146U, 0U); // LED OFF (Active High 기준)
+            ETH_LED_OFF(); // LED OFF (Active High 기준)
         }
     }
 }
@@ -151,14 +151,7 @@ static void Cycle_10ms(void)
 */
 static void Cycle_100ms(void)
 {
-    // 500ms(100ms * 5) 주기로 점멸시키기 위한 로직
-    static uint16_t cmLedCnt = 0U;
-    if (++cmLedCnt >= 5U)
-    {
-        GPIO_togglePin(145U); // GPIO 145 토글 (CM 코어 API 사용)
-        cmLedCnt = 0U;
-    }
-    
+
     // [ADD] CM 코어에서 100ms 주기로 이더넷 연동통제안 상태 머신을 돌립니다.
     Ethernet_StateMachine();
 }

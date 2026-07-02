@@ -1,77 +1,42 @@
-# 모터 제어 및 통신 펌웨어(ATTLA_T) CSU/HAL 계층 주석 및 코드 구조 분석 리포트
+# PMN24V 결함 판정 로직 조사 결과 (Research Report for PMN24V Fault Logic)
 
-## 1. 개요
-사용자의 지시(단축 명령어 `101`)에 따라, 현재 ATTLA_T 프로젝트의 CPU1 코어 및 CM 코어에 존재하는 모든 CSU(Control & Service Unit) 및 HAL(Hardware Abstraction Layer) 계층의 소스 코드와 헤더 파일을 분석하였습니다. (단, 외부 라이브러리인 W6100 관련 모듈은 대상에서 제외하였습니다.)
-본 조사는 각 계층의 주요 함수와 전역 변수/구조체의 역할 및 현황을 파악하고, 추후 코딩 규칙(GEMINI.md)에 의거하여 한국어 주석을 상세하게 추가하기 위한 사전 구현 조사 리포트입니다.
+## 1. 개요 (Overview)
+사용자 요청(101)에 따라 전체 파일 구조를 파악하였으며, `Pmn24V` (브레이크 전압 감지) 관련 로직을 조사했습니다. 
+현재 코드는 `Pmn24V`가 `0U` (Active Low)일 때 결함(Fault)으로 판정하고 있어, 사용자의 의도(`Active(Low) == 정상`)와 반대로 동작하고 있습니다.
 
-## 2. 조사 대상 모듈 목록 및 주요 역할
+## 2. 현황 분석 (Current Status Analysis)
+**대상 파일 (Target File):** `ATTLA_T_CPU1/CSU/csu_Bit.c`
+**해당 함수 (Target Function):** `Bit_OvVoltage_Check(void)`
 
-### 2.1 CPU1 코어 (ATTLA_T_CPU1)
+현재 구현된 코드는 다음과 같습니다. (Current Implementation:)
+```c
+  // 신규 PM_n24V 브레이크 전압 감시 (Active Low, 디바운싱 필터 적용)
+  if (xDio.Pmn24V == 0U) {
+    if (BitCnt_Brk24V > xBitLimit.ovvBrkTimeCnt) {
+      xBit.faultOvVoltBrk = 1U;
+      xBit.faultFlagSet = 1U;
+      xBit.informAll |= 0x00002000U;
+      BitCnt_Brk24V = 0U;
+    } else
+      BitCnt_Brk24V++;
+  } else {
+    if (BitCnt_Brk24V > 0U)
+      BitCnt_Brk24V--;
+  }
+```
+위 로직에 따르면 `xDio.Pmn24V == 0U` 일 때 에러 카운터(`BitCnt_Brk24V`)가 증가하고, 임계값을 초과하면 결함(`faultOvVoltBrk`)을 띄우고 있습니다.
 
-#### 2.1.1 CSU 계층 (비즈니스 로직 및 제어 알고리즘)
-- **csu_Adc**: 아날로그 센서 데이터 수집 및 변환 로직 처리
-- **csu_Bit**: 비트 조작 및 플래그 상태 관리
-- **csu_Control**: 전체 시스템의 상태 머신 및 주 제어 흐름 관리
-- **csu_Debug**: 디버깅용 메시지 포맷팅 및 상태 모니터링
-- **csu_Dio**: 디지털 입출력 논리 상태 제어
-- **csu_Encoder**: 엔코더 펄스 데이터 기반 위치 및 속도 연산
-- **csu_Ipc_cpu1**: CPU1 <-> CM 간 통신 페이로드 조립 및 큐 관리
-- **csu_Led**: 상태 표시 LED 제어 로직
-- **csu_LimitSwitch**: 리미트 스위치 감지 시퀀스 및 인터락(Fault) 처리
-- **csu_MotorCtrl**: 모터 속도/위치/전류 PID 루프 제어 및 안전 타이머 (브레이크, 영점 설정) 관리
-- **csu_MotorDriver**: 모터 드라이버 IC 전용 상위 제어 시퀀스
-- **csu_Pid**: 범용 PID 제어기 수학적 연산 모델
-- **csu_SciPc**: PC와의 직렬 통신 프로토콜 조립 및 파싱
+## 3. 원인 파악 및 수정 방향 (Root Cause & Solution)
+`Pmn24V`는 하드웨어적으로 Active Low로 설계되어 있어, `0U`일 때가 정상(브레이크 전압 인가됨)입니다. 따라서 전압이 인가되지 않은 비정상 상태(High, `1U`)에서 에러로 판정해야 합니다.
 
-#### 2.1.2 HAL 계층 (하드웨어 제어 및 Driverlib 래핑)
-- **hal_Adc**: ADC 주변장치 초기화 및 인터럽트 설정
-- **hal_Common**: 공통 하드웨어 설정 및 시스템 유틸리티
-- **hal_Debug**: 디버깅용 SCI 포트 초기화 및 하드웨어 송수신
-- **hal_DspInit**: C28x DSP 코어 클럭, GPIO, PIE(인터럽트) 등 기본 초기화
-- **hal_Encoder**: eQEP 주변장치 초기화 및 레지스터 접근
-- **hal_Epwm**: ePWM 타이머 설정 및 듀티비 하드웨어 업데이트
-- **hal_Fram**: FRAM 메모리 SPI 통신 읽기/쓰기 하드웨어 제어
-- **hal_Ipc_cpu1**: IPC Message RAM 할당 및 IPC 플래그 인터럽트 설정
-- **hal_MotorDriver**: 모터 드라이버 핀 제어 및 구동 신호 인가
-- **hal_Ramfuncs**: 플래시에서 RAM으로 복사되어 실행되는 중요 함수(ISR 등) 설정
-- **hal_Sci**: SCI 통신 포트 초기화 및 바이트 송수신
-- **hal_Spi**: SPI 통신 포트 초기화
-- **hal_Timer**: CPU 타이머 기반 주기적 인터럽트(ISR) 생성
+**수정 제안 (Proposed Fix):**
+`csu_Bit.c` 의 `if (xDio.Pmn24V == 0U)` 구문을 `if (xDio.Pmn24V == 1U)` 로 변경해야 합니다.
 
-### 2.2 CM 코어 (ATTLA_T_CM)
+```diff
+-  if (xDio.Pmn24V == 0U) {
++  if (xDio.Pmn24V == 1U) {
+```
 
-#### 2.2.1 CSU 계층
-- **csu_Ethernet_cm**: 이더넷 통신 비즈니스 로직, W6100 소켓 관리 및 데이터 패킷 파싱
-- **csu_Ipc_cm**: CM <-> CPU1 간 IPC 데이터 교환 로직 및 동기화
-
-#### 2.2.2 HAL 계층
-- **hal_Ethernet_cm**: W6100 하드웨어 리셋, SPI 접근 등의 하위 제어
-- **hal_Ipc_cm**: CM 코어용 IPC 레지스터 및 인터럽트 초기화
-- **hal_Timer_cm**: ARM Cortex-M SysTick 및 내부 타이머 초기화
-
-## 3. 발견된 코드 현황 및 개선 필요 사항 (코딩 규칙 관점)
-
-1. **상세 주석의 부재**: 다수의 함수와 구조체/변수에 Doxygen 방식이나 기능 설명 주석이 부족하거나, 파라미터(`@param`), 반환값(`@return`) 포맷이 누락되어 있습니다.
-2. **한국어 주석 적용 필요**: 코딩 규칙상 주석은 한국어(한글)로 작성해야 하나, 일부 영문 주석이나 코드가 혼재되어 있습니다.
-3. **매크로/전역 변수 위치 확인**: 모든 매크로와 구조체 선언이 소스(`.c`)가 아닌 헤더(`.h`)에 위치해야 한다는 규칙에 따라 점검이 필요합니다.
-4. **CM 코어 코딩 스타일 준수 여부 점검**: CM 코어 내에 DSP 방식의 데이터 타입 선언이나 인터럽트 선언이 있는지, `uint32_t` 등 명시적 타입으로 되어 있는지 주석을 달며 확인할 필요가 있습니다.
-
-## 4. 향후 작업 계획 (주석 작성 가이드)
-
-추후 사용자의 승인이 완료되어 계획(plan) 및 구현을 시작하게 되면 다음과 같은 규칙으로 주석을 추가합니다.
-
-*   **파일 최상단 헤더 주석 템플릿**: 파일 수정 이력을 남기고 버전을 00.01 씩 증가
-*   **함수 주석 템플릿**:
-    ```c
-    /**
-     * @brief      [함수명] 의 역할과 주요 동작 요약 (한글)
-     * @param      매개변수 설명
-     * @return     반환값 설명
-     */
-    ```
-*   **변수 및 매크로 주석**: 구조체 멤버와 전역 변수 선언 시 옆에 한글로 단위와 역할을 명시
-*   **인코딩 확인**: 파일 저장 시 반드시 UTF-8 포맷으로 저장 및 깨짐 유무 확인
-*   작업은 CPU1 코어의 CSU/HAL, 그리고 CM 코어의 CSU/HAL 순서로 단계적으로 진행.
-
----
-**주의:** GEMINI.md 지침에 따라 리서치 완료 후 본 문서를 작성하였으며, 사용자의 명시적인 승인 전까지는 계획 문서(plan.md) 생성 및 실제 주석 작성(코드 수정)을 진행하지 않습니다.
+## 4. 진행 여부 확인 (Request to Proceed)
+본 조사 결과를 확인해 주시기 바랍니다. 수정 내용에 동의하시면 **구현(계획 반영 및 코드 수정)을 시작**하라고 지시해 주십시오. 
+(Please review this research result. If you agree with the proposed fix, please instruct me to start the implementation.)

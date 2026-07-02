@@ -3,22 +3,22 @@
 HAL/hal_Debug.obj: ../HAL/hal_Debug.c
 HAL/hal_Debug.obj: ../HAL/hal_Debug.h
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/main_cpu1.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/math.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/_ti_config.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/linkage.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/_defs.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/sys/_types.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/sys/cdefs.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/machine/_types.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/machine/_limits.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/stdbool.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/stdint.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/_stdint40.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/sys/stdint.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/machine/_stdint.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/sys/_stdint.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/string.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/xlocale/_string.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/math.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/_ti_config.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/linkage.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/_defs.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/sys/_types.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/sys/cdefs.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/machine/_types.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/machine/_limits.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/stdbool.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/stdint.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/_stdint40.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/sys/stdint.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/machine/_stdint.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/sys/_stdint.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/string.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/xlocale/_string.h
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/common/include/device.h
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/common/include/driverlib.h
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/driverlib/inc/hw_memmap.h
@@ -111,12 +111,12 @@ HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/driverlib/inc/hw_mcanss.h
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/driverlib/inc/hw_types_mcan.h
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/driverlib/driver_inclusive_terminology_mapping.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/stddef.h
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/common/include/f28x_project.h
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/common/include/f2838x_cla_typedefs.h
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/headers/include/f2838x_device.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/assert.h
-HAL/hal_Debug.obj: C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/stdarg.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/assert.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/stdarg.h
+HAL/hal_Debug.obj: C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/stddef.h
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/headers/include/f2838x_adc.h
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/headers/include/f2838x_analogsubsys.h
 HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/headers/include/f2838x_bgcrc.h
@@ -214,37 +214,37 @@ HAL/hal_Debug.obj: D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_
 
 D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/main_cpu1.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/math.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/math.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/_ti_config.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/_ti_config.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/linkage.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/linkage.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/_defs.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/_defs.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/sys/_types.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/sys/_types.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/sys/cdefs.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/sys/cdefs.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/machine/_types.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/machine/_types.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/machine/_limits.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/machine/_limits.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/stdbool.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/stdbool.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/stdint.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/stdint.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/_stdint40.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/_stdint40.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/sys/stdint.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/sys/stdint.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/machine/_stdint.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/machine/_stdint.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/sys/_stdint.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/sys/_stdint.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/string.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/string.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/xlocale/_string.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/xlocale/_string.h:
 
 D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/common/include/device.h:
 
@@ -430,17 +430,17 @@ D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/driverli
 
 D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/driverlib/driver_inclusive_terminology_mapping.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/stddef.h:
-
 D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/common/include/f28x_project.h:
 
 D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/common/include/f2838x_cla_typedefs.h:
 
 D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/headers/include/f2838x_device.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/assert.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/assert.h:
 
-C:/ti/ccs2040/ti-cgt-c2000_22.6.1.LTS/include/stdarg.h:
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/stdarg.h:
+
+C:/ti/ccs2051/ccs/tools/compiler/ti-cgt-c2000_25.11.0.LTS/include/stddef.h:
 
 D:/Nexcom/Firmware/01_Project/04_ATTLA/ATTLA_T/ATTLA_T/ATTLA_T_CPU1/SDK/headers/include/f2838x_adc.h:
 

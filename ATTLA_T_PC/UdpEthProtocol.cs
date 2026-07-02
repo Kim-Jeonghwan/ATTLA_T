@@ -67,13 +67,14 @@ namespace ATTLA_T_PC
             {
                 foreach (NetworkInterface nic in NetworkInterface.GetAllNetworkInterfaces())
                 {
-                    if (nic.OperationalStatus == OperationalStatus.Up)
+                    // 상태가 Down이더라도 IP가 할당되어 있으면 MAC 주소를 가져오도록 OperationalStatus 조건 생략
+                    foreach (UnicastIPAddressInformation ip in nic.GetIPProperties().UnicastAddresses)
                     {
-                        foreach (UnicastIPAddressInformation ip in nic.GetIPProperties().UnicastAddresses)
+                        if (ip.Address.ToString() == LocalIpAddress)
                         {
-                            if (ip.Address.ToString() == LocalIpAddress)
+                            byte[] macBytes = nic.GetPhysicalAddress().GetAddressBytes();
+                            if (macBytes.Length > 0)
                             {
-                                byte[] macBytes = nic.GetPhysicalAddress().GetAddressBytes();
                                 string[] str = new string[macBytes.Length];
                                 for (int i = 0; i < macBytes.Length; i++)
                                     str[i] = macBytes[i].ToString("X2");

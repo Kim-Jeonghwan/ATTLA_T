@@ -8,7 +8,7 @@ SHELL = cmd.exe
 C_SRCS += \
 ../HAL/hal_Adc.c \
 ../HAL/hal_Common.c \
-../HAL/hal_Debug_cpu1.c \
+../HAL/hal_Debug.c \
 ../HAL/hal_DspInit.c \
 ../HAL/hal_Encoder.c \
 ../HAL/hal_Epwm.c \
@@ -16,14 +16,13 @@ C_SRCS += \
 ../HAL/hal_Ipc_cpu1.c \
 ../HAL/hal_MotorDriver.c \
 ../HAL/hal_Ramfuncs.c \
-../HAL/hal_Sci.c \
 ../HAL/hal_Spi.c \
 ../HAL/hal_Timer.c 
 
 C_DEPS += \
 ./HAL/hal_Adc.d \
 ./HAL/hal_Common.d \
-./HAL/hal_Debug_cpu1.d \
+./HAL/hal_Debug.d \
 ./HAL/hal_DspInit.d \
 ./HAL/hal_Encoder.d \
 ./HAL/hal_Epwm.d \
@@ -31,14 +30,13 @@ C_DEPS += \
 ./HAL/hal_Ipc_cpu1.d \
 ./HAL/hal_MotorDriver.d \
 ./HAL/hal_Ramfuncs.d \
-./HAL/hal_Sci.d \
 ./HAL/hal_Spi.d \
 ./HAL/hal_Timer.d 
 
 OBJS += \
 ./HAL/hal_Adc.obj \
 ./HAL/hal_Common.obj \
-./HAL/hal_Debug_cpu1.obj \
+./HAL/hal_Debug.obj \
 ./HAL/hal_DspInit.obj \
 ./HAL/hal_Encoder.obj \
 ./HAL/hal_Epwm.obj \
@@ -46,14 +44,13 @@ OBJS += \
 ./HAL/hal_Ipc_cpu1.obj \
 ./HAL/hal_MotorDriver.obj \
 ./HAL/hal_Ramfuncs.obj \
-./HAL/hal_Sci.obj \
 ./HAL/hal_Spi.obj \
 ./HAL/hal_Timer.obj 
 
 OBJS__QUOTED += \
 "HAL\hal_Adc.obj" \
 "HAL\hal_Common.obj" \
-"HAL\hal_Debug_cpu1.obj" \
+"HAL\hal_Debug.obj" \
 "HAL\hal_DspInit.obj" \
 "HAL\hal_Encoder.obj" \
 "HAL\hal_Epwm.obj" \
@@ -61,14 +58,13 @@ OBJS__QUOTED += \
 "HAL\hal_Ipc_cpu1.obj" \
 "HAL\hal_MotorDriver.obj" \
 "HAL\hal_Ramfuncs.obj" \
-"HAL\hal_Sci.obj" \
 "HAL\hal_Spi.obj" \
 "HAL\hal_Timer.obj" 
 
 C_DEPS__QUOTED += \
 "HAL\hal_Adc.d" \
 "HAL\hal_Common.d" \
-"HAL\hal_Debug_cpu1.d" \
+"HAL\hal_Debug.d" \
 "HAL\hal_DspInit.d" \
 "HAL\hal_Encoder.d" \
 "HAL\hal_Epwm.d" \
@@ -76,14 +72,13 @@ C_DEPS__QUOTED += \
 "HAL\hal_Ipc_cpu1.d" \
 "HAL\hal_MotorDriver.d" \
 "HAL\hal_Ramfuncs.d" \
-"HAL\hal_Sci.d" \
 "HAL\hal_Spi.d" \
 "HAL\hal_Timer.d" 
 
 C_SRCS__QUOTED += \
 "../HAL/hal_Adc.c" \
 "../HAL/hal_Common.c" \
-"../HAL/hal_Debug_cpu1.c" \
+"../HAL/hal_Debug.c" \
 "../HAL/hal_DspInit.c" \
 "../HAL/hal_Encoder.c" \
 "../HAL/hal_Epwm.c" \
@@ -91,7 +86,6 @@ C_SRCS__QUOTED += \
 "../HAL/hal_Ipc_cpu1.c" \
 "../HAL/hal_MotorDriver.c" \
 "../HAL/hal_Ramfuncs.c" \
-"../HAL/hal_Sci.c" \
 "../HAL/hal_Spi.c" \
 "../HAL/hal_Timer.c" 
 

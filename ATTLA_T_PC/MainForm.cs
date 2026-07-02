@@ -13,6 +13,8 @@
  * 2026. 06. 30. - UI 깜빡임 방지를 위한 컨트롤 AutoSize 속성 해제 및 DoubleBuffered 적용
  */
 
+#nullable disable
+
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -41,12 +43,9 @@ namespace ATTLA_T_PC
 
         private ControlMessageData _ctrlDto = new ControlMessageData();
 
-        private ComboBox cmbPorts;
-        private ComboBox cmbBauds;
         private Button btnConnect;
         private Button btnDisconnect;
         private Button btnInit;
-        private Button btnRefresh;
         private Label lblPortConnected;
         private Label lblCommReceiving;
 
@@ -77,9 +76,6 @@ namespace ATTLA_T_PC
         private Label lblLogTxInfo;
         private ListBox lstCommandHistory;
 
-        // 프로토콜 선택 UI
-        private RadioButton rdoSci;
-        private RadioButton rdoUdp;
         private Label lblCommStatus;  // 통신 두절 표시
 
 
@@ -96,7 +92,7 @@ namespace ATTLA_T_PC
 
             _logForm = new LogForm();
 
-            _protocol = new SciPcProtocol();
+            _protocol = new UdpEthProtocol();
             SetupProtocolEvents();
             SetupMenu();
 
@@ -139,44 +135,17 @@ namespace ATTLA_T_PC
             pnlComm.Margin = new Padding(5);
 
             int commY = 50;
-            Label lblPort = new Label { Text = "COM Port", Location = new Point(20, commY), AutoSize = true, Font = new Font("Segoe UI", 11, FontStyle.Bold) };
-            cmbPorts = new ComboBox
-            {
-                Location = new Point(160, commY - 2),
-                Size = new Size(350, 35),
-                BackColor = Color.FromArgb(45, 45, 48),
-                ForeColor = Color.FromArgb(0, 255, 200),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("맑은 고딕", 11)
-            };
-            UpdatePortsList();
 
-            btnRefresh = CreateBorderedButton("새로고침", 530, commY - 5, 120, 40); 
-            btnRefresh.Click += (s, e) => UpdatePortsList();
-
-            lblPortConnected = new Label { Text = "● 포트 연결됨", Location = new Point(680, commY), AutoSize = true, ForeColor = Color.Gray, Font = new Font("맑은 고딕", 11, FontStyle.Bold) }; 
-            lblCommReceiving = new Label { Text = "● 통신 수신중", Location = new Point(880, commY), AutoSize = true, ForeColor = Color.Gray, Font = new Font("맑은 고딕", 11, FontStyle.Bold) }; 
-
-            Label lblBaud = new Label { Text = "Baud Rate", Location = new Point(20, commY + 50), AutoSize = true, Font = new Font("Segoe UI", 11, FontStyle.Bold) };
-            cmbBauds = new ComboBox
-            {
-                Location = new Point(160, commY + 48),
-                Size = new Size(350, 35), 
-                BackColor = Color.FromArgb(45, 45, 48),
-                ForeColor = Color.FromArgb(0, 255, 200),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("맑은 고딕", 11)
-            };
-            cmbBauds.Items.AddRange(new object[] { "9600", "19200", "38400", "57600", "115200", "230400", "460800", "921600" });
-            cmbBauds.SelectedItem = "115200";
-
-            btnConnect = CreateBorderedButton("연결", 530, commY + 45, 100, 40); 
+            btnConnect = CreateBorderedButton("연결", 20, commY, 100, 40); 
             btnConnect.Click += (s, e) => Connect();
 
-            btnDisconnect = CreateBorderedButton("해제", 640, commY + 45, 100, 40); 
+            btnDisconnect = CreateBorderedButton("해제", 130, commY, 100, 40); 
             btnDisconnect.Click += (s, e) => _protocol.Disconnect();
 
-            btnInit = CreateBorderedButton("초기화", 750, commY + 45, 100, 40); 
+            btnInit = CreateBorderedButton("초기화", 240, commY, 100, 40); 
+
+            lblPortConnected = new Label { Text = "● 통신망 연결됨", Location = new Point(360, commY + 10), AutoSize = true, ForeColor = Color.Gray, Font = new Font("맑은 고딕", 11, FontStyle.Bold) }; 
+            lblCommReceiving = new Label { Text = "● 통신 수신중", Location = new Point(510, commY + 10), AutoSize = true, ForeColor = Color.Gray, Font = new Font("맑은 고딕", 11, FontStyle.Bold) }; 
             btnInit.Click += (s, e) => 
             {
                 _protocol.ReInit();
@@ -205,49 +174,22 @@ namespace ATTLA_T_PC
                 if (_logForm != null && !_logForm.IsDisposed)
                     _logForm.AddLog("[SYS] 통신망 가입 상태 및 BIT 결과 초기화됨 (대기 중)");
             };
-
-            /* 프로토콜 선택: SCI / UDP */
-            rdoSci = new RadioButton
-            {
-                Text = "SCI (기본)",
-                Location = new Point(20, commY + 105),
-                AutoSize = true,
-                Checked = true,
-                Font = new Font("맑은 고딕", 11, FontStyle.Bold),
-                ForeColor = Color.Cyan
-            };
-            rdoUdp = new RadioButton
-            {
-                Text = "UDP (Ethernet)",
-                Location = new Point(200, commY + 105),
-                AutoSize = true,
-                Font = new Font("맑은 고딕", 11, FontStyle.Bold),
-                ForeColor = Color.Orange
-            };
-            rdoUdp.CheckedChanged += (s, e) =>
-            {
-                /* UDP 선택 시 COM Port/Baud 콤보박스 비활성화 */
-                cmbPorts.Enabled = rdoSci.Checked;
-                cmbBauds.Enabled = rdoSci.Checked;
-            };
-
             lblCommStatus = new Label
             {
                 Text = "",
-                Location = new Point(680, commY + 50),
+                Location = new Point(680, commY + 10),
                 Size = new Size(250, 30),
                 Font = new Font("맑은 고딕", 11, FontStyle.Bold),
                 ForeColor = Color.Red
             };
 
-            lblPcNetInfo = new Label { Text = "PC  [IP: - / MAC: - / Port: -]", Location = new Point(450, commY + 95), AutoSize = true, Font = new Font("Consolas", 11, FontStyle.Regular), ForeColor = Color.LightGray };
-            lblDspNetInfo = new Label { Text = "DSP [IP: - / MAC: - / Port: -]", Location = new Point(450, commY + 120), AutoSize = true, Font = new Font("Consolas", 11, FontStyle.Regular), ForeColor = Color.LightGray };
+            lblPcNetInfo = new Label { Text = "PC  [IP: - / MAC: - / Port: -]", Location = new Point(950, commY), AutoSize = true, Font = new Font("Consolas", 11, FontStyle.Regular), ForeColor = Color.LightGray };
+            lblDspNetInfo = new Label { Text = "DSP [IP: - / MAC: - / Port: -]", Location = new Point(950, commY + 25), AutoSize = true, Font = new Font("Consolas", 11, FontStyle.Regular), ForeColor = Color.LightGray };
 
             pnlComm.Controls.AddRange(new Control[] {
-                lblPort, lblBaud, cmbPorts, cmbBauds, btnRefresh,
                 btnConnect, btnDisconnect, btnInit,
                 lblPortConnected, lblCommReceiving,
-                rdoSci, rdoUdp, lblCommStatus, lblPcNetInfo, lblDspNetInfo
+                lblCommStatus, lblPcNetInfo, lblDspNetInfo
             });
             mainLayout.Controls.Add(pnlComm, 0, 0);
 
@@ -534,86 +476,20 @@ namespace ATTLA_T_PC
 
 
 
-        private void UpdatePortsList()
-        {
-            string selected = cmbPorts.SelectedItem as string;
-            cmbPorts.Items.Clear();
-
-            try
-            {
-                using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE Caption LIKE '%(COM%)'"))
-                {
-                    var ports = searcher.Get().Cast<ManagementBaseObject>().ToList();
-                    var list = new List<string>();
-                    
-                    foreach (var p in ports)
-                    {
-                        string caption = p["Caption"].ToString();
-                        list.Add(caption);
-                    }
-
-                    list.Sort((a, b) =>
-                    {
-                        var matchA = Regex.Match(a, @"\(COM(\d+)\)");
-                        var matchB = Regex.Match(b, @"\(COM(\d+)\)");
-                        int aNum = matchA.Success ? int.Parse(matchA.Groups[1].Value) : 0;
-                        int bNum = matchB.Success ? int.Parse(matchB.Groups[1].Value) : 0;
-                        return aNum.CompareTo(bNum);
-                    });
-
-                    foreach (var item in list) cmbPorts.Items.Add(item);
-                }
-            }
-            catch
-            {
-                cmbPorts.Items.AddRange(SerialPort.GetPortNames());
-            }
-
-            if (cmbPorts.Items.Count > 0)
-            {
-                if (selected != null && cmbPorts.Items.Contains(selected))
-                    cmbPorts.SelectedItem = selected;
-                else
-                    cmbPorts.SelectedIndex = 0;
-            }
-        }
-
         private void Connect()
         {
             try
             {
                 if (_protocol != null && _protocol.IsConnected) _protocol.Disconnect();
 
-                /* 프로토콜 선택: SCI 또는 UDP */
-                if (rdoUdp != null && rdoUdp.Checked)
-                {
-                    _protocol = new UdpEthProtocol();
-                }
-                else
-                {
-                    if (cmbPorts.SelectedItem == null || cmbBauds.SelectedItem == null) return;
-                    _protocol = new SciPcProtocol();
-                }
-
+                _protocol = new UdpEthProtocol();
                 SetupProtocolEvents();
 
-                if (rdoUdp != null && rdoUdp.Checked)
+                _protocol.Connect("UDP", 0);
+                if (_protocol is UdpEthProtocol udpProto)
                 {
-                    /* UDP: portName/baudRate 인자는 무시됨 (클래스 내부 고정 IP 사용) */
-                    _protocol.Connect("UDP", 0);
-                    if (_protocol is UdpEthProtocol udpProto)
-                    {
-                        lblPcNetInfo.Text = $"PC  [IP: {udpProto.PcIp} / MAC: {udpProto.GetLocalMacAddress()} / Port: {udpProto.PcPort}]";
-                        lblDspNetInfo.Text = $"DSP [IP: {udpProto.DspIp} / MAC: 대기중... / Port: {udpProto.DspPort}]";
-                    }
-                }
-                else
-                {
-                    string rawSelection = cmbPorts.SelectedItem.ToString();
-                    string portName = rawSelection;
-                    var match = Regex.Match(rawSelection, @"\((COM\d+)\)");
-                    if (match.Success) portName = match.Groups[1].Value;
-                    _protocol.Connect(portName, int.Parse(cmbBauds.SelectedItem.ToString()));
+                    lblPcNetInfo.Text = $"PC  [IP: {udpProto.PcIp} / MAC: {udpProto.GetLocalMacAddress()} / Port: {udpProto.PcPort}]";
+                    lblDspNetInfo.Text = $"DSP [IP: {udpProto.DspIp} / MAC: 대기중... / Port: {udpProto.DspPort}]";
                 }
 
                 UpdateConnectButtons();
@@ -677,7 +553,7 @@ namespace ATTLA_T_PC
                 lblCommReceiving.ForeColor = Color.Lime;
 
                 // DSP 온도 업데이트
-                if (_protocol is SciPcProtocol)
+                if (_protocol is CanProtocol)
                     lblBoardTemp.Text = $"{data.DspTemp:F1} ℃";
                 else
                     lblBoardTemp.Text = "미지원 (UDP)";
@@ -686,7 +562,7 @@ namespace ATTLA_T_PC
                 {
                     lblBootStatus.Text = "통신망 가입 완료 (Boot Done 수신 및 ACK 전송)";
                     lblBootStatus.ForeColor = Color.Lime;
-                    if (rdoUdp.Checked)
+                    if (_protocol is UdpEthProtocol)
                     {
                         if (_protocol is UdpEthProtocol udpProto)
                         {
@@ -707,7 +583,7 @@ namespace ATTLA_T_PC
                     lblStatusInfo.Text = _statusToggle ? "통신 상태 확인: 정상 연결 중 ■" : "통신 상태 확인: 정상 연결 중 □";
                     lblStatusInfo.ForeColor = Color.Lime;
                     
-                    if (!_firstStatusReceived && rdoUdp.Checked)
+                    if (!_firstStatusReceived && _protocol is UdpEthProtocol)
                     {
                         _firstStatusReceived = true;
                         if (_logForm != null && !_logForm.IsDisposed)

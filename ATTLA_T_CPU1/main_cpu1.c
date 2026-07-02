@@ -98,8 +98,6 @@ void main(void)
 	// 백그라운드 유휴 루프 (Background Loop)
 	while(1U)
 	{
-		// sendScia_SCI_PC(); // SCI 미사용 요청으로 주석 처리
-
 		while(xTimer.Cycle_1ms >= 1U)
 		{
 			xTimer.Cycle_1ms -= 1U;

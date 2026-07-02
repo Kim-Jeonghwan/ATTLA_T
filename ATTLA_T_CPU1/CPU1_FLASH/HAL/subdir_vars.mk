@@ -16,7 +16,6 @@ C_SRCS += \
 ../HAL/hal_Ipc_cpu1.c \
 ../HAL/hal_MotorDriver.c \
 ../HAL/hal_Ramfuncs.c \
-../HAL/hal_Sci.c \
 ../HAL/hal_Spi.c \
 ../HAL/hal_Timer.c 
 
@@ -31,7 +30,6 @@ C_DEPS += \
 ./HAL/hal_Ipc_cpu1.d \
 ./HAL/hal_MotorDriver.d \
 ./HAL/hal_Ramfuncs.d \
-./HAL/hal_Sci.d \
 ./HAL/hal_Spi.d \
 ./HAL/hal_Timer.d 
 
@@ -46,7 +44,6 @@ OBJS += \
 ./HAL/hal_Ipc_cpu1.obj \
 ./HAL/hal_MotorDriver.obj \
 ./HAL/hal_Ramfuncs.obj \
-./HAL/hal_Sci.obj \
 ./HAL/hal_Spi.obj \
 ./HAL/hal_Timer.obj 
 
@@ -61,7 +58,6 @@ OBJS__QUOTED += \
 "HAL\hal_Ipc_cpu1.obj" \
 "HAL\hal_MotorDriver.obj" \
 "HAL\hal_Ramfuncs.obj" \
-"HAL\hal_Sci.obj" \
 "HAL\hal_Spi.obj" \
 "HAL\hal_Timer.obj" 
 
@@ -76,7 +72,6 @@ C_DEPS__QUOTED += \
 "HAL\hal_Ipc_cpu1.d" \
 "HAL\hal_MotorDriver.d" \
 "HAL\hal_Ramfuncs.d" \
-"HAL\hal_Sci.d" \
 "HAL\hal_Spi.d" \
 "HAL\hal_Timer.d" 
 
@@ -91,7 +86,6 @@ C_SRCS__QUOTED += \
 "../HAL/hal_Ipc_cpu1.c" \
 "../HAL/hal_MotorDriver.c" \
 "../HAL/hal_Ramfuncs.c" \
-"../HAL/hal_Sci.c" \
 "../HAL/hal_Spi.c" \
 "../HAL/hal_Timer.c" 
 

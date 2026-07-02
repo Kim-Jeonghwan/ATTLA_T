@@ -25,4 +25,23 @@
 
 
 /* ************************** [[  function  ]]  *********************************************************** */
+/*
+@function    void hal_Common_InitTempGpio(void)
+@brief      추후 삭제될 임시용 테스트 GPIO 핀(34, 146) 초기화
+@param      void
+@return     void
+*/
+void hal_Common_InitTempGpio(void)
+{
+    // **메인 컨트롤 ISR 동작 확인용 임시 LED (GPIO 34 할당)**
+    GPIO_setPinConfig(GPIO_34_GPIO34);
+    GPIO_setPadConfig(GPIO_PIN_ALIVE_LED, GPIO_PIN_TYPE_STD);
+    GPIO_setDirectionMode(GPIO_PIN_ALIVE_LED, GPIO_DIR_MODE_OUT);
+    GPIO_writePin(GPIO_PIN_ALIVE_LED, 1U);
 
+    // **통신 동작(Tx/Rx) 깜빡임 상태 모니터링 임시 LED (GPIO 146 할당)**
+    GPIO_setPinConfig(GPIO_146_GPIO146);
+    GPIO_setDirectionMode(GPIO_PIN_COMM_LED, GPIO_DIR_MODE_OUT);
+    GPIO_setPadConfig(GPIO_PIN_COMM_LED, GPIO_PIN_TYPE_STD);
+    GPIO_setMasterCore(GPIO_PIN_COMM_LED, GPIO_CORE_CM);
+}

@@ -199,8 +199,8 @@
 | **입력 (센서)** | `nLIMIT2_NO` (77), `nLIMIT2_NC` (78) | 리미트 스위치 2번 (Active Low) |
 | **입력 (감시)** | `PM_n24V` (79) | 24V 주 전원 감시 (Active Low) |
 | **입력 (감시)** | `nCABLE_LOOP` (80) | 외부 케이블 연결 체결 감시 (Active Low) |
-| **출력 (상태)** | `DSP_LED_nNORMAL` (31) | 시스템 Normal 상태 표시 (`Dio_UpdateOutput`에서 정상 시 0(ON) 출력) |
-| **출력 (상태)** | `DSP_LED_nFAULT` (32) | 시스템 Fault 상태 표시 (`Dio_UpdateOutput`에서 비정상 시 0(ON) 출력) |
+| **출력 (상태)** | `LED_nNORMAL` (31) | 시스템 Normal 상태 표시 (`Dio_UpdateOutput`에서 정상 시 0(ON) 출력) |
+| **출력 (상태)** | `LED_nFAULT` (32) | 시스템 Fault 상태 표시 (`Dio_UpdateOutput`에서 비정상 시 0(ON) 출력) |
 | **출력 (LED)** | `LED_nG` (145) | nG 상태 표시용 LED (CPU1 제어, 500ms 주기 점멸용) * 추후 GPIO 30으로 변경 예정 |
 
 ### 4.4 비휘발성 메모리 (FRAM)

@@ -3,7 +3,7 @@
 "./CSU/csu_Ipc_cm.obj"
 "./HAL/hal_Ethernet_cm.obj"
 "./HAL/hal_Ipc_cm.obj"
-"./HAL/hal_Timer.obj"
+"./HAL/hal_Timer_cm.obj"
 "./SDK/common/source/cm.obj"
 "./SDK/common/source/startup_cm.obj"
 "./SDK/driverlib_cm/aes.obj"

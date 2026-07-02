@@ -1,15 +1,16 @@
 /**********************************************************************
     Nexcom Co., Ltd.
     Filename         : hal_Common.h
-    Version          : 00.03
+    Version          : 00.04
     Description      : 공통 유틸리티 하드웨어 제어 헤더
     Programmer       : Kim Jeonghwan
-    Last Updated     : 2026. 07. 01. (구조체 변수 상세 한글 주석 추가)
+    Last Updated     : 2026. 07. 01. (통신 확인용 LED 핀 추가 및 모터 브레이크 매크로 이동)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 01. - 통신 확인용 LED 핀(GPIO 146) 추가 및 모터 브레이크 매크로 csu_Dio.h로 이동
  * 2026. 07. 01. - 구조체 변수 상세 한글 주석 추가 (코딩 규칙 적용)
  * 2026. 06. 23. - main.h -> main_cpu1.h 인클루드 명칭 리팩토링
  * 2026. 06. 23. - 코딩 규칙 및 구조 불일치 사항 리팩토링 반영
@@ -25,8 +26,8 @@
 
 
 /* ************************** [[   define   ]]  *********************************************************** */
-#define GPIO_PIN_MOTOR_BRAKE  35U  // 모터 브레이크 제어 핀 (Active High)
-#define GPIO_PIN_ALIVE_LED    34U  // 메인컨트롤 ISR 동작 상태 모니터링 LED 핀
+#define GPIO_PIN_ALIVE_LED    34U   // 메인컨트롤 ISR 동작 상태 모니터링 LED 핀
+#define GPIO_PIN_COMM_LED     146U  // 통신 동작(Tx/Rx) 깜빡임 상태 모니터링 LED 핀
 
 
 
@@ -88,7 +89,7 @@ typedef union
 
 
 /* ************************** [[  function  ]]  *********************************************************** */
-
+extern void hal_Common_InitTempGpio(void);
 
 
 #endif	// #ifndef HAL_COMMON_H

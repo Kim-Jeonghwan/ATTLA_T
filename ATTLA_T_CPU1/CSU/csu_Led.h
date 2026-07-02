@@ -44,7 +44,7 @@
  */
 typedef enum
 {
-	eLED_nG			            = 145u, // 추후 30u 로 변경 예정
+	eLED_nG			            = GPIO_PIN_LED_nG, // 추후 30u 로 변경 예정
 
 } eLed;
 

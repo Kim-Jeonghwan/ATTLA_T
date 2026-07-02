@@ -66,7 +66,6 @@
 #include "hal_Ipc_cpu1.h"
 #include "hal_MotorDriver.h"
 #include "hal_Ramfuncs.h"
-#include "hal_Sci.h"
 #include "hal_Spi.h"
 #include "hal_Timer.h"
 
@@ -83,7 +82,6 @@
 #include "csu_MotorCtrl.h"
 #include "csu_MotorDriver.h"
 #include "csu_Pid.h"
-#include "csu_SciPc.h"
 
 /* ************************** [[   define   ]]
  * *********************************************************** */

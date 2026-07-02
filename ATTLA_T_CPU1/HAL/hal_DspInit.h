@@ -1,15 +1,16 @@
 /**********************************************************************
    Nexcom Co., Ltd.
    Filename         : hal_DspInit.h
-   Version          : 00.07
+   Version          : 00.08
    Description      : CPU1 마스터 초기화 헤더
    Programmer       : Kim Jeonghwan
-   Last Updated     : 2026. 07. 01. (헤더 버전 동기화 및 템플릿 유지)
+   Last Updated     : 2026. 07. 02. (의존성 문제 해결을 위해 include 위치 수정)
 **********************************************************************/
 
 /*
  * Modification History
  * --------------------
+ * 2026. 07. 02. - 순환 참조에 의한 미정의 오류 방지를 위해 include "main_cpu1.h" 구문을 상수 정의부(define) 아래로 이동
  * 2026. 07. 01. - 헤더 버전 동기화 및 템플릿 유지 (코딩 규칙 적용)
  * 2026. 06. 30. - GPIO 145 핀을 CM_ALIVE_LED에서 LED_nG로 명칭 변경 및 제어권 수정
  * 2026. 06. 26. - 시스템 제어 및 스위치 GPIO 핀 매직넘버 상수화 추가
@@ -21,9 +22,6 @@
 
 #ifndef HAL_DSPINIT_H
 #define HAL_DSPINIT_H
-
-/* ************************** [[   include  ]]  *********************************************************** */
-#include "main_cpu1.h"
 
 /* ************************** [[   define   ]]  *********************************************************** */
 /* ==========================================================================
@@ -55,9 +53,7 @@
 #define GPIO_PIN_MII_CRS                109U  /* TBD (※변경 예정: 34) */
 #define GPIO_PIN_MII_COL                110U  /* TBD (※변경 예정: 35) */
 
-/* 평가보드 nG LED 상태 확인용 GPIO 핀 매핑 */
-#define GPIO_PIN_LED_nG                 145U  /* nG 상태 표시용 LED (CPU1 제어) */
-#define GPIO_PIN_CM_ETH_LED             146U  /* TBD: CM 이더넷 활동(Rx/Tx) 상태 표시용 LED */
+
 
 /* ==========================================================================
  * 시스템 모니터링 및 모터 제어 GPIO 핀 번호 정의
@@ -83,10 +79,14 @@
 #define GPIO_PIN_DRV_nBRAKE             4U
 
 #define GPIO_PIN_W6100_RSTn             21U
+
 #define GPIO_PIN_LED_nNORMAL            31U
 #define GPIO_PIN_LED_nFAULT             32U
-#define GPIO_PIN_LED_ISR_TEST           34U
-#define GPIO_PIN_DSP_BRAKE              74U
+#define GPIO_PIN_LED_nG                 145U  // 추후 30u 로 변경 예정
+#define GPIO_PIN_BRAKE                  74U
+
+/* ************************** [[   include  ]]  *********************************************************** */
+#include "main_cpu1.h"
 
 /* ************************** [[   enum or struct   ]]  *************************************************** */
 
